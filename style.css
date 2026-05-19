@@ -359,6 +359,51 @@ body {
   font-weight: 800;
   margin-top: 5px;
 }
+.gender-selection-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.gender-selection-container .cyber-label {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  color: var(--accent-magenta);
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.4);
+}
+
+.gender-options {
+  display: flex;
+  gap: 10px;
+}
+
+.gender-options .gender-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  padding: 8px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.gender-options .gender-btn:hover {
+  border-color: var(--accent-magenta);
+  color: var(--text-light);
+}
+
+.gender-options .gender-btn.active {
+  background: rgba(255, 0, 127, 0.15);
+  border-color: var(--accent-magenta);
+  color: var(--text-light);
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+}
 
 .genesis-actions {
   display: flex;

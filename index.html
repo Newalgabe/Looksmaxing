@@ -60,6 +60,15 @@
           </div>
         </div>
 
+        <div class="gender-selection-container">
+          <span class="cyber-label">IDENTITY PROTOCOL:</span>
+          <div class="gender-options">
+            <button class="btn gender-btn active" data-gender="male">MALE</button>
+            <button class="btn gender-btn" data-gender="female">FEMALE</button>
+            <button class="btn gender-btn" data-gender="random">RANDOM</button>
+          </div>
+        </div>
+
         <div class="genesis-actions">
           <button id="btn-roll-genetics" class="btn primary-btn pulse-glow">ROLL GENETICS</button>
           <button id="btn-start-life" class="btn success-btn hidden">EMBARK ON LIFE (AGE 18)</button>
@@ -127,7 +136,7 @@
 
             <div class="meter-stat">
               <div class="meter-label">
-                <span>Hairline (Norwood):</span>
+                <span id="lbl-hairline">Hairline (Norwood):</span>
                 <span id="txt-hairline">NW 2</span>
               </div>
               <div class="progress-bar-container">

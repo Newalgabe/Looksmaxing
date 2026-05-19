@@ -75,32 +75,47 @@ export function generateForumThread(player) {
 }
 
 function generateThreadTitle(player) {
+  const isFemale = player.gender === 'female';
   const ft = Math.floor(player.height / 12);
   const inch = player.height % 12;
   const heightStr = `${ft}'${inch}"`;
+  const hairLabel = isFemale ? `Ludwig ${player.hairline}` : `Norwood ${player.hairline}`;
 
   if (player.isDead) {
-    return `RIP to member "${player.name}" - Botched leg lengthening exit.`;
+    return isFemale
+      ? `RIP to member "${player.name}" - Botched BBL/V-Line exit.`
+      : `RIP to member "${player.name}" - Botched leg lengthening exit.`;
   }
 
   if (player.smv >= 8.5) {
-    return `Ascended at 30: ${heightStr} / ${player.jaw} Jaw / Norwood ${player.hairline} GigaChad. Rate my SMV.`;
+    const tier = isFemale ? 'GigaStacy' : 'GigaChad';
+    return `Ascended at 30: ${heightStr} / ${player.jaw} Jaw / ${hairLabel} ${tier}. Rate my SMV.`;
   }
   
   if (player.smv < 3.5) {
-    return `It is over. ${heightStr} Norwood ${player.hairline} framelet. Max coped but got roasted.`;
+    const frameTerm = isFemale ? 'linebacker frame' : 'framelet';
+    return `It is over. ${heightStr} ${hairLabel} ${frameTerm}. Max coped but got roasted.`;
   }
 
   if (player.surgeryBotchedCount >= 2) {
     return `Botched run. Turkey surgery ruined my jaw and symmetry. How to cope?`;
   }
 
-  return `Rate my 30-year-old build. ${heightStr} / Norwood ${player.hairline} / SMV ${player.smv} Normie.`;
+  return `Rate my 30-year-old build. ${heightStr} / ${hairLabel} / SMV ${player.smv} Normie.`;
 }
 
 function generateOpeningPost(player) {
+  const isFemale = player.gender === 'female';
   const ft = Math.floor(player.height / 12);
   const inch = player.height % 12;
+  const hairLabel = isFemale ? `Ludwig ${player.hairline}` : `Norwood ${player.hairline}`;
+  
+  let frameDesc = '';
+  if (isFemale) {
+    frameDesc = player.frame > 75 ? 'Wide Linebacker Frame' : player.frame > 40 ? 'Average proportions' : 'Petite Model Frame';
+  } else {
+    frameDesc = player.frame > 75 ? 'Broad Giga' : player.frame > 40 ? 'Average' : 'Narrow Framelet';
+  }
   
   let intro = `Just hit age 30. Started life with average genetics but tried to max out what I could. Here is my clinical stats breakdown:
   <br/><br/>
@@ -108,8 +123,8 @@ function generateOpeningPost(player) {
   - Height: ${ft}'${inch}" (${Math.round(player.height * 2.54)} cm)<br/>
   - Jaw Definition: ${player.jaw}<br/>
   - Canthal Tilt: ${player.tilt}<br/>
-  - Hairline: Norwood ${player.hairline}<br/>
-  - Frame / Build: ${player.frame > 75 ? 'Broad Giga' : player.frame > 40 ? 'Average' : 'Narrow Framelet'}<br/>
+  - Hairline: ${hairLabel}<br/>
+  - Frame / Build: ${frameDesc}<br/>
   - Cash Assets: $${player.cash}<br/>
   `;
 
@@ -128,72 +143,97 @@ function generateOpeningPost(player) {
 }
 
 function generateBoneReply(player) {
-  // Focuses on height and bones
-  if (player.height >= 74) {
-    return `6'2+ height is absolute god-tier. You literally could roll with cystic acne and a Norwood 4 hairline and still pull normies on height alone. Bones are law and you rolled the vertical jackpot. Giga-tier frame potential.`;
+  const isFemale = player.gender === 'female';
+  if (isFemale) {
+    if (player.height >= 70) {
+      return `5'10+ height is runway model tier. You literally could walk into any room and command the space. High-tier model potential. Bones are law and you rolled the vertical jackpot.`;
+    }
+    if (player.height <= 62) {
+      return `Oof, under 5'3\" at age 30 is pretty short. You are heavily dependent on facial symmetry, clear skin, and hair to escape normie status. Heels are a mandatory cope.`;
+    }
+    return `5'5\" height is a standard normal roll. Average frame potential. You don't get height-checked by partners, but you aren't turning heads. You are strictly dependent on your jawline and hairline to carry you.`;
+  } else {
+    if (player.height >= 74) {
+      return `6'2+ height is absolute god-tier. You literally could roll with cystic acne and a Norwood 4 hairline and still pull normies on height alone. Bones are law and you rolled the vertical jackpot. Giga-tier frame potential.`;
+    }
+    if (player.height <= 66) {
+      return `Oof, under 5'7\" at age 30 is brutal. No amount of skincare or trendy haircuts can fix vertical limits. Height is the primary multiplier. Even with a chiseled jaw, you're looking at a short king build. Absolute cope, but respect the hustle.`;
+    }
+    return `5'9\" height is a standard normal roll. Average frame potential. You don't get height-checked at the door, but you aren't turning heads. You are strictly dependent on your jawline and hairline to carry you.`;
   }
-  
-  if (player.height <= 66) {
-    return `Oof, under 5'7\" at age 30 is brutal. No amount of skincare or trendy haircuts can fix vertical limits. Height is the primary multiplier. Even with a chiseled jaw, you're looking at a short king build. Absolute cope, but respect the hustle.`;
-  }
-
-  return `5'9\" height is a standard normal roll. Average frame potential. You don't get height-checked at the door, but you aren't turning heads. You are strictly dependent on your jawline and hairline to carry you.`;
 }
 
 function generateSurgeryReply(player) {
+  const isFemale = player.gender === 'female';
   if (player.isDead) {
-    return `Bro contracted osteomyelitis from leg lengthening. That is the blackest pill of all. RIP. Do not get budget bone shattering.`;
+    return isFemale
+      ? `Sister contracted severe sepsis from a budget BBL. That is the blackest pill of all. RIP. Do not get cheap cosmetic surgery.`
+      : `Bro contracted osteomyelitis from leg lengthening. That is the blackest pill of all. RIP. Do not get budget bone shattering.`;
   }
 
   if (player.surgeryBotchedCount >= 2) {
-    return `Bro got standard budget Turkey surgeries. Complete botchfest. Your face looks like an asymmetrical abstract painting. This is why you save cash and go to Beverly Hills. Absolute gym-coping from here on.`;
+    return isFemale
+      ? `Sis got standard budget Turkey surgeries. Complete botchfest. Your face looks like an asymmetrical abstract painting and your hairline lowering scarred. This is why you save cash and go to Beverly Hills. Absolute pilates-coping from here on.`
+      : `Bro got standard budget Turkey surgeries. Complete botchfest. Your face looks like an asymmetrical abstract painting. This is why you save cash and go to Beverly Hills. Absolute gym-coping from here on.`;
   }
 
   if (player.opponentsDefeated.includes('ceo_interviewer')) {
-    return `Ascended career-maxxing. You actually passed the VC interviewer. Mr. Sterling normally ignores anyone below a 7/10. Cash stack is massive, you can fund a whole Beverly Hills overhaul now.`;
+    return `Ascended career-maxxing. You actually passed the VC interviewer. Mrs. Sterling normally ignores anyone below a 7/10. Cash stack is massive, you can fund a whole Beverly Hills overhaul now.`;
   }
 
   if (player.surgeryBotchedCount > 0) {
-    return `That botched surgery ruined your SMV trajectory. Should have stuck to gym-maxxing instead of letting some budget surgeon play Lego with your bone structures.`;
+    return `That botched surgery ruined your SMV trajectory. Should have stuck to natural styling instead of letting some budget surgeon play Lego with your bone structures.`;
   }
 
-  return `Smart run. No sketchy bones surgeries, just natural gym-maxxing and styling. Slow, stable grind. A clean 6/10 build.`;
+  return `Smart run. No sketchy bones surgeries, just natural styling and skin-maxxing. Slow, stable grind. A clean 6/10 build.`;
 }
 
 function generateDatingReply(player) {
+  const isFemale = player.gender === 'female';
   if (player.hasDatingPartner) {
-    if (player.partnerName === 'Stacy') {
-      return `Wait... you actually matched and locked down Stacy? That's a massive anomaly. Your SMV must have been high-tier to bypass her filters. Stacy normally filters out anything below a 6'2\" positive canthal tilt Chad. Huge win.`;
+    if (player.partnerName === 'Stacy' || player.partnerName === 'Chad') {
+      const topTierPartner = isFemale ? 'Chad' : 'Stacy';
+      const oppositeGender = isFemale ? 'Chad' : 'Stacy';
+      const requirementsText = isFemale ? "an 8/10 Stacy" : "a 6'2\" positive canthal tilt Chad";
+      return `Wait... you actually matched and locked down ${topTierPartner}? That's a massive anomaly. Your SMV must have been high-tier to bypass their filters. ${oppositeGender} normally filters out anything below ${requirementsText}. Huge win.`;
     }
-    if (player.partnerName === 'Gertrude') {
-      return `Bro matched with Gertrude for the $5k cash injection! 💀💀 Absolute desperation-maxx. Your confidence is in the gutter, but that wallet is heavy. Did you buy a new hairline with her money?`;
+    if (player.partnerName === 'Gertrude' || player.partnerName === 'Richard') {
+      const sugarName = player.partnerName;
+      return `Bro/Sis matched with ${sugarName} for the $5k cash injection! 💀💀 Absolute desperation-maxx. Your confidence is in the gutter, but that wallet is heavy. Did you buy a new hairline with their money?`;
     }
     return `Matched and dating ${player.partnerName}. Decent normie ascension. Better than 99% of this forum who just post rate threads all day.`;
   }
 
-  return `Zero dating matches. Brutally typical. If you are under 6'0\" or have a receding jaw, Tinder swipe matching is mathematically impossible unless you gold-max. Tinder is a simulator of genetic despair.`;
+  return `Zero dating matches. Brutally typical. Tinder swipe matching is mathematically impossible unless you gold-max. Tinder is a simulator of genetic despair.`;
 }
 
 function generateFinalRoast(player) {
+  const isFemale = player.gender === 'female';
   if (player.smv >= 8.5) {
-    return `Final Rating: 9/10 Chad. Ascended. You won the genetic lottery and styled it perfectly. Go leave this forum and live life, you don't belong here anymore.`;
+    const tier = isFemale ? 'Stacy' : 'Chad';
+    return `Final Rating: 9/10 ${tier}. Ascended. You won the genetic lottery and styled it perfectly. Go leave this forum and live life, you don't belong here anymore.`;
   }
   if (player.smv >= 6.5) {
-    return `Final Rating: 7/10 HTN (High Tier Normal). Decent build, respectable jaw, style carried. You are a couple of skincare steps away from chadlite. Good run.`;
+    const liteTier = isFemale ? 'Stacy-lite' : 'chadlite';
+    return `Final Rating: 7/10 HTN (High Tier Normal). Decent build, respectable jaw, style carried. You are a couple of skincare steps away from ${liteTier}. Good run.`;
   }
   if (player.smv >= 4.5) {
-    return `Final Rating: 5/10 Normie. The definition of average. You did not break the game, but you survived without ending up on a wheelchair. Go buy some lifts and keep lifting.`;
+    return `Final Rating: 5/10 Normie. The definition of average. You did not break the game, but you survived without ending up on a wheelchair. Go buy some lifts/makeup and keep lifting.`;
   }
   
-  return `Final Rating: 2/10 Truecel. Norwood 6 hairline, receding jaw, short king. Over. Lay down and rot.`;
+  const failTier = isFemale ? 'Femcel' : 'Truecel';
+  const hairLabel = isFemale ? `Ludwig 3` : `Norwood 6`;
+  const frameTerm = isFemale ? `linebacker frame` : `short king`;
+  return `Final Rating: 2/10 ${failTier}. ${hairLabel} hairline, receding jaw, ${frameTerm}. Over. Lay down and rot.`;
 }
 
 export function getCopingReplies(player) {
+  const isFemale = player.gender === 'female';
   const choices = [
     {
       id: 'height_cope',
-      text: "I'm literally 6'3 guys, it's just a bad camera angle!",
-      unlocked: player.height >= 72
+      text: isFemale ? "I'm literally 5'8 guys, bad camera angle and I wasn't in heels!" : "I'm literally 6'3 guys, it's just a bad camera angle!",
+      unlocked: isFemale ? player.height >= 67 : player.height >= 72
     },
     {
       id: 'mom_cope',
@@ -215,19 +255,24 @@ export function getCopingReplies(player) {
 }
 
 export function generateForumResponse(choiceId, player) {
+  const isFemale = player.gender === 'female';
   const responses = {
     height_cope: [
       {
         username: 'BonesAreLaw',
         rank: 'Truecel Veteran',
         avatar: '💀',
-        content: `Copemeister extreme. Height doesn't change your skull structure or receding jaw. Even if you're 6'3, you're just a lanky framelet with no presence. Post eye-level photos or ban.`,
+        content: isFemale 
+          ? `Copemeister extreme. Height doesn't change your skull structure or receding jaw. Even if you're 5'8, you're just a lanky linebacker frame with no presence. Post eye-level photos or ban.`
+          : `Copemeister extreme. Height doesn't change your skull structure or receding jaw. Even if you're 6'3, you're just a lanky framelet with no presence. Post eye-level photos or ban.`,
       },
       {
         username: 'GigaCope',
         rank: 'Senior Coperson',
         avatar: '😐',
-        content: `Sure bro, and I'm 6'8 with hunter eyes. Put the tape measure against the wall or keep coping. 💀`,
+        content: isFemale
+          ? `Sure sis, and I'm 5'11 with runway hips. Put the tape measure against the wall or keep coping. 💀`
+          : `Sure bro, and I'm 6'8 with hunter eyes. Put the tape measure against the wall or keep coping. 💀`,
       }
     ],
     mom_cope: [
@@ -235,13 +280,15 @@ export function generateForumResponse(choiceId, player) {
         username: 'JawlineLord',
         rank: 'Ascended Deity',
         avatar: '🗿',
-        content: `MOM COPE IS THE ULTIMATE COPE! 💀 "My special boy" tier coping. Your mom is biologically programmed to ignore your negative canthal tilt. Post your rating from an objective AI/looksmaxing site instead.`,
+        content: `MOM COPE IS THE ULTIMATE COPE! 💀 "My special boy/girl" tier coping. Your mom is biologically programmed to ignore your negative canthal tilt. Post your rating from an objective AI/looksmaxing site instead.`,
       },
       {
         username: 'NorwoodSlayer',
         rank: 'Truecel Veteran',
         avatar: '😭',
-        content: `Lmao my mom said the same thing until she paid for my Turkey hair plugs. Real talk, ignore your mother's lies. Lay down and rot.`,
+        content: isFemale
+          ? `Lmao my mom said the same thing until she paid for my Turkey nose job and filler. Real talk, ignore your mother's lies. Lay down and rot.`
+          : `Lmao my mom said the same thing until she paid for my Turkey hair plugs. Real talk, ignore your mother's lies. Lay down and rot.`,
       }
     ],
     rot_cope: [
@@ -255,7 +302,9 @@ export function generateForumResponse(choiceId, player) {
         username: 'ShortKingGiga',
         rank: 'Coping Incel',
         avatar: '😭',
-        content: `At least you tried, brother. I've been rotting since Norwood 3 hit me at age 21. See you in the gaming lobbies.`,
+        content: isFemale
+          ? `At least you tried, sister. I've been rotting since Ludwig 2 hit me at age 21. See you in the gaming lobbies.`
+          : `At least you tried, brother. I've been rotting since Norwood 3 hit me at age 21. See you in the gaming lobbies.`,
       }
     ],
     flex_cope: [
@@ -269,7 +318,9 @@ export function generateForumResponse(choiceId, player) {
         username: 'TurkeyPlugsPro',
         rank: 'Elite Surgeon Ally',
         avatar: '💉',
-        content: `Bro managed to escape the incel tier by wage-maxxing. Respect. Now use that cash to fly to Beverly Hills and fix that hair/jaw. You have the raw materials (money) to buy genetics now!`,
+        content: isFemale
+          ? `Sis managed to escape the incel tier by wage-maxxing. Respect. Now use that cash to fly to Beverly Hills and fix that hair/jaw. You have the raw materials (money) to buy genetics now!`
+          : `Bro managed to escape the incel tier by wage-maxxing. Respect. Now use that cash to fly to Beverly Hills and fix that hair/jaw. You have the raw materials (money) to buy genetics now!`,
       }
     ]
   };

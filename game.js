@@ -9,25 +9,28 @@ export const JAW_TYPES = ['Receding', 'Soft', 'Average', 'Sharp', 'Chiseled'];
 export const TILT_TYPES = ['Negative', 'Neutral', 'Positive'];
 export const SYMMETRY_TYPES = ['Asymmetrical', 'Average', 'Symmetrical'];
 export const FIRST_NAMES = ['Chadwick', 'Hunter', 'Kyle', 'Cope', 'Morty', 'Eugene', 'Bartholomew', 'Daxx', 'Brayson', 'Maximilian'];
-export const LAST_NAMES = ['Maxxer', 'Coperson', 'Slayer', 'Framelet', 'Incelius', 'Plugs', 'Chadson', 'Canthal', 'Norwood', 'Giga'];
+export const FIRST_NAMES_FEMALE = ['Stacy', 'Becky', 'Chloe', 'Tiffany', 'Gertrude', 'Jessica', 'Brittany', 'Angelina', 'Kylie', 'Madison', 'Vindicta', 'Clara'];
+export const LAST_NAMES = ['Maxxer', 'Coperson', 'Slayer', 'Framelet', 'Incelius', 'Plugs', 'Chadson', 'Canthal', 'Norwood', 'Giga', 'Femcelius', 'Prettyprivilege'];
 
 export class GameState {
   constructor(activePerks = {}) {
     this.activePerks = activePerks;
+    this.gender = 'male';
     this.reset();
   }
 
-  reset(activePerks = null) {
+  reset(activePerks = null, chosenGender = 'male') {
     if (activePerks) {
       this.activePerks = activePerks;
     }
+    this.gender = chosenGender;
     this.name = this.generateRandomName();
     this.age = 18;
     this.cash = (this.activePerks && this.activePerks.rich_uncle) ? 1500 : 500;
     this.ap = 10;
     
     // Genetic Lottery Roll
-    this.height = this.rollHeight(); // in inches (60 to 78)
+    this.height = this.rollHeight(); // in inches (60 to 78 for male, 56 to 72 for female)
     this.jaw = this.randomElement(JAW_TYPES);
     this.tilt = this.randomElement(TILT_TYPES);
     
@@ -39,7 +42,7 @@ export class GameState {
     }
     
     // Soft / Modifiable stats
-    this.hairline = this.rollHairline(); // 1 to 7 (Norwood Scale)
+    this.hairline = this.rollHairline(); // 1 to 7 (Norwood/Ludwig scale representation)
     this.skin = this.randomRange(15, 65); // 0-100
     this.frame = this.randomRange(15, 65); // 0-100
     this.style = this.randomRange(10, 50); // 0-100
@@ -66,6 +69,9 @@ export class GameState {
   }
 
   generateRandomName() {
+    if (this.gender === 'female') {
+      return `${this.randomElement(FIRST_NAMES_FEMALE)} ${this.randomElement(LAST_NAMES)}`;
+    }
     return `${this.randomElement(FIRST_NAMES)} ${this.randomElement(LAST_NAMES)}`;
   }
 
@@ -78,13 +84,20 @@ export class GameState {
   }
 
   rollHeight() {
-    // Height distribution: skew slightly towards 5'9" average
     const roll = Math.random();
-    if (roll < 0.05) return this.randomRange(60, 63); // 5'0" - 5'3" (Short King extreme)
-    if (roll < 0.25) return this.randomRange(64, 67); // 5'4" - 5'7" (Short)
-    if (roll < 0.70) return this.randomRange(68, 71); // 5'8" - 5'11" (Avg)
-    if (roll < 0.92) return this.randomRange(72, 74); // 6'0" - 6'2" (Tall)
-    return this.randomRange(75, 78); // 6'3" - 6'6" (Giga Height)
+    if (this.gender === 'female') {
+      if (roll < 0.05) return this.randomRange(56, 59); // 4'8" - 4'11" (Short)
+      if (roll < 0.25) return this.randomRange(60, 62); // 5'0" - 5'2"
+      if (roll < 0.70) return this.randomRange(63, 65); // 5'3" - 5'5" (Avg)
+      if (roll < 0.92) return this.randomRange(66, 68); // 5'6" - 5'8" (Tall)
+      return this.randomRange(69, 72); // 5'9" - 6'0" (Stacy model height)
+    } else {
+      if (roll < 0.05) return this.randomRange(60, 63); // 5'0" - 5'3" (Short King)
+      if (roll < 0.25) return this.randomRange(64, 67); // 5'4" - 5'7"
+      if (roll < 0.70) return this.randomRange(68, 71); // 5'8" - 5'11" (Avg)
+      if (roll < 0.92) return this.randomRange(72, 74); // 6'0" - 6'2"
+      return this.randomRange(75, 78); // 6'3" - 6'6" (Giga Height)
+    }
   }
 
   rollHairline() {
@@ -105,11 +118,19 @@ export class GameState {
     let score = 5.5; // Baseline
 
     // Height Modifier
-    if (this.height >= 75) score += 2.5; // 6'3"+
-    else if (this.height >= 72) score += 1.5; // 6'0"-6'2"
-    else if (this.height >= 69) score += 0.0; // 5'9"-5'11"
-    else if (this.height >= 66) score -= 1.2; // 5'6"-5'8"
-    else score -= 2.5; // <5'6"
+    if (this.gender === 'female') {
+      if (this.height >= 69) score += 1.8; // 5'9"+ model height
+      else if (this.height >= 66) score += 0.8; // 5'6"-5'8" tall
+      else if (this.height >= 62) score += 0.0; // 5'2"-5'5" avg
+      else if (this.height >= 59) score -= 0.8; // 4'11"-5'1" short
+      else score -= 2.0; // <4'11"
+    } else {
+      if (this.height >= 75) score += 2.5; // 6'3"+
+      else if (this.height >= 72) score += 1.5; // 6'0"-6'2"
+      else if (this.height >= 69) score += 0.0; // 5'9"-5'11"
+      else if (this.height >= 66) score -= 1.2; // 5'6"-5'8"
+      else score -= 2.5; // <5'6"
+    }
 
     // Jaw Modifier
     if (this.jaw === 'Chiseled') score += 2.5;
@@ -126,12 +147,12 @@ export class GameState {
     if (this.symmetry === 'Symmetrical') score += 1.0;
     else if (this.symmetry === 'Asymmetrical') score -= 1.2;
 
-    // Hairline Modifier (Norwood scale 1-7)
+    // Hairline Modifier (Norwood scale 1-7 or Ludwig scale 1-3 equivalent)
     if (this.hairline === 1) score += 1.2;
     else if (this.hairline === 2) score += 0.4;
     else if (this.hairline === 3) score -= 0.2;
     else if (this.hairline === 4) score -= 1.0;
-    else score -= 2.5; // Norwood 5-7
+    else score -= 2.5; // Norwood 5-7 or Ludwig 3
 
     // Skin Modifier (0-100)
     if (this.skin >= 90) score += 1.0;
@@ -155,12 +176,21 @@ export class GameState {
     this.smv = parseFloat(Math.max(1.0, Math.min(10.0, score)).toFixed(1));
 
     // Social Tier Mapping
-    if (this.smv >= 9.0) this.socialTier = 'GIGACHAD / ASCENDED';
-    else if (this.smv >= 7.5) this.socialTier = 'CHADLITE';
-    else if (this.smv >= 6.0) this.socialTier = 'HIGH TIER NORMAL';
-    else if (this.smv >= 4.5) this.socialTier = 'NORMIE';
-    else if (this.smv >= 3.0) this.socialTier = 'SUB-HUMAN';
-    else this.socialTier = 'TRUECEL';
+    if (this.gender === 'female') {
+      if (this.smv >= 9.0) this.socialTier = 'STACY / ASCENDED';
+      else if (this.smv >= 7.5) this.socialTier = 'STACYLITE';
+      else if (this.smv >= 6.0) this.socialTier = 'HIGH TIER BECKY';
+      else if (this.smv >= 4.5) this.socialTier = 'BECKY';
+      else if (this.smv >= 3.0) this.socialTier = 'SUB-HUMAN';
+      else this.socialTier = 'FEMCEL';
+    } else {
+      if (this.smv >= 9.0) this.socialTier = 'GIGACHAD / ASCENDED';
+      else if (this.smv >= 7.5) this.socialTier = 'CHADLITE';
+      else if (this.smv >= 6.0) this.socialTier = 'HIGH TIER NORMAL';
+      else if (this.smv >= 4.5) this.socialTier = 'NORMIE';
+      else if (this.smv >= 3.0) this.socialTier = 'SUB-HUMAN';
+      else this.socialTier = 'TRUECEL';
+    }
   }
 
   // ACTIONS
@@ -230,13 +260,49 @@ export class GameState {
   // SURGERY DETAILS
   getSurgeriesList() {
     const isCheaperHair = this.activePerks && this.activePerks.good_donor_area;
+    if (this.gender === 'female') {
+      return [
+        {
+          id: 'jaw_implant',
+          name: 'V-Line Jaw Surgery',
+          cost: 8000,
+          desc: 'Shaves and narrows the jaw bones for a delicate, slim V-shape jawline.',
+          risk: 0.12,
+          effect: 'Bones: Jawline upgraded to Chiseled (feminine V-line)'
+        },
+        {
+          id: 'leg_lengthening',
+          name: 'Brazilian Butt Lift (BBL)',
+          cost: 12000,
+          desc: 'Transfers harvested fat to hips/glutes for a curvier hourglass frame. Extremely high risk.',
+          risk: 0.18,
+          effect: 'Bones: Body Frame permanently increased by 40 points'
+        },
+        {
+          id: 'hair_transplant',
+          name: 'Hairline Lowering Surgery',
+          cost: isCheaperHair ? 3000 : 6000,
+          desc: 'Excises a small strip of forehead skin to pull the scalp forward and reduce forehead height.',
+          risk: 0.08,
+          effect: 'Soft Max: Hairline permanently restored to Ludwig 1'
+        },
+        {
+          id: 'canthoplasty',
+          name: 'Almond Eye Surgery (Canthoplasty)',
+          cost: 5000,
+          desc: 'Tightens the lower eyelid corners to change the eye slope (fox eyes).',
+          risk: 0.10,
+          effect: 'Bones: Canthal tilt becomes Positive'
+        }
+      ];
+    }
     return [
       {
         id: 'jaw_implant',
         name: 'Jaw Angle Implants',
         cost: 8000,
         desc: 'Inserts custom silicone/porcelain implants to widen and define the jaw.',
-        risk: 0.12, // 12% standard failure
+        risk: 0.12,
         effect: 'Bones: Jawline upgraded to Chiseled'
       },
       {
@@ -244,7 +310,7 @@ export class GameState {
         name: 'Limb Lengthening Surgery',
         cost: 20000,
         desc: 'Breaks femurs and installs rods to slowly expand bones. Extremely painful.',
-        risk: 0.18, // 18% standard failure
+        risk: 0.18,
         effect: 'Bones: Height permanently increased by 3 inches'
       },
       {
@@ -252,7 +318,7 @@ export class GameState {
         name: 'FUE Hair Transplant',
         cost: isCheaperHair ? 3000 : 6000,
         desc: 'Harvests grafts from back of head to restore the hairline.',
-        risk: 0.08, // 8% standard failure
+        risk: 0.08,
         effect: 'Soft Max: Hairline permanently restored to Norwood 1'
       },
       {
@@ -260,7 +326,7 @@ export class GameState {
         name: 'Almond Eye Surgery (Canthoplasty)',
         cost: 5000,
         desc: 'Tightens the lower eyelid corners to change the eye slope.',
-        risk: 0.10, // 10% standard failure
+        risk: 0.10,
         effect: 'Bones: Canthal tilt becomes Positive (Hunter eyes)'
       }
     ];
@@ -277,11 +343,11 @@ export class GameState {
 
     if (clinicTier === 'turkey') {
       costMult = 0.5;
-      riskMult = 2.5; // Shady clinic has 2.5x standard failure rate
+      riskMult = 2.5;
       clinicName = "a budget clinic in Istanbul, Turkey";
     } else if (clinicTier === 'beverly') {
       costMult = 2.0;
-      riskMult = 0.15; // Elite clinic reduces risk by 85%
+      riskMult = 0.15;
       clinicName = "a high-end clinic in Beverly Hills";
     } else {
       clinicName = "a standard local surgical clinic";
@@ -309,24 +375,35 @@ export class GameState {
       let botchText = "";
       if (surgeryId === 'jaw_implant') {
         this.jaw = 'Receding';
-        this.skin = Math.max(0, this.skin - 20); // nerve scarring/cystic breakout
+        this.skin = Math.max(0, this.skin - 20);
         this.botchedJaw = true;
-        botchText = "The surgeon botched the jaw implants. The implant migrated, causing asymmetric nerve damage (-40% Confidence, Jaw ruined to Receding, Skin ruined).";
+        botchText = this.gender === 'female' 
+          ? "The V-Line jaw shaving was botched. Left side of the bone chipped causing a lumpy, crooked face asymmetry (-40% Confidence, Jaw ruined, Skin ruined)."
+          : "The surgeon botched the jaw implants. The implant migrated, causing asymmetric nerve damage (-40% Confidence, Jaw ruined to Receding, Skin ruined).";
       } else if (surgeryId === 'leg_lengthening') {
-        // Catastrophic failure: wheel-chair bound or death
         if (Math.random() < 0.4) {
           this.isDead = true;
-          botchText = "CATASTROPHIC FAILURE! You contracted a severe bone infection (osteomyelitis). The surgery was fatal. Rest in Peace.";
+          botchText = this.gender === 'female'
+            ? "CATASTROPHIC FAILURE! You contracted a severe fat embolism during the fat transfer. The BBL was fatal. Rest in Peace."
+            : "CATASTROPHIC FAILURE! You contracted a severe bone infection (osteomyelitis). The leg lengthening was fatal. Rest in Peace.";
         } else {
-          this.height = Math.max(50, this.height - 4); // permanently bent/damaged legs
-          this.frame = Math.max(10, this.frame - 40);
-          botchText = "The leg lengthening was botched. You spent a year in agony, and the bones fused poorly. You lost height and frame, and walk with a permanent limp.";
+          if (this.gender === 'female') {
+            this.frame = Math.max(10, this.frame - 35);
+            this.skin = Math.max(10, this.skin - 25);
+            botchText = "The BBL was botched. Severe necrosis occurred in the fat transfer zone, leaving lumpy scabs and tissue loss (-35 Frame, -25 Skin).";
+          } else {
+            this.height = Math.max(50, this.height - 4);
+            this.frame = Math.max(10, this.frame - 40);
+            botchText = "The leg lengthening was botched. You spent a year in agony, and the bones fused poorly. You lost height and frame, and walk with a permanent limp.";
+          }
         }
       } else if (surgeryId === 'hair_transplant') {
-        this.hairline = 7; // lost all donor hair
+        this.hairline = 7;
         this.skin = Math.max(0, this.skin - 15);
         this.botchedHair = true;
-        botchText = "The hair plugs failed to take. Necrosis left permanent scars on your scalp (-15 Skin, Hairline permanently Norwood 7).";
+        botchText = this.gender === 'female'
+          ? "The hairline lowering failed. The scar tissue contracted, causing severe hair loss and red suture scarring (-15 Skin, Hair volume Ludwig 3)."
+          : "The hair plugs failed to take. Necrosis left permanent scars on your scalp (-15 Skin, Hairline permanently Norwood 7).";
       } else if (surgeryId === 'canthoplasty') {
         this.symmetry = 'Asymmetrical';
         this.tilt = 'Negative';
@@ -346,18 +423,29 @@ export class GameState {
       if (surgeryId === 'jaw_implant') {
         this.jaw = 'Chiseled';
         this.botchedJaw = false;
-        successText = "Your chin is now sharp and chiseled. You look like a model.";
+        successText = this.gender === 'female' 
+          ? "Mandible shaved successfully. You now have a perfect V-line face shape."
+          : "Your chin is now sharp and chiseled. You look like a model.";
       } else if (surgeryId === 'leg_lengthening') {
-        this.height += 3;
-        successText = "Your femurs successfully healed. You stand 3 inches taller!";
+        if (this.gender === 'female') {
+          this.frame = Math.min(100, this.frame + 40);
+          successText = "Your BBL was a complete success! You now have a perfect hourglass frame (+40 Frame).";
+        } else {
+          this.height += 3;
+          successText = "Your femurs successfully healed. You stand 3 inches taller!";
+        }
       } else if (surgeryId === 'hair_transplant') {
         this.hairline = 1;
         this.botchedHair = false;
-        successText = "Thick, full hair follicles successfully grafted. Norwood 1 hairline achieved.";
+        successText = this.gender === 'female'
+          ? "Hairline lowered successfully. Forehead looks perfectly proportioned."
+          : "Thick, full hair follicles successfully grafted. Norwood 1 hairline achieved.";
       } else if (surgeryId === 'canthoplasty') {
         this.tilt = 'Positive';
         this.botchedCanthoplasty = false;
-        successText = "Almond-shaped, positive tilt 'hunter eyes' created.";
+        successText = this.gender === 'female'
+          ? "Almond-shaped 'fox eyes' created successfully."
+          : "Almond-shaped, positive tilt 'hunter eyes' created.";
       }
 
       this.confidence = Math.min(100, this.confidence + 25);
@@ -381,8 +469,11 @@ export class GameState {
     // Passive aging effects on hairline & skin
     if (this.age >= 25 && Math.random() < 0.20 && this.hairline < 7) {
       this.hairline++;
+      const hairMessage = this.gender === 'female'
+        ? `Aging signs: Your hair parted wider. Hair volume/hairline degraded by 1 Ludwig tier.`
+        : `Aging signs: Your temples receded slightly. Hairline degraded by 1 Norwood tier.`;
       this.log.push({
-        message: `Aging signs: Your temples receded slightly. Hairline degraded by 1 Norwood tier.`,
+        message: hairMessage,
         type: 'event'
       });
     }
@@ -395,6 +486,7 @@ export class GameState {
   }
 
   triggerRandomEvent() {
+    const isFemale = this.gender === 'female';
     const events = [
       {
         title: "Acne Outbreak",
@@ -404,15 +496,19 @@ export class GameState {
         icon: "🚨"
       },
       {
-        title: "Found a Great Barber",
-        desc: "You stumble into an old-school Turkish barber who executes the perfect skin fade.",
+        title: isFemale ? "Found a Great Stylist" : "Found a Great Barber",
+        desc: isFemale 
+          ? "You stumble into a premium hair salon for a blowout and styling."
+          : "You stumble into an old-school Turkish barber who executes the perfect skin fade.",
         effect: (p) => { p.style = Math.min(100, p.style + 15); p.confidence = Math.min(100, p.confidence + 10); },
         impactText: "+15 Style, +10% Confidence",
         icon: "✂️"
       },
       {
         title: "Bad Breakup",
-        desc: "Your partner laughs at your height insert inserts and leaves you for a 6'3 gym instructor.",
+        desc: isFemale
+          ? "Your partner laughs at your contouring and leaves you for a 10/10 Stacy."
+          : "Your partner laughs at your height inserts and leaves you for a 6'3 gym instructor.",
         effect: (p) => { p.confidence = Math.max(0, p.confidence - 30); p.hasDatingPartner = false; },
         impactText: "-30% Confidence, Dating status reset to Single",
         icon: "💔"
@@ -425,8 +521,10 @@ export class GameState {
         icon: "💰"
       },
       {
-        title: "Gym Bro Mentorship",
-        desc: "A giant gym instructor takes you under his wing and teaches you how to bulk properly.",
+        title: isFemale ? "Pilates Influencer Mentorship" : "Gym Bro Mentorship",
+        desc: isFemale
+          ? "A fitness coach takes you under her wing and teaches you how to tone and shape your frame."
+          : "A giant gym instructor takes you under his wing and teaches you how to bulk properly.",
         effect: (p) => { p.frame = Math.min(100, p.frame + 18); p.confidence = Math.min(100, p.confidence + 10); },
         impactText: "+18 Frame, +10% Confidence",
         icon: "💪"

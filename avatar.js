@@ -17,10 +17,11 @@ export function drawAvatar(canvas, stats, timeMs = 0) {
   drawBackgroundGrid(ctx, w, h, stats.height);
 
   // Normalize stats
+  const gender = stats.gender || 'male';
   const heightVal = stats.height || 68; // in inches
   const jawType = stats.jaw || 'Average'; // Receding, Soft, Average, Sharp, Chiseled
   const tiltType = stats.tilt || 'Neutral'; // Negative, Neutral, Positive
-  const hairline = stats.hairline || 2; // Norwood 1-7
+  const hairline = stats.hairline || 2; // Norwood/Ludwig
   const skinVal = stats.skin || 50; // 0-100
   const frameVal = stats.frame || 50; // 0-100
   const styleVal = stats.style || 30; // 0-100
@@ -33,6 +34,10 @@ export function drawAvatar(canvas, stats, timeMs = 0) {
   // Calculate sizing based on Frame
   let shoulderWidth = 110 + (frameVal / 100) * 80; // 110 to 190
   let neckWidth = 24 + (frameVal / 100) * 20; // 24 to 44
+  if (gender === 'female') {
+    shoulderWidth = 85 + (frameVal / 100) * 55; // 85 to 140
+    neckWidth = 18 + (frameVal / 100) * 12; // 18 to 30
+  }
   
   // Asymmetry offsets (if asymmetrical, shift things slightly)
   let asymmetryOffset = 0;
@@ -45,28 +50,28 @@ export function drawAvatar(canvas, stats, timeMs = 0) {
   const headY = centerY + breathingOffset;
 
   // 1. Draw Body/Shoulders
-  drawShoulders(ctx, centerX, centerY + 80, shoulderWidth, styleVal);
+  drawShoulders(ctx, centerX, centerY + 80, shoulderWidth, styleVal, gender);
 
   // 2. Draw Neck (attaches to fixed shoulders and moving head)
   drawNeck(ctx, centerX, headY + 20, neckWidth, centerY + 80);
 
   // 3. Draw Head Shape (influenced by Jaw definition, symmetry, and botched jaw implants)
-  drawHead(ctx, centerX, headY, jawType, asymmetryOffset, stats.botchedJaw);
+  drawHead(ctx, centerX, headY, jawType, asymmetryOffset, stats.botchedJaw, gender);
 
   // 4. Draw Skin Details (Acne, blemishes, or glowing highlights)
   drawSkinFeatures(ctx, centerX, headY, skinVal);
 
   // 5. Draw Eyes (influenced by Canthal Tilt, blinking, and botched canthoplasty)
-  drawEyes(ctx, centerX, headY - 10, tiltType, asymmetryOffset, timeMs, stats.botchedCanthoplasty);
+  drawEyes(ctx, centerX, headY - 10, tiltType, asymmetryOffset, timeMs, stats.botchedCanthoplasty, gender);
 
   // 6. Draw Eyebrows & Mouth
-  drawFacialFeatures(ctx, centerX, headY, stats.confidence);
+  drawFacialFeatures(ctx, centerX, headY, stats.confidence, gender);
 
   // 7. Draw Hair (influenced by Norwood Hairline scale and botched transplants)
-  drawHair(ctx, centerX, headY - 45, hairline, stats.botchedHair);
+  drawHair(ctx, centerX, headY - 45, hairline, stats.botchedHair, gender);
   
   // 8. Draw Accessories based on style score
-  drawAccessories(ctx, centerX, headY, styleVal);
+  drawAccessories(ctx, centerX, headY, styleVal, gender);
   
   // 9. Height Scale Overlay Indicator
   drawHeightIndicator(ctx, w, h, heightVal);
@@ -114,7 +119,7 @@ function drawBackgroundGrid(ctx, w, h, heightInches) {
   }
 }
 
-function drawShoulders(ctx, cx, cy, width, styleScore) {
+function drawShoulders(ctx, cx, cy, width, styleScore, gender = 'male') {
   ctx.save();
   
   // Clothing color based on style score
@@ -201,7 +206,7 @@ function drawNeck(ctx, cx, cy, width, shoulderY) {
   ctx.restore();
 }
 
-function drawHead(ctx, cx, cy, jawType, asymmetry, botchedJaw) {
+function drawHead(ctx, cx, cy, jawType, asymmetry, botchedJaw, gender = 'male') {
   ctx.save();
   
   // Skin gradient (base skin color)
@@ -224,41 +229,80 @@ function drawHead(ctx, cx, cy, jawType, asymmetry, botchedJaw) {
   ctx.quadraticCurveTo(leftX, topY, leftX, midY);
   
   // Jaw shape definition
-  if (botchedJaw) {
-    // Crooked, lumpy, mutated jawline
-    ctx.lineTo(cx - 36 + asymmetry, cy + 35);
-    ctx.lineTo(cx - 22 + asymmetry, cy + 45); // chin left
-    ctx.lineTo(cx + 5, cy + 34);              // chin skewed up
-    ctx.lineTo(cx + 38, cy + 22);             // jaw corner pulled up/deformed
-  } else if (jawType === 'Chiseled') {
-    // Sharp angles, wider base
-    ctx.lineTo(cx - 36 + asymmetry, cy + 30);
-    ctx.lineTo(cx - 18 + asymmetry, cy + 42); // Square chin
-    ctx.lineTo(cx + 18, cy + 42);
-    ctx.lineTo(cx + 36, cy + 30);
-  } else if (jawType === 'Sharp') {
-    // Tapering to a sharp chin
-    ctx.lineTo(cx - 32 + asymmetry, cy + 28);
-    ctx.lineTo(cx - 8 + asymmetry, cy + 40);
-    ctx.lineTo(cx + 8, cy + 40);
-    ctx.lineTo(cx + 32, cy + 28);
-  } else if (jawType === 'Receding') {
-    // Small chin, curves back early
-    ctx.lineTo(cx - 28 + asymmetry, cy + 20);
-    ctx.quadraticCurveTo(cx - 15 + asymmetry, cy + 28, cx - 12 + asymmetry, cy + 32);
-    ctx.lineTo(cx + 12, cy + 32);
-    ctx.quadraticCurveTo(cx + 15, cy + 28, cx + 28, cy + 20);
-  } else if (jawType === 'Soft') {
-    // Rounded soft chin
-    ctx.quadraticCurveTo(leftX, cy + 30, cx - 20 + asymmetry, cy + 38);
-    ctx.quadraticCurveTo(cx, cy + 45, cx + 20, cy + 38);
-    ctx.quadraticCurveTo(rightX, cy + 30, rightX, midY);
+  if (gender === 'female') {
+    if (botchedJaw) {
+      // Crooked, lumpy jawline
+      ctx.lineTo(cx - 32 + asymmetry, cy + 30);
+      ctx.lineTo(cx - 15 + asymmetry, cy + 42); // chin left
+      ctx.lineTo(cx + 5, cy + 32);              // chin skewed up
+      ctx.lineTo(cx + 34, cy + 18);             // jaw corner deformed
+    } else if (jawType === 'Chiseled') {
+      // Slim chiseled V-shape (Stacy tier jaw)
+      ctx.lineTo(cx - 28 + asymmetry, cy + 28);
+      ctx.lineTo(cx - 10 + asymmetry, cy + 42); // narrow sharp chin
+      ctx.lineTo(cx + 10, cy + 42);
+      ctx.lineTo(cx + 28, cy + 28);
+    } else if (jawType === 'Sharp') {
+      // Heart/oval shape chin
+      ctx.lineTo(cx - 26 + asymmetry, cy + 26);
+      ctx.lineTo(cx - 5 + asymmetry, cy + 38);
+      ctx.lineTo(cx + 5, cy + 38);
+      ctx.lineTo(cx + 26, cy + 26);
+    } else if (jawType === 'Receding') {
+      // Receding female jaw
+      ctx.lineTo(cx - 24 + asymmetry, cy + 18);
+      ctx.quadraticCurveTo(cx - 12 + asymmetry, cy + 26, cx - 8 + asymmetry, cy + 30);
+      ctx.lineTo(cx + 8, cy + 30);
+      ctx.quadraticCurveTo(cx + 12, cy + 26, cx + 24, cy + 18);
+    } else if (jawType === 'Soft') {
+      // Soft rounded jaw
+      ctx.quadraticCurveTo(leftX + 2, cy + 28, cx - 18 + asymmetry, cy + 36);
+      ctx.quadraticCurveTo(cx, cy + 43, cx + 18, cy + 36);
+      ctx.quadraticCurveTo(rightX - 2, cy + 28, rightX - 2, midY);
+    } else {
+      // Average female chin
+      ctx.lineTo(cx - 25 + asymmetry, cy + 24);
+      ctx.lineTo(cx - 8 + asymmetry, cy + 36);
+      ctx.lineTo(cx + 8, cy + 36);
+      ctx.lineTo(cx + 25, cy + 24);
+    }
   } else {
-    // Average
-    ctx.lineTo(cx - 30 + asymmetry, cy + 26);
-    ctx.lineTo(cx - 12 + asymmetry, cy + 38);
-    ctx.lineTo(cx + 12, cy + 38);
-    ctx.lineTo(cx + 30, cy + 26);
+    if (botchedJaw) {
+      // Crooked, lumpy, mutated jawline
+      ctx.lineTo(cx - 36 + asymmetry, cy + 35);
+      ctx.lineTo(cx - 22 + asymmetry, cy + 45); // chin left
+      ctx.lineTo(cx + 5, cy + 34);              // chin skewed up
+      ctx.lineTo(cx + 38, cy + 22);             // jaw corner pulled up/deformed
+    } else if (jawType === 'Chiseled') {
+      // Sharp angles, wider base
+      ctx.lineTo(cx - 36 + asymmetry, cy + 30);
+      ctx.lineTo(cx - 18 + asymmetry, cy + 42); // Square chin
+      ctx.lineTo(cx + 18, cy + 42);
+      ctx.lineTo(cx + 36, cy + 30);
+    } else if (jawType === 'Sharp') {
+      // Tapering to a sharp chin
+      ctx.lineTo(cx - 32 + asymmetry, cy + 28);
+      ctx.lineTo(cx - 8 + asymmetry, cy + 40);
+      ctx.lineTo(cx + 8, cy + 40);
+      ctx.lineTo(cx + 32, cy + 28);
+    } else if (jawType === 'Receding') {
+      // Small chin, curves back early
+      ctx.lineTo(cx - 28 + asymmetry, cy + 20);
+      ctx.quadraticCurveTo(cx - 15 + asymmetry, cy + 28, cx - 12 + asymmetry, cy + 32);
+      ctx.lineTo(cx + 12, cy + 32);
+      ctx.quadraticCurveTo(cx + 15, cy + 28, cx + 28, cy + 20);
+    } else if (jawType === 'Soft') {
+      // Rounded soft chin
+      ctx.quadraticCurveTo(leftX, cy + 30, cx - 20 + asymmetry, cy + 38);
+      ctx.quadraticCurveTo(cx, cy + 45, cx + 20, cy + 38);
+      ctx.quadraticCurveTo(rightX, cy + 30, rightX, midY);
+    } else {
+      // Average
+      ctx.lineTo(cx - 30 + asymmetry, cy + 26);
+      ctx.lineTo(cx - 12 + asymmetry, cy + 38);
+      ctx.lineTo(cx + 12, cy + 38);
+      ctx.lineTo(cx + 30, cy + 26);
+    }
   }
 
   // Cheek back to forehead
@@ -392,7 +436,7 @@ function drawSkinFeatures(ctx, cx, cy, skinVal) {
   ctx.restore();
 }
 
-function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs, botchedCanthoplasty) {
+function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs, botchedCanthoplasty, gender = 'male') {
   ctx.save();
   
   // Left eye center: cx - 18, Right eye center: cx + 18
@@ -462,6 +506,27 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs, botchedCanthoplasty)
   ctx.beginPath();
   ctx.arc(0, 0, 2.5, 0, Math.PI*2);
   ctx.fill();
+
+  // Left Eye lashes
+  if (gender === 'female') {
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 1.5;
+    // Outer lash
+    ctx.beginPath();
+    ctx.moveTo(-7, -2);
+    ctx.quadraticCurveTo(-9, -6, -11, -5);
+    ctx.stroke();
+    // Center lash
+    ctx.beginPath();
+    ctx.moveTo(0, -eyeRadiusY);
+    ctx.quadraticCurveTo(-1, -eyeRadiusY - 4, -2, -eyeRadiusY - 4);
+    ctx.stroke();
+    // Inner lash
+    ctx.beginPath();
+    ctx.moveTo(7, -2);
+    ctx.quadraticCurveTo(9, -6, 11, -5);
+    ctx.stroke();
+  }
   ctx.restore();
 
   // Draw Right Eye
@@ -477,6 +542,27 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs, botchedCanthoplasty)
   ctx.beginPath();
   ctx.arc(0, 0, 2.5, 0, Math.PI*2);
   ctx.fill();
+
+  // Right Eye lashes
+  if (gender === 'female') {
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 1.5;
+    // Outer lash
+    ctx.beginPath();
+    ctx.moveTo(7, -2);
+    ctx.quadraticCurveTo(9, -6, 11, -5);
+    ctx.stroke();
+    // Center lash
+    ctx.beginPath();
+    ctx.moveTo(0, -4.5);
+    ctx.quadraticCurveTo(1, -8.5, 2, -8.5);
+    ctx.stroke();
+    // Inner lash
+    ctx.beginPath();
+    ctx.moveTo(-7, -2);
+    ctx.quadraticCurveTo(-9, -6, -11, -5);
+    ctx.stroke();
+  }
   ctx.restore();
 
   // Draw red surgical scar line under left eye
@@ -503,10 +589,10 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs, botchedCanthoplasty)
   ctx.restore();
 }
 
-function drawFacialFeatures(ctx, cx, cy, confidence) {
+function drawFacialFeatures(ctx, cx, cy, confidence, gender = 'male') {
   ctx.save();
   ctx.strokeStyle = '#1b1e26';
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = gender === 'female' ? 1.3 : 2.2;
   ctx.lineCap = 'round';
 
   // Nose (standard minimalist nose)
@@ -542,10 +628,20 @@ function drawFacialFeatures(ctx, cx, cy, confidence) {
 
   // Mouth (cy + 22)
   // Confidence influences smile/frown
-  ctx.beginPath();
   const mouthY = cy + 22;
   const mouthWidth = 12;
 
+  // Draw female pink lips under/over the line
+  if (gender === 'female') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 110, 150, 0.75)';
+    ctx.beginPath();
+    ctx.ellipse(cx, mouthY + (confidence < 30 ? 2 : -1), mouthWidth, 3.5, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.beginPath();
   if (confidence > 80) {
     // Smug smirk/smile
     ctx.arc(cx, mouthY - 3, mouthWidth, 0.1 * Math.PI, 0.9 * Math.PI, false);
@@ -562,91 +658,188 @@ function drawFacialFeatures(ctx, cx, cy, confidence) {
   ctx.restore();
 }
 
-function drawHair(ctx, cx, cy, hairline, botchedHair) {
+function drawHair(ctx, cx, cy, hairline, botchedHair, gender = 'male') {
   ctx.save();
   ctx.fillStyle = '#08090d'; // Deep black/obsidian hair
   ctx.strokeStyle = '#1b1e26';
   ctx.lineWidth = 2;
 
-  // Hair Outline changes based on Norwood hairline index
-  // Norwood 1: Full thick hair covering forehead
-  // Norwood 3: Receded temples
-  // Norwood 5: Receded temples + thin crown circle
-  // Norwood 7: Bald top, hair only on sides
+  // Hair Outline changes based on Norwood/Ludwig hairline index
+  if (gender === 'female') {
+    if (hairline <= 2) {
+      // Ludwig 1: Full, luscious long hair framing cheeks
+      ctx.beginPath();
+      // Back hair / crown
+      ctx.moveTo(cx - 45, cy + 30);
+      ctx.quadraticCurveTo(cx - 52, cy - 35, cx - 35, cy - 50);
+      ctx.quadraticCurveTo(cx, cy - 62, cx + 35, cy - 50);
+      ctx.quadraticCurveTo(cx + 52, cy - 35, cx + 45, cy + 30);
+      // Long hair down to shoulders
+      ctx.lineTo(cx + 48, cy + 85);
+      ctx.quadraticCurveTo(cx + 42, cy + 90, cx + 34, cy + 80);
+      ctx.quadraticCurveTo(cx + 38, cy + 35, cx + 38, cy + 10);
+      // Forehead fringe/part
+      ctx.quadraticCurveTo(cx, cy - 15, cx - 38, cy + 10);
+      ctx.quadraticCurveTo(cx - 38, cy + 35, cx - 34, cy + 80);
+      ctx.quadraticCurveTo(cx - 42, cy + 90, cx - 48, cy + 85);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-  if (hairline === 1) {
-    // Giga-thick model hair
-    ctx.beginPath();
-    ctx.moveTo(cx - 45, cy + 25);
-    ctx.quadraticCurveTo(cx - 50, cy - 25, cx - 35, cy - 40);
-    ctx.quadraticCurveTo(cx, cy - 55, cx + 35, cy - 40);
-    ctx.quadraticCurveTo(cx + 50, cy - 25, cx + 45, cy + 25);
-    // Lower hair line (no recession)
-    ctx.lineTo(cx + 38, cy + 10);
-    ctx.quadraticCurveTo(cx, cy - 10, cx - 38, cy + 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } 
-  else if (hairline <= 3) {
-    // Norwood 2-3: Mild to moderate temple recession
-    ctx.beginPath();
-    ctx.moveTo(cx - 44, cy + 25);
-    ctx.quadraticCurveTo(cx - 48, cy - 20, cx - 32, cy - 35);
-    ctx.quadraticCurveTo(cx, cy - 48, cx + 32, cy - 35);
-    ctx.quadraticCurveTo(cx + 48, cy - 20, cx + 44, cy + 25);
-    // Receded hairline boundary (M-shape)
-    ctx.lineTo(cx + 38, cy + 12);
-    ctx.quadraticCurveTo(cx + 20, cy + 8, cx + 18, cy - 5); // Right temple recess
-    ctx.quadraticCurveTo(cx, cy + 8, cx - 18, cy - 5);  // Center dip
-    ctx.quadraticCurveTo(cx - 20, cy + 8, cx - 38, cy + 12); // Left temple recess
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } 
-  else if (hairline <= 5) {
-    // Norwood 4-5: Severe hairline recession, crown balding
-    // Hair on sides
-    ctx.beginPath();
-    ctx.moveTo(cx - 44, cy + 25);
-    ctx.quadraticCurveTo(cx - 45, cy - 10, cx - 35, cy - 15);
-    ctx.lineTo(cx - 38, cy + 12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      // Additional locks inside for depth
+      ctx.beginPath();
+      ctx.moveTo(cx - 40, cy + 20);
+      ctx.quadraticCurveTo(cx - 44, cy + 80, cx - 44, cy + 85);
+      ctx.moveTo(cx + 40, cy + 20);
+      ctx.quadraticCurveTo(cx + 44, cy + 80, cx + 44, cy + 85);
+      ctx.stroke();
+    }
+    else if (hairline <= 5) {
+      // Ludwig 2: Thinning/parted bob style
+      ctx.beginPath();
+      ctx.moveTo(cx - 43, cy + 30);
+      ctx.quadraticCurveTo(cx - 48, cy - 30, cx - 33, cy - 45);
+      ctx.quadraticCurveTo(cx, cy - 56, cx + 33, cy - 45);
+      ctx.quadraticCurveTo(cx + 48, cy - 30, cx + 43, cy + 30);
+      // Shoulder-length bob
+      ctx.lineTo(cx + 42, cy + 60);
+      ctx.quadraticCurveTo(cx + 36, cy + 64, cx + 30, cy + 55);
+      ctx.quadraticCurveTo(cx + 34, cy + 25, cx + 35, cy + 8);
+      // Visible parted forehead hairline
+      ctx.quadraticCurveTo(cx + 6, cy - 8, cx, cy - 5); // Right side of part
+      ctx.moveTo(cx, cy - 5);
+      ctx.quadraticCurveTo(cx - 6, cy - 8, cx - 35, cy + 8); // Left side of part
+      ctx.quadraticCurveTo(cx - 34, cy + 25, cx - 30, cy + 55);
+      ctx.quadraticCurveTo(cx - 36, cy + 64, cx - 42, cy + 60);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(cx + 44, cy + 25);
-    ctx.quadraticCurveTo(cx + 45, cy - 10, cx + 35, cy - 15);
-    ctx.lineTo(cx + 38, cy + 12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      // Part line shading (shows slightly wider part)
+      ctx.strokeStyle = 'rgba(236, 195, 180, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 45);
+      ctx.quadraticCurveTo(cx - 1, cy - 25, cx, cy - 10);
+      ctx.stroke();
+      ctx.strokeStyle = '#1b1e26';
+      ctx.lineWidth = 2;
+    }
+    else {
+      // Ludwig 3: Sparse, severe thinning showing bald scalp peak
+      // Side hair bundles only (very thin)
+      ctx.beginPath();
+      ctx.moveTo(cx - 42, cy + 30);
+      ctx.quadraticCurveTo(cx - 46, cy - 15, cx - 30, cy - 25);
+      ctx.lineTo(cx - 32, cy + 35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    // Isolated thin hair patch on top front (island)
-    ctx.fillStyle = 'rgba(8, 9, 13, 0.7)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - 10, 10, 6, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.stroke();
-  } 
-  else {
-    // Norwood 6-7: Complete baldness on top, narrow horseshoe hair ring around sides/back
-    ctx.beginPath();
-    ctx.moveTo(cx - 44, cy + 25);
-    ctx.quadraticCurveTo(cx - 43, cy, cx - 38, cy - 5);
-    ctx.lineTo(cx - 40, cy + 25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + 42, cy + 30);
+      ctx.quadraticCurveTo(cx + 46, cy - 15, cx + 30, cy - 25);
+      ctx.lineTo(cx + 32, cy + 35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(cx + 44, cy + 25);
-    ctx.quadraticCurveTo(cx + 43, cy, cx + 38, cy - 5);
-    ctx.lineTo(cx + 40, cy + 25);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      // Wide, empty pink scalp gap on top
+      ctx.save();
+      ctx.fillStyle = 'rgba(236, 195, 180, 0.95)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 40, 16, 8, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 85, 85, 0.4)'; // inflamed scalp line
+      ctx.stroke();
+      ctx.restore();
+
+      // Wispy strands on top
+      ctx.strokeStyle = 'rgba(8, 9, 13, 0.4)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy - 40);
+      ctx.quadraticCurveTo(cx - 15, cy - 50, cx - 18, cy - 48);
+      ctx.moveTo(cx + 10, cy - 40);
+      ctx.quadraticCurveTo(cx + 15, cy - 50, cx + 18, cy - 48);
+      ctx.stroke();
+    }
+  } else {
+    // Male: Norwood Scale 1-7
+    if (hairline === 1) {
+      // Giga-thick model hair
+      ctx.beginPath();
+      ctx.moveTo(cx - 45, cy + 25);
+      ctx.quadraticCurveTo(cx - 50, cy - 25, cx - 35, cy - 40);
+      ctx.quadraticCurveTo(cx, cy - 55, cx + 35, cy - 40);
+      ctx.quadraticCurveTo(cx + 50, cy - 25, cx + 45, cy + 25);
+      // Lower hair line (no recession)
+      ctx.lineTo(cx + 38, cy + 10);
+      ctx.quadraticCurveTo(cx, cy - 10, cx - 38, cy + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } 
+    else if (hairline <= 3) {
+      // Norwood 2-3: Mild to moderate temple recession
+      ctx.beginPath();
+      ctx.moveTo(cx - 44, cy + 25);
+      ctx.quadraticCurveTo(cx - 48, cy - 20, cx - 32, cy - 35);
+      ctx.quadraticCurveTo(cx, cy - 48, cx + 32, cy - 35);
+      ctx.quadraticCurveTo(cx + 48, cy - 20, cx + 44, cy + 25);
+      // Receded hairline boundary (M-shape)
+      ctx.lineTo(cx + 38, cy + 12);
+      ctx.quadraticCurveTo(cx + 20, cy + 8, cx + 18, cy - 5); // Right temple recess
+      ctx.quadraticCurveTo(cx, cy + 8, cx - 18, cy - 5);  // Center dip
+      ctx.quadraticCurveTo(cx - 20, cy + 8, cx - 38, cy + 12); // Left temple recess
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } 
+    else if (hairline <= 5) {
+      // Norwood 4-5: Severe hairline recession, crown balding
+      // Hair on sides
+      ctx.beginPath();
+      ctx.moveTo(cx - 44, cy + 25);
+      ctx.quadraticCurveTo(cx - 45, cy - 10, cx - 35, cy - 15);
+      ctx.lineTo(cx - 38, cy + 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx + 44, cy + 25);
+      ctx.quadraticCurveTo(cx + 45, cy - 10, cx + 35, cy - 15);
+      ctx.lineTo(cx + 38, cy + 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Isolated thin hair patch on top front (island)
+      ctx.fillStyle = 'rgba(8, 9, 13, 0.7)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 10, 10, 6, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+    } 
+    else {
+      // Norwood 6-7: Complete baldness on top, narrow horseshoe hair ring around sides/back
+      ctx.beginPath();
+      ctx.moveTo(cx - 44, cy + 25);
+      ctx.quadraticCurveTo(cx - 43, cy, cx - 38, cy - 5);
+      ctx.lineTo(cx - 40, cy + 25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx + 44, cy + 25);
+      ctx.quadraticCurveTo(cx + 43, cy, cx + 38, cy - 5);
+      ctx.lineTo(cx + 40, cy + 25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
   // Botched hair transplant scars
@@ -740,8 +933,27 @@ function drawHeightIndicator(ctx, w, h, heightInches) {
   ctx.restore();
 }
 
-function drawAccessories(ctx, cx, headY, styleScore) {
+function drawAccessories(ctx, cx, headY, styleScore, gender = 'male') {
   ctx.save();
+
+  // Pearl Earrings (female styling)
+  if (gender === 'female' && styleScore >= 75) {
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 1;
+    // Left drop pearl
+    ctx.beginPath();
+    ctx.arc(cx - 41, headY + 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Right drop pearl
+    ctx.beginPath();
+    ctx.arc(cx + 41, headY + 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
   
   // 1. Sunglasses/Glasses (Style >= 50)
   if (styleScore >= 50) {

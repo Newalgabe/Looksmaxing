@@ -24,163 +24,322 @@ export class BattleSystem {
     this.opponentDialog = "";
     this.lastCardPlayed = null; // Combat Combo tracker
     
-    // Opponent Archetypes
-    this.opponents = [
-      {
-        id: 'hs_bully',
-        name: 'Biff (High School Bully)',
-        title: 'Ego Destroyer of 9th Grade',
-        avatar: '🎒',
-        skepticism: 40,
-        difficulty: 'Very Easy',
-        reqSMV: 1.0,
-        dialogs: {
-          start: "Nice face, did you get it from a trash can? Gimme your cash, framelet.",
-          hit: "Urgh, you talk too much. Stop standing up for yourself.",
-          attack: "Do you even lift? Norwood hairline lookin' boy.",
-          defeat: "Fine, keep your lunch money. I'm going to smoke behind the gym anyway.",
-          victory: "Easiest lunch money of my life. Stay small."
+    // Dynamic Opponent Archetypes based on player gender
+    if (this.player.gender === 'female') {
+      this.opponents = [
+        {
+          id: 'hs_bully',
+          name: 'Brittany (High School Bully)',
+          title: 'Queen Bee of 9th Grade',
+          avatar: '🎒',
+          skepticism: 40,
+          difficulty: 'Very Easy',
+          reqSMV: 1.0,
+          dialogs: {
+            start: "Nice face, did you get it from a trash can? Gimme your gloss, flat-chested framelet.",
+            hit: "Urgh, you talk too much. Stop standing up for yourself.",
+            attack: "Do you even pilates? Ludwig hairline looking girl.",
+            defeat: "Fine, keep your lunch money. I'm going to Starbucks anyway.",
+            victory: "Easiest lunch money of my life. Stay mid."
+          },
+          rewards: {
+            cash: 200,
+            confidence: 25,
+            log: "You stood up to Brittany and took back your dignity! Earned $200 and +25% Confidence!"
+          }
         },
-        rewards: {
-          cash: 200,
-          confidence: 25,
-          log: "You stood up to Biff and took back your lunch money! Earned $200 and +25% Confidence!"
-        }
-      },
-      {
-        id: 'vip_bouncer',
-        name: 'Sven (VIP Bouncer)',
-        title: 'Gatekeeper of the Club Neon',
-        avatar: '🕶️',
-        skepticism: 60,
-        difficulty: 'Easy',
-        reqSMV: 4.5,
-        dialogs: {
-          start: "Shoes aren't right, hairline is suspicious. You aren't on the list, bro.",
-          hit: "Okay, your jawline is somewhat solid. Let me review my clipboard.",
-          attack: "Nice height inserts. Let me check your ID again. Stand aside.",
-          defeat: "Alright, go ahead. The promoter likes your style.",
-          victory: "Go home, kid. You're blocking the line."
+        {
+          id: 'vip_bouncer',
+          name: 'Sasha (VIP Hostess)',
+          title: 'Gatekeeper of Club Neon',
+          avatar: '🕶️',
+          skepticism: 60,
+          difficulty: 'Easy',
+          reqSMV: 4.5,
+          dialogs: {
+            start: "Shoes aren't right, hair is suspicious. You aren't on the list, sweetie.",
+            hit: "Okay, your skin is somewhat glowing. Let me review my clipboard.",
+            attack: "Nice makeup contouring. Let me check your ID again. Stand aside.",
+            defeat: "Alright, go ahead. The promoter likes your aesthetic.",
+            victory: "Go home, kid. You're blocking the guestlist line."
+          },
+          rewards: {
+            cash: 300,
+            confidence: 20,
+            style: 10,
+            log: "You successfully bypassed Sasha and entered the VIP club! Earned $300 and style status."
+          }
         },
-        rewards: {
-          cash: 300,
-          confidence: 20,
-          style: 10,
-          log: "You successfully bypassed Sven and entered the VIP club! Earned $300 and style status."
-        }
-      },
-      {
-        id: 'chad_gym_bro',
-        name: 'Trent (Giga Gym Bro)',
-        title: 'Dominator of the Squat Rack',
-        avatar: '🏋️',
-        skepticism: 85,
-        difficulty: 'Medium',
-        reqSMV: 5.5,
-        dialogs: {
-          start: "Nice clavicles, did your mother design them? Post physique or walk away.",
-          hit: "Okay, you've been benching. But what's your deadlift?",
-          attack: "You look like you skip leg day. Norwood 3 framelet spotter.",
-          defeat: "Respect the grind, bro. Take this protein shaker.",
-          victory: "Go lift some weights, copy-cat."
+        {
+          id: 'chad_gym_bro',
+          name: 'Chanthal (Pilates Instructor)',
+          title: 'Dominator of the Reformer',
+          avatar: '🧘‍♀️',
+          skepticism: 85,
+          difficulty: 'Medium',
+          reqSMV: 5.5,
+          dialogs: {
+            start: "Nice clavicles, did your mother design them? Post abs or walk away.",
+            hit: "Okay, you've been doing core. But what's your waist-to-hip ratio?",
+            attack: "You look like you skip core day. Ludwig 3 framelet spotter.",
+            defeat: "Respect the grind, girl. Take this organic matcha.",
+            victory: "Go do some squats, copy-cat."
+          },
+          rewards: {
+            cash: 600,
+            confidence: 30,
+            frame: 15,
+            log: "Chanthal nodded in approval and gave you waist-line maxxing tips. +15 Frame!"
+          }
         },
-        rewards: {
-          cash: 600,
-          confidence: 30,
-          frame: 15,
-          log: "Trent nodded in approval and gave you gym maxxing tips. +15 Frame!"
-        }
-      },
-      {
-        id: 'stacy_tinder',
-        name: 'Stacy (High Expectations)',
-        title: 'Tinder Elite Reviewer',
-        avatar: '💅',
-        skepticism: 110,
-        difficulty: 'Hard',
-        reqSMV: 6.5,
-        dialogs: {
-          start: "I only date guys over 6'1. Convince me, or I swipe left.",
-          hit: "Ooh, chiseled chin. Did a surgeon do that or is it genetics?",
-          attack: "Is that a receding hairline? Ew. My ex was 6'4.",
-          defeat: "Fine, you can take me to that expensive sushi place. Let's go.",
-          victory: "Sorry, I think we want different things. Like, someone tall."
+        {
+          id: 'stacy_tinder',
+          name: 'Chad (High Expectations)',
+          title: 'Tinder Elite Reviewer',
+          avatar: '🏋️‍♂️',
+          skepticism: 110,
+          difficulty: 'Hard',
+          reqSMV: 6.5,
+          dialogs: {
+            start: "I only date girls who are at least 8/10 Stacy. Convince me, or I swipe left.",
+            hit: "Ooh, nice V-line jaw. Did a surgeon do that or is it genetics?",
+            attack: "Is that a Ludwig thinning scalp? Ew. My ex was a runway model.",
+            defeat: "Fine, you can take me to that expensive steak place. Let's go.",
+            victory: "Sorry, I think we want different things. Like, someone Stacy-tier."
+          },
+          rewards: {
+            cash: 0,
+            confidence: 40,
+            datingScore: 50,
+            partner: "Chad",
+            log: "You successfully charmed Chad! You are now dating! (+40% Confidence)"
+          }
         },
-        rewards: {
-          cash: 0,
-          confidence: 40,
-          datingScore: 50,
-          partner: "Stacy",
-          log: "You successfully charmed Stacy! You are now dating! (+40% Confidence)"
-        }
-      },
-      {
-        id: 'ceo_interviewer',
-        name: 'Mr. Sterling (Venture Capitalist)',
-        title: 'Strict Job Interviewer',
-        avatar: '💼',
-        skepticism: 130,
-        difficulty: 'Extreme',
-        reqSMV: 7.0,
-        dialogs: {
-          start: "Your resume is average. Show me you have the visual presence of a leader.",
-          hit: "Imposing height. Very well, proceed with your proposal.",
-          attack: "You look nervous and lack command. We have top Ivy grads applying.",
-          defeat: "You have that commanding presence. Welcome to the firm. Six-figure salary start.",
-          victory: "Thank you for coming. We will keep your file on record."
+        {
+          id: 'ceo_interviewer',
+          name: 'Mrs. Sterling (Venture Capitalist)',
+          title: 'Strict Job Interviewer',
+          avatar: '💼',
+          skepticism: 130,
+          difficulty: 'Extreme',
+          reqSMV: 7.0,
+          dialogs: {
+            start: "Your resume is average. Show me you have the visual presence of a leader.",
+            hit: "Imposing posture. Very well, proceed with your proposal.",
+            attack: "You look nervous and lack command. We have top Ivy grads applying.",
+            defeat: "You have that commanding presence. Welcome to the firm. Six-figure salary start.",
+            victory: "Thank you for coming. We will keep your file on record."
+          },
+          rewards: {
+            cash: 4000,
+            confidence: 50,
+            style: 15,
+            log: "Mrs. Sterling hired you on the spot! Earned a $4,000 corporate starting bonus!"
+          }
         },
-        rewards: {
-          cash: 4000,
-          confidence: 50,
-          style: 15,
-          log: "Mr. Sterling hired you on the spot! Earned a $4,000 corporate starting bonus!"
-        }
-      },
-      {
-        id: 'brad_boss',
-        name: 'Brad (Managing Director)',
-        title: 'Corporate Dominator',
-        avatar: '👔',
-        skepticism: 150,
-        difficulty: 'Very Hard',
-        reqSMV: 7.5,
-        dialogs: {
-          start: "I need you to work this weekend. Unless you have the presence to negotiate a raise, sit down.",
-          hit: "Okay, you have some serious frame presence. Go on.",
-          attack: "Your posture is weak. You look like a Norwood 3 wage-slave.",
-          defeat: "Incredible presentation. You are promoted to partner. Take this company bonus.",
-          victory: "I'm cutting your salary. Get back to the spreadsheets."
+        {
+          id: 'brad_boss',
+          name: 'Brad (Managing Director)',
+          title: 'Corporate Dominator',
+          avatar: '👔',
+          skepticism: 150,
+          difficulty: 'Very Hard',
+          reqSMV: 7.5,
+          dialogs: {
+            start: "I need you to work this weekend. Unless you have the presence to negotiate a raise, sit down.",
+            hit: "Okay, you have some serious posture presence. Go on.",
+            attack: "Your presentation is weak. You look like a Ludwig 3 wage-slave.",
+            defeat: "Incredible presentation. You are promoted to partner. Take this company bonus.",
+            victory: "I'm cutting your salary. Get back to the spreadsheets."
+          },
+          rewards: {
+            cash: 2500,
+            confidence: 30,
+            style: 15,
+            log: "You dominated Brad in the boardroom! Promoted to partner with a $2,500 bonus!"
+          }
         },
-        rewards: {
-          cash: 2500,
-          confidence: 30,
-          style: 15,
-          log: "You dominated Brad in the boardroom! Promoted to partner with a $2,500 bonus!"
+        {
+          id: 'forum_admin',
+          name: 'FemCope (Forum Administrator)',
+          title: 'Ultimate Gatekeeper of Looksmaxing.org',
+          avatar: '👑',
+          skepticism: 200,
+          difficulty: 'Impossible',
+          reqSMV: 8.5,
+          dialogs: {
+            start: "Rate thread incoming. If your Ludwig scale is 3, you are banned immediately.",
+            hit: "Wait... Perfect symmetry? V-line jaw? Is this a CGI model?",
+            attack: "Bald spot detected! Over. Banned. Lay down and rot!",
+            defeat: "I bow to you. You are the Chosen One. Unbanned, and stickied as Stacy-tier.",
+            victory: "Locked and stickied. Post deleted. User banned. Over."
+          },
+          rewards: {
+            cash: 5000,
+            confidence: 50,
+            style: 20,
+            log: "You defeated the Forum Admin! You are now stickied as Stacy on the homepage (+5,000 cash, +50% Confidence)!"
+          }
         }
-      },
-      {
-        id: 'forum_admin',
-        name: 'GigaCope (Forum Administrator)',
-        title: 'Ultimate Gatekeeper of Looksmaxing.org',
-        avatar: '👑',
-        skepticism: 200,
-        difficulty: 'Impossible',
-        reqSMV: 8.5,
-        dialogs: {
-          start: "Rate thread incoming. If your tilt is negative, you are banned immediately.",
-          hit: "Wait... Positive canthal tilt? Chiseled jaw? Is this a CGI model?",
-          attack: "Bald spot detected! Over. Banned. Lay down and rot!",
-          defeat: "I bow to you. You are the Chosen One. Unbanned, and stickied as Giga-Chad.",
-          victory: "Locked and stickied. Post deleted. User banned. Over."
+      ];
+    } else {
+      this.opponents = [
+        {
+          id: 'hs_bully',
+          name: 'Biff (High School Bully)',
+          title: 'Ego Destroyer of 9th Grade',
+          avatar: '🎒',
+          skepticism: 40,
+          difficulty: 'Very Easy',
+          reqSMV: 1.0,
+          dialogs: {
+            start: "Nice face, did you get it from a trash can? Gimme your cash, framelet.",
+            hit: "Urgh, you talk too much. Stop standing up for yourself.",
+            attack: "Do you even lift? Norwood hairline lookin' boy.",
+            defeat: "Fine, keep your lunch money. I'm going to smoke behind the gym anyway.",
+            victory: "Easiest lunch money of my life. Stay small."
+          },
+          rewards: {
+            cash: 200,
+            confidence: 25,
+            log: "You stood up to Biff and took back your lunch money! Earned $200 and +25% Confidence!"
+          }
         },
-        rewards: {
-          cash: 5000,
-          confidence: 50,
-          style: 20,
-          log: "You defeated the Forum Admin! You are now stickied as GigaChad on the homepage (+5,000 cash, +50% Confidence)!"
+        {
+          id: 'vip_bouncer',
+          name: 'Sven (VIP Bouncer)',
+          title: 'Gatekeeper of the Club Neon',
+          avatar: '🕶️',
+          skepticism: 60,
+          difficulty: 'Easy',
+          reqSMV: 4.5,
+          dialogs: {
+            start: "Shoes aren't right, hairline is suspicious. You aren't on the list, bro.",
+            hit: "Okay, your jawline is somewhat solid. Let me review my clipboard.",
+            attack: "Nice height inserts. Let me check your ID again. Stand aside.",
+            defeat: "Alright, go ahead. The promoter likes your style.",
+            victory: "Go home, kid. You're blocking the line."
+          },
+          rewards: {
+            cash: 300,
+            confidence: 20,
+            style: 10,
+            log: "You successfully bypassed Sven and entered the VIP club! Earned $300 and style status."
+          }
+        },
+        {
+          id: 'chad_gym_bro',
+          name: 'Trent (Giga Gym Bro)',
+          title: 'Dominator of the Squat Rack',
+          avatar: '🏋️',
+          skepticism: 85,
+          difficulty: 'Medium',
+          reqSMV: 5.5,
+          dialogs: {
+            start: "Nice clavicles, did your mother design them? Post physique or walk away.",
+            hit: "Okay, you've been benching. But what's your deadlift?",
+            attack: "You look like you skip leg day. Norwood 3 framelet spotter.",
+            defeat: "Respect the grind, bro. Take this protein shaker.",
+            victory: "Go lift some weights, copy-cat."
+          },
+          rewards: {
+            cash: 600,
+            confidence: 30,
+            frame: 15,
+            log: "Trent nodded in approval and gave you gym maxxing tips. +15 Frame!"
+          }
+        },
+        {
+          id: 'stacy_tinder',
+          name: 'Stacy (High Expectations)',
+          title: 'Tinder Elite Reviewer',
+          avatar: '💅',
+          skepticism: 110,
+          difficulty: 'Hard',
+          reqSMV: 6.5,
+          dialogs: {
+            start: "I only date guys over 6'1. Convince me, or I swipe left.",
+            hit: "Ooh, chiseled chin. Did a surgeon do that or is it genetics?",
+            attack: "Is that a receding hairline? Ew. My ex was 6'4.",
+            defeat: "Fine, you can take me to that expensive sushi place. Let's go.",
+            victory: "Sorry, I think we want different things. Like, someone tall."
+          },
+          rewards: {
+            cash: 0,
+            confidence: 40,
+            datingScore: 50,
+            partner: "Stacy",
+            log: "You successfully charmed Stacy! You are now dating! (+40% Confidence)"
+          }
+        },
+        {
+          id: 'ceo_interviewer',
+          name: 'Mr. Sterling (Venture Capitalist)',
+          title: 'Strict Job Interviewer',
+          avatar: '💼',
+          skepticism: 130,
+          difficulty: 'Extreme',
+          reqSMV: 7.0,
+          dialogs: {
+            start: "Your resume is average. Show me you have the visual presence of a leader.",
+            hit: "Imposing height. Very well, proceed with your proposal.",
+            attack: "You look nervous and lack command. We have top Ivy grads applying.",
+            defeat: "You have that commanding presence. Welcome to the firm. Six-figure salary start.",
+            victory: "Thank you for coming. We will keep your file on record."
+          },
+          rewards: {
+            cash: 4000,
+            confidence: 50,
+            style: 15,
+            log: "Mr. Sterling hired you on the spot! Earned a $4,000 corporate starting bonus!"
+          }
+        },
+        {
+          id: 'brad_boss',
+          name: 'Brad (Managing Director)',
+          title: 'Corporate Dominator',
+          avatar: '👔',
+          skepticism: 150,
+          difficulty: 'Very Hard',
+          reqSMV: 7.5,
+          dialogs: {
+            start: "I need you to work this weekend. Unless you have the presence to negotiate a raise, sit down.",
+            hit: "Okay, you have some serious frame presence. Go on.",
+            attack: "Your posture is weak. You look like a Norwood 3 wage-slave.",
+            defeat: "Incredible presentation. You are promoted to partner. Take this company bonus.",
+            victory: "I'm cutting your salary. Get back to the spreadsheets."
+          },
+          rewards: {
+            cash: 2500,
+            confidence: 30,
+            style: 15,
+            log: "You dominated Brad in the boardroom! Promoted to partner with a $2,500 bonus!"
+          }
+        },
+        {
+          id: 'forum_admin',
+          name: 'GigaCope (Forum Administrator)',
+          title: 'Ultimate Gatekeeper of Looksmaxing.org',
+          avatar: '👑',
+          skepticism: 200,
+          difficulty: 'Impossible',
+          reqSMV: 8.5,
+          dialogs: {
+            start: "Rate thread incoming. If your tilt is negative, you are banned immediately.",
+            hit: "Wait... Positive canthal tilt? Chiseled jaw? Is this a CGI model?",
+            attack: "Bald spot detected! Over. Banned. Lay down and rot!",
+            defeat: "I bow to you. You are the Chosen One. Unbanned, and stickied as Giga-Chad.",
+            victory: "Locked and stickied. Post deleted. User banned. Over."
+          },
+          rewards: {
+            cash: 5000,
+            confidence: 50,
+            style: 20,
+            log: "You defeated the Forum Admin! You are now stickied as GigaChad on the homepage (+5,000 cash, +50% Confidence)!"
+          }
         }
-      }
-    ];
+      ];
+    }
   }
 
   // Get available encounters based on player stats

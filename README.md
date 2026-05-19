@@ -6,33 +6,33 @@ An interactive, dark-comedy, turn-based roguelite web game. You are born with ra
 
 ## 🎲 Core Gameplay Loop
 
-1. **The Genetic Lottery (Birth):** Starts with a random roll across stats: Height, Jaw definition, Hairline (Norwood Scale), Canthal tilt, Skin quality, and Shoulder frame. These calculate your base **Sexual Market Value (SMV) score (1.0 - 10.0)** and starting Social Tier (Truecel to GigaChad).
-2. **Yearly Action Grind:** Allocate 10 Action Points (AP) and money each year across working, gym-maxxing, skincare, styling, and risky plastic surgeries.
-3. **Risky Surgeries:** Select surgical procedures (Limb Lengthening, Jaw Implants, Hair Transplants) from different clinics. Buying from a budget Turkey clinic saves cash but risks catastrophic failure; going to a premium Beverly Hills clinic minimises risk but costs double.
-4. **Random Life Events:** Face random events (bad breakups, job promotions, acne outbreaks, TikTok roasts) that alter your stats.
-5. **Social Card Battles:** Engage in turn-based card battles against Sven the Bouncer, Trent the Gym Bro, Stacy, and Mr. Sterling. Play combat cards unlocked by your stats (e.g. *Loom Over* at height >= 6'0", *Jawline Flash* for chiseled jaw, *Retinol Radiance* for glowing skin, *Wallet Flash* for cash) to reduce their "Skepticism" before your "Confidence" hits zero.
-6. **Dating Swipe App ("swipeMax"):** Swipe right or left. Match rates dynamically calculate from your SMV against targets' strict standards. Succeed in funny chat options to secure relationships.
-7. **Interactive Post-Game Forum Roast:** At age 30, your run concludes. See your final biometrics rated and roasted on a simulated looksmaxing forum. Reply to the haters with interactive cope strategies and get roasted in real-time.
+1. **Gender Choice & Genetic Lottery (Birth):** Select to play as a **Male**, **Female**, or let the game pick a **Random** gender. Your stats are rolled: Height, Jaw definition, Hairline (Norwood Scale for males, Ludwig Scale for females), Canthal tilt, Skin quality, and Shoulder frame. These calculate your base **Sexual Market Value (SMV) score (1.0 - 10.0)** and starting Social Tier (Truecel/Femcel to GigaChad/Stacy).
+2. **Yearly Action Grind:** Allocate 10 Action Points (AP) and money each year across working, gym-maxxing (Pilates for females), skincare, styling (styling/makeup for females), and risky plastic surgeries.
+3. **Gender-Specific Surgeries:** Select surgical procedures (Limb Lengthening, Jaw Implants, and Hair Transplants for males; Brazilian Butt Lift (BBL), V-Line Jaw Surgery, and Surgical Hairline Lowering for females) from different clinics. Buying from a budget Turkey clinic saves cash but risks catastrophic failure; going to a premium Beverly Hills clinic minimizes risk but costs double.
+4. **Random Life Events:** Face random events (bad breakups, job promotions, acne outbreaks, TikTok roasts, barber shop/hair salon trips) that alter your stats.
+5. **Social Card Battles:** Engage in turn-based card battles against Biff/Brittany the Bully, Sven/Sasha the Bouncer/Hostess, Trent/Chanthal the Gym Bro/Pilates Instructor, Stacy/Chad, and Mr./Mrs. Sterling. Play combat cards unlocked by your stats (e.g. *Loom Over* at height >= 6'0"/5'8", *Jawline Flash* for chiseled jaw, *Retinol Radiance* for glowing skin, *Wallet/Card Flash* for cash) to reduce their "Skepticism" before your "Confidence" hits zero.
+6. **Dating Swipe App ("swipeMax"):** Swipe right or left. Targets are gender-swapped (Stacy, Tyrone, Beta Bob, and Gertrude for males; Chad, Tyrone, Beta Bob, and Richard for females). Match rates dynamically calculate from your SMV against targets' strict standards. Succeed in funny chat options to secure relationships.
+7. **Interactive Post-Game Forum Roast:** At age 30, your run concludes. See your final biometrics rated and roasted on a simulated looksmaxing forum using gender-specific community slang (Norwood vs Ludwig scales, Truecel vs Femcel ratings, height excuses). Reply to the haters with interactive cope strategies and get roasted in real-time.
 
 ---
 
 ## 💎 Roguelite Meta-Progression & Features
 
 - **Cope Shop Upgrades:** Earn "Cope Tokens" at the end of each run based on your SMV and the number of botched surgeries survived. Spend them in the shop on permanent inherited perks:
-  - *High Metabolism:* Multiplies gym frame gains by 1.2.
-  - *Good Donor Area:* Cuts FUE Hair Transplant surgery costs by 50%.
+  - *High Metabolism:* Multiplies gym/pilates frame gains by 1.2.
+  - *Good Donor Area:* Cuts Hair Transplant / Hairline Lowering surgery costs by 50%.
   - *Rich Uncle:* Boosts starting cash from $500 to $1,500.
   - *Symmetrical Genes:* Doubles the probability of rolling a "Symmetrical" symmetry stat at birth.
 - **Dynamic Botched Surgery Scars:** Botching a surgery places physical mutations directly onto your avatar:
   - *Botched Canthoplasty:* One drooped eye, negative tilt, and red scar marks.
-  - *Botched Jaw Implants:* Crooked asymmetric jaw outline, purple bruising, and black stitch ticks.
-  - *Botched Hair Transplants:* Red scabbed plugs/follicles dotted across the bare forehead.
+  - *Botched Jaw Implants / V-Line:* Crooked asymmetric jaw outline, purple bruising, and black stitch ticks.
+  - *Botched Hair Transplants / Hairline Lowering:* Red scabbed plugs/follicles dotted across the bare forehead.
   - *Healing:* Succeeding in a subsequent surgery at a high-end clinic clears the botched deformity.
 - **Procedural BGM Synthesizer:** Background retro synthwave music generated dynamically on the fly using native browser **Web Audio API** oscillators (keeps bundle size tiny). Soundtrack tempo and musical scales change according to screen state:
   - *Genesis Birth Screen:* Slow clinical ambient drone (85 BPM).
   - *Main Dashboard:* Steady retro synthwave groove (110 BPM).
   - *Card Combat Arena:* Fast-paced intense battle theme (135 BPM).
-- **Dynamic Avatar:** Real-time `<canvas>` portrait drawing that updates eye tilt, skin spots, shoulder widths, outfits, and Norwood hair shapes live as stats change.
+- **Dynamic Avatar:** Real-time `<canvas>` portrait drawing that updates eye tilt, eyelashes (female), skin spots, shoulder/neck frames, outfits, Norwood/Ludwig hair shapes, lipstick, earrings, and botched scars live as stats change.
 - **Audio Synthesizer:** Native 8-bit sound effects (menu select, success chirps, error buzzers, Tinder swishes, combat impacts, and level-ups) built directly in code.
 - **Responsive Layout:** Mobile-friendly layouts adjusting from multi-column desktop dashboards to vertical stacks on smartphones.
 

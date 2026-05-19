@@ -13,6 +13,7 @@ import { generateForumThread, getCopingReplies, generateForumResponse } from './
 // --- Metagame Persistent Upgrades ---
 let copeTokens = parseInt(localStorage.getItem('looksmax_cope_tokens') || '0');
 let unlockedPerks = JSON.parse(localStorage.getItem('looksmax_unlocked_perks') || '{}');
+let chosenGender = 'male';
 
 const METAGAME_PERKS = [
   {
@@ -408,6 +409,7 @@ const statSymmetry = document.getElementById('stat-symmetry');
 const txtSkin = document.getElementById('txt-skin');
 const barSkin = document.getElementById('bar-skin');
 const txtHairline = document.getElementById('txt-hairline');
+const lblHairline = document.getElementById('lbl-hairline');
 const barHairline = document.getElementById('bar-hairline');
 const txtFrame = document.getElementById('txt-frame');
 const barFrame = document.getElementById('bar-frame');
@@ -480,6 +482,18 @@ function logToConsole(message, type = 'system') {
 }
 
 function setupEventListeners() {
+  // Gender Choice
+  const genderBtns = document.querySelectorAll('.gender-btn');
+  genderBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      initAudio();
+      playSound('click');
+      genderBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      chosenGender = btn.getAttribute('data-gender');
+    });
+  });
+
   // Genesis Screen Rolls
   btnRollGenetics.addEventListener('click', () => {
     initAudio();
@@ -612,6 +626,11 @@ function triggerRollAnimation() {
   genesisLoader.classList.remove('hidden');
   genesisStatsDisplay.classList.add('hidden');
   
+  let activeGender = chosenGender;
+  if (activeGender === 'random') {
+    activeGender = Math.random() < 0.5 ? 'female' : 'male';
+  }
+
   let rollTicks = 0;
   const rollInterval = setInterval(() => {
     // Generate tick sounds
@@ -619,6 +638,7 @@ function triggerRollAnimation() {
     
     // Scramble DNA stats text
     const dummyGame = new GameState();
+    dummyGame.reset(null, activeGender);
     renderGenesisPreview(dummyGame);
     
     rollTicks++;
@@ -626,7 +646,7 @@ function triggerRollAnimation() {
       clearInterval(rollInterval);
       
       // Roll player's actual genetics
-      game.reset(unlockedPerks);
+      game.reset(unlockedPerks, activeGender);
       renderGenesisPreview(game);
       
       genesisLoader.classList.add('hidden');
@@ -635,7 +655,7 @@ function triggerRollAnimation() {
       btnRollGenetics.classList.add('hidden');
       btnStartLife.classList.remove('hidden');
       
-      logToConsole(`DNA Sequenced successfully: ${game.name} born. Base SMV: ${game.smv}`, 'success');
+      logToConsole(`DNA Sequenced successfully: ${game.name} born (${game.gender.toUpperCase()}). Base SMV: ${game.smv}`, 'success');
     }
   }, 120);
 }
@@ -663,8 +683,8 @@ function renderGenesisPreview(player) {
       <strong>${player.tilt}</strong>
     </div>
     <div class="stat-row-detail clinical-font">
-      <span>Hairline:</span>
-      <strong>Norwood Scale ${player.hairline}</strong>
+      <span>${player.gender === 'female' ? 'Hair Volume:' : 'Hairline:'}</span>
+      <strong>${player.gender === 'female' ? 'Ludwig' : 'Norwood'} Scale ${player.gender === 'female' ? (player.hairline <= 2 ? 1 : player.hairline <= 5 ? 2 : 3) : player.hairline}</strong>
     </div>
     <div class="stat-row-detail clinical-font">
       <span>Skin Quality:</span>
@@ -716,11 +736,17 @@ function updateDashboard() {
   barSkin.style.width = `${skinPct}%`;
   txtSkin.textContent = skinPct < 30 ? 'Cystic Acne' : skinPct < 60 ? 'Blotchy' : skinPct < 90 ? 'Clear' : 'Glowing';
   
-  // Hairline Norwood
+  // Hairline Norwood / Ludwig
   // Bar represents full head = Norwood 1 (100%), Norwood 7 = bald (10%)
   const hairPct = Math.max(10, Math.round(((8 - game.hairline) / 7) * 100));
   barHairline.style.width = `${hairPct}%`;
-  txtHairline.textContent = `NW ${game.hairline}`;
+  if (game.gender === 'female') {
+    lblHairline.textContent = "Hair Volume (Ludwig):";
+    txtHairline.textContent = `Ludwig ${game.hairline <= 2 ? 1 : game.hairline <= 5 ? 2 : 3}`;
+  } else {
+    lblHairline.textContent = "Hairline (Norwood):";
+    txtHairline.textContent = `NW ${game.hairline}`;
+  }
 
   // Frame
   const framePct = game.frame;
