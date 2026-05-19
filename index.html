@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROLL THE DICE — Genetic Lottery Roguelite</title>
+  <!-- Google Fonts: Outfits for headings, JetBrains Mono for clinical terminal numbers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="cyber-theme">
+  <!-- Game Audio Toggle -->
+  <div class="audio-control" id="audio-toggle-btn" title="Toggle Sound FX">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="speaker-icon">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+    </svg>
+    <span>SOUND ON</span>
+  </div>
+
+  <main class="game-container">
+    
+    <!-- ==================== SCREEN 1: THE GENESIS (BIRTH) ==================== -->
+    <section id="screen-genesis" class="game-screen active">
+      <div class="genesis-content">
+        <h1 class="glitch-title" data-text="ROLL THE DICE">ROLL THE DICE</h1>
+        <p class="subtitle">A Genetic Lottery Roguelite</p>
+        
+        <div class="genetics-terminal-box">
+          <div class="terminal-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="terminal-title">GENETIC_LOTTERY_SEQUENCER.EXE</span>
+          </div>
+          <div class="terminal-body" id="genesis-stats-panel">
+            <div class="matrix-loader" id="genesis-loader">
+              <div class="spinner"></div>
+              <p class="loading-text">ROLLING DNA STRANDS...</p>
+            </div>
+            <div class="rolled-stats-display hidden" id="genesis-stats-display">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="genesis-actions">
+          <button id="btn-roll-genetics" class="btn primary-btn pulse-glow">ROLL GENETICS</button>
+          <button id="btn-start-life" class="btn success-btn hidden">EMBARK ON LIFE (AGE 18)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== MAIN GAME BOARD (Dashboard + Actions) ==================== -->
+    <section id="screen-gameboard" class="game-screen">
+      <div class="gameboard-layout">
+        
+        <!-- LEFT PANEL: STATS & DATA -->
+        <aside class="panel left-panel">
+          <div class="panel-header">
+            <h3>CLINICAL DATA</h3>
+            <span class="neon-tag text-green" id="hud-social-tier">NORMIE</span>
+          </div>
+          <div class="panel-body">
+            
+            <div class="vital-stats">
+              <div class="stat-row highlight">
+                <span class="stat-label">AGE:</span>
+                <span class="stat-value" id="hud-age">18</span>
+              </div>
+              <div class="stat-row highlight">
+                <span class="stat-label">CASH:</span>
+                <span class="stat-value text-yellow" id="hud-cash">$500</span>
+              </div>
+              <div class="stat-row highlight">
+                <span class="stat-label">SMV SCORE:</span>
+                <span class="stat-value text-cyan" id="hud-smv">5.0 / 10</span>
+              </div>
+            </div>
+
+            <div class="stat-group-title">BONE STRUCTURE (UNALTERABLE)</div>
+            <div class="stat-list clinical-font">
+              <div class="stat-row-detail">
+                <span>Height:</span>
+                <strong id="stat-height">5'9" (175cm)</strong>
+              </div>
+              <div class="stat-row-detail">
+                <span>Jaw Definition:</span>
+                <strong id="stat-jaw">Average</strong>
+              </div>
+              <div class="stat-row-detail">
+                <span>Canthal Tilt:</span>
+                <strong id="stat-tilt">Neutral</strong>
+              </div>
+              <div class="stat-row-detail">
+                <span>Symmetry:</span>
+                <strong id="stat-symmetry">Average</strong>
+              </div>
+            </div>
+
+            <div class="stat-group-title">SOFT MAXES (IMPROVABLE)</div>
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Skin Quality:</span>
+                <span id="txt-skin">Blotchy</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-cyan" id="bar-skin" style="width: 50%"></div>
+              </div>
+            </div>
+
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Hairline (Norwood):</span>
+                <span id="txt-hairline">NW 2</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-green" id="bar-hairline" style="width: 80%"></div>
+              </div>
+            </div>
+
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Frame/Build:</span>
+                <span id="txt-frame">Average</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-magenta" id="bar-frame" style="width: 40%"></div>
+              </div>
+            </div>
+
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Styling & Grooming:</span>
+                <span id="txt-style">Basic</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-yellow" id="bar-style" style="width: 30%"></div>
+              </div>
+            </div>
+
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Confidence (Mental):</span>
+                <span id="txt-confidence">70%</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-pink" id="bar-confidence" style="width: 70%"></div>
+              </div>
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- CENTER PANEL: DYNAMIC AVATAR -->
+        <section class="panel center-panel">
+          <div class="panel-header">
+            <h3>SUBJECT SPECIES</h3>
+            <span class="neon-tag text-cyan" id="hud-avatar-class">NORMIE BUILD</span>
+          </div>
+          <div class="panel-body avatar-container">
+            <canvas id="avatar-canvas" width="300" height="380"></canvas>
+            <div class="subject-status-ticker" id="avatar-ticker">
+              SYSTEM ONLINE // SCANNING STATS...
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT PANEL: INTERACTIVE ACTIONS / BATTLE / DATING -->
+        <section class="panel right-panel">
+          <div class="panel-header tab-header">
+            <button class="tab-btn active" data-tab="tab-actions">YEAR ACTIONS</button>
+            <button class="tab-btn" id="btn-tab-dating" data-tab="tab-dating">DATING APPS</button>
+            <button class="tab-btn" id="btn-tab-social" data-tab="tab-social">ENCOUNTERS</button>
+          </div>
+          
+          <div class="panel-body tab-content-container">
+            
+            <!-- SUB-TAB 1: YEAR ACTIONS -->
+            <div class="tab-content active" id="tab-actions">
+              <div class="action-points-banner">
+                <span>ACTION POINTS REMAINING:</span>
+                <strong id="hud-ap" class="text-green">10</strong>
+              </div>
+
+              <div class="actions-grid">
+                <button class="action-card" id="act-work">
+                  <div class="action-icon">💼</div>
+                  <div class="action-details">
+                    <h4>Work & Grind</h4>
+                    <p class="desc">Earn money, lose 2 AP. Mental health penalty.</p>
+                    <span class="cost text-green">-$2 AP / +$1,500 cash</span>
+                  </div>
+                </button>
+
+                <button class="action-card" id="act-gym">
+                  <div class="action-icon">🏋️</div>
+                  <div class="action-details">
+                    <h4>Gym Maxxing</h4>
+                    <p class="desc">Lift weights to build your frame & improve symmetry.</p>
+                    <span class="cost text-magenta">-$100 cash / -$2 AP</span>
+                  </div>
+                </button>
+
+                <button class="action-card" id="act-skincare">
+                  <div class="action-icon">🧴</div>
+                  <div class="action-details">
+                    <h4>Skincare Regimen</h4>
+                    <p class="desc">Cleanse, moisturize, exfoliate to fix skin quality.</p>
+                    <span class="cost text-cyan">-$50 cash / -$1 AP</span>
+                  </div>
+                </button>
+
+                <button class="action-card" id="act-styling">
+                  <div class="action-icon">💇</div>
+                  <div class="action-details">
+                    <h4>Styling & Barber</h4>
+                    <p class="desc">Get a trendy haircut and fashion overhaul.</p>
+                    <span class="cost text-yellow">-$150 cash / -$1 AP</span>
+                  </div>
+                </button>
+
+                <button class="action-card warning-card" id="act-surgery">
+                  <div class="action-icon">💉</div>
+                  <div class="action-details">
+                    <h4>Risky Surgery</h4>
+                    <p class="desc">Bone shattering / reshaping procedures. Extremely risky.</p>
+                    <span class="cost text-pink">Costs variable (Large Cash Sum)</span>
+                  </div>
+                </button>
+              </div>
+
+              <!-- Surgery Modal / Details overlay (hidden by default) -->
+              <div class="surgery-overlay hidden" id="surgery-menu">
+                <div class="surgery-header">
+                  <h4>SELECT SURGICAL MAXING</h4>
+                  <button class="close-btn" id="btn-close-surgery">×</button>
+                </div>
+                <div class="surgery-list">
+                  <!-- surgery list cards populated by js -->
+                </div>
+              </div>
+
+              <div class="year-footer">
+                <button class="btn warning-btn end-year-btn" id="btn-end-year">END YEAR & ROLL EVENTS</button>
+              </div>
+            </div>
+
+            <!-- SUB-TAB 2: DATING APPS -->
+            <div class="tab-content" id="tab-dating">
+              <!-- Populated by dating.js -->
+              <div id="dating-app-view">
+                <!-- Swiping simulator -->
+              </div>
+            </div>
+
+            <!-- SUB-TAB 3: SOCIAL ENCOUNTERS -->
+            <div class="tab-content" id="tab-social">
+              <div id="social-encounter-view">
+                <!-- Renders current battle, list of opponents, or battle-end screen -->
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+
+      <!-- BOTTOM LOG/CONSOLE PANEL -->
+      <footer class="console-panel">
+        <div class="console-header">
+          <span>RUN LOG CONSOLE // LOGSMAX_SYSTEM_V1.0</span>
+          <button class="clear-btn" id="btn-clear-logs">CLEAR</button>
+        </div>
+        <div class="console-logs" id="console-logs-container">
+          <div class="log-entry system">[SYSTEM] Character initialized at Age 18. Roll your dice to determine your genetics.</div>
+        </div>
+      </footer>
+    </section>
+
+    <!-- ==================== SCREEN 3: GAME OVER (THE FORUM ROAST) ==================== -->
+    <section id="screen-gameover" class="game-screen">
+      <div class="gameover-layout">
+        <header class="gameover-header">
+          <h2 class="text-pink">RUN COMPLETED // AGE 30 REACHED</h2>
+          <p class="subtitle" id="txt-death-reason">You have finalized your genetic path. Here is how the community rates you.</p>
+        </header>
+
+        <div class="gameover-grid">
+          <!-- Left: Final Profile & Stats Summary -->
+          <div class="panel final-stats-panel">
+            <h3>FINAL BIOMETRICS</h3>
+            <div class="final-avatar-wrapper">
+              <canvas id="final-avatar-canvas" width="200" height="250"></canvas>
+            </div>
+            <div class="final-details-list" id="final-stats-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Right: Forum Roast Thread -->
+          <div class="panel forum-panel">
+            <div class="forum-header">
+              <span class="forum-logo">💬 LOOKSMAXING.ORG</span>
+              <span class="forum-online">Status: ACTIVE THREAD // 3,421 views</span>
+            </div>
+            <div class="forum-thread-title">
+              <h4 id="forum-thread-name">Thread: "Rate my build - 5'9 Norwood 4 cope or ascended?"</h4>
+              <p class="thread-meta">Posted 3 minutes ago by <strong id="forum-thread-author">Copemaxxer99</strong> in <strong>/r/rateme</strong></p>
+            </div>
+            <div class="forum-posts" id="forum-posts-container">
+              <!-- Populated via forum.js -->
+            </div>
+          </div>
+        </div>
+
+        <div class="gameover-actions">
+          <button class="btn primary-btn pulse-glow" id="btn-restart">RE-ROLL GENETICS (NEW RUN)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Event overlay modal (for popup alerts / random events) -->
+    <div class="modal-overlay hidden" id="event-modal">
+      <div class="event-modal-content">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon" id="event-modal-icon">🚨</span>
+          <h3 id="event-modal-title">RANDOM EVENT</h3>
+        </div>
+        <p id="event-modal-desc" class="event-desc">An acne outbreak has struck your face! Your skin feels irritated.</p>
+        <div class="event-impact" id="event-modal-impact">
+          <!-- -2 Skin, -10 Confidence -->
+        </div>
+        <button class="btn primary-btn" id="btn-close-event">DEAL WITH IT</button>
+      </div>
+    </div>
+
+  </main>
+  
+  <script type="module" src="app.js"></script>
+</body>
+</html>
