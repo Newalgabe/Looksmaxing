@@ -57,6 +57,11 @@ export class GameState {
     this.datingScore = 0;
     this.opponentsDefeated = [];
     
+    // Botch tracking for rendering scars/visual debuffs
+    this.botchedJaw = false;
+    this.botchedHair = false;
+    this.botchedCanthoplasty = false;
+    
     this.updateSMV();
   }
 
@@ -305,6 +310,7 @@ export class GameState {
       if (surgeryId === 'jaw_implant') {
         this.jaw = 'Receding';
         this.skin = Math.max(0, this.skin - 20); // nerve scarring/cystic breakout
+        this.botchedJaw = true;
         botchText = "The surgeon botched the jaw implants. The implant migrated, causing asymmetric nerve damage (-40% Confidence, Jaw ruined to Receding, Skin ruined).";
       } else if (surgeryId === 'leg_lengthening') {
         // Catastrophic failure: wheel-chair bound or death
@@ -319,10 +325,12 @@ export class GameState {
       } else if (surgeryId === 'hair_transplant') {
         this.hairline = 7; // lost all donor hair
         this.skin = Math.max(0, this.skin - 15);
+        this.botchedHair = true;
         botchText = "The hair plugs failed to take. Necrosis left permanent scars on your scalp (-15 Skin, Hairline permanently Norwood 7).";
       } else if (surgeryId === 'canthoplasty') {
         this.symmetry = 'Asymmetrical';
         this.tilt = 'Negative';
+        this.botchedCanthoplasty = true;
         botchText = "Your eyelids were over-tightened. You can no longer close your eyes fully, leading to chronic dry-eye and asymmetry.";
       }
 
@@ -337,15 +345,18 @@ export class GameState {
       let successText = "";
       if (surgeryId === 'jaw_implant') {
         this.jaw = 'Chiseled';
+        this.botchedJaw = false;
         successText = "Your chin is now sharp and chiseled. You look like a model.";
       } else if (surgeryId === 'leg_lengthening') {
         this.height += 3;
         successText = "Your femurs successfully healed. You stand 3 inches taller!";
       } else if (surgeryId === 'hair_transplant') {
         this.hairline = 1;
+        this.botchedHair = false;
         successText = "Thick, full hair follicles successfully grafted. Norwood 1 hairline achieved.";
       } else if (surgeryId === 'canthoplasty') {
         this.tilt = 'Positive';
+        this.botchedCanthoplasty = false;
         successText = "Almond-shaped, positive tilt 'hunter eyes' created.";
       }
 

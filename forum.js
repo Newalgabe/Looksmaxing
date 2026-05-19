@@ -105,7 +105,7 @@ function generateOpeningPost(player) {
   let intro = `Just hit age 30. Started life with average genetics but tried to max out what I could. Here is my clinical stats breakdown:
   <br/><br/>
   <strong>Biometrics:</strong><br/>
-  - Height: ${ft}'${inch}" (${player.height} cm)<br/>
+  - Height: ${ft}'${inch}" (${Math.round(player.height * 2.54)} cm)<br/>
   - Jaw Definition: ${player.jaw}<br/>
   - Canthal Tilt: ${player.tilt}<br/>
   - Hairline: Norwood ${player.hairline}<br/>
@@ -186,4 +186,100 @@ function generateFinalRoast(player) {
   }
   
   return `Final Rating: 2/10 Truecel. Norwood 6 hairline, receding jaw, short king. Over. Lay down and rot.`;
+}
+
+export function getCopingReplies(player) {
+  const choices = [
+    {
+      id: 'height_cope',
+      text: "I'm literally 6'3 guys, it's just a bad camera angle!",
+      unlocked: player.height >= 72
+    },
+    {
+      id: 'mom_cope',
+      text: "My mom says I'm handsome, you guys are just toxic.",
+      unlocked: true
+    },
+    {
+      id: 'rot_cope',
+      text: "It's over. I am going to lay down and rot.",
+      unlocked: player.smv < 5.0
+    },
+    {
+      id: 'flex_cope',
+      text: `I have $${player.cash.toLocaleString()} cash ${player.hasDatingPartner ? `and dating ${player.partnerName}` : ''}, stay mad.`,
+      unlocked: player.cash >= 3000 || player.hasDatingPartner
+    }
+  ];
+  return choices.filter(c => c.unlocked);
+}
+
+export function generateForumResponse(choiceId, player) {
+  const responses = {
+    height_cope: [
+      {
+        username: 'BonesAreLaw',
+        rank: 'Truecel Veteran',
+        avatar: '💀',
+        content: `Copemeister extreme. Height doesn't change your skull structure or receding jaw. Even if you're 6'3, you're just a lanky framelet with no presence. Post eye-level photos or ban.`,
+      },
+      {
+        username: 'GigaCope',
+        rank: 'Senior Coperson',
+        avatar: '😐',
+        content: `Sure bro, and I'm 6'8 with hunter eyes. Put the tape measure against the wall or keep coping. 💀`,
+      }
+    ],
+    mom_cope: [
+      {
+        username: 'JawlineLord',
+        rank: 'Ascended Deity',
+        avatar: '🗿',
+        content: `MOM COPE IS THE ULTIMATE COPE! 💀 "My special boy" tier coping. Your mom is biologically programmed to ignore your negative canthal tilt. Post your rating from an objective AI/looksmaxing site instead.`,
+      },
+      {
+        username: 'NorwoodSlayer',
+        rank: 'Truecel Veteran',
+        avatar: '😭',
+        content: `Lmao my mom said the same thing until she paid for my Turkey hair plugs. Real talk, ignore your mother's lies. Lay down and rot.`,
+      }
+    ],
+    rot_cope: [
+      {
+        username: 'BonesAreLaw',
+        rank: 'Truecel Veteran',
+        avatar: '💀',
+        content: `Based pill. Welcome to the LDAR (Lay Down And Rot) club. Acceptance is the first step. Get a gaming PC and forget about the genetic market. It's over.`,
+      },
+      {
+        username: 'ShortKingGiga',
+        rank: 'Coping Incel',
+        avatar: '😭',
+        content: `At least you tried, brother. I've been rotting since Norwood 3 hit me at age 21. See you in the gaming lobbies.`,
+      }
+    ],
+    flex_cope: [
+      {
+        username: 'GigaCope',
+        rank: 'Senior Coperson',
+        avatar: '😐',
+        content: `Imagine bragging about your wallet on looksmaxing.org. We don't care about paper, we care about jaw angles. But honestly, congrats on the cash stack, go pay for custom chin bones.`,
+      },
+      {
+        username: 'TurkeyPlugsPro',
+        rank: 'Elite Surgeon Ally',
+        avatar: '💉',
+        content: `Bro managed to escape the incel tier by wage-maxxing. Respect. Now use that cash to fly to Beverly Hills and fix that hair/jaw. You have the raw materials (money) to buy genetics now!`,
+      }
+    ]
+  };
+  
+  const list = responses[choiceId] || [];
+  const selected = list[Math.floor(Math.random() * list.length)];
+  
+  return {
+    ...selected,
+    userStats: { joined: '2022', posts: '4,510', rep: '+980' },
+    date: 'Just now'
+  };
 }

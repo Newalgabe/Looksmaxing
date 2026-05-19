@@ -2,6 +2,8 @@
 
 An interactive, dark-comedy, turn-based roguelite web game. You are born with random genetics, and you must navigate life from age 18 to 30 to reach the highest social tier. Maximize your stats, swipe on dating apps, survive random events, engage in social card battles, and face the final roast on a mock looksmaxing forum.
 
+---
+
 ## 🎲 Core Gameplay Loop
 
 1. **The Genetic Lottery (Birth):** Starts with a random roll across stats: Height, Jaw definition, Hairline (Norwood Scale), Canthal tilt, Skin quality, and Shoulder frame. These calculate your base **Sexual Market Value (SMV) score (1.0 - 10.0)** and starting Social Tier (Truecel to GigaChad).
@@ -10,15 +12,28 @@ An interactive, dark-comedy, turn-based roguelite web game. You are born with ra
 4. **Random Life Events:** Face random events (bad breakups, job promotions, acne outbreaks, TikTok roasts) that alter your stats.
 5. **Social Card Battles:** Engage in turn-based card battles against Sven the Bouncer, Trent the Gym Bro, Stacy, and Mr. Sterling. Play combat cards unlocked by your stats (e.g. *Loom Over* at height >= 6'0", *Jawline Flash* for chiseled jaw, *Retinol Radiance* for glowing skin, *Wallet Flash* for cash) to reduce their "Skepticism" before your "Confidence" hits zero.
 6. **Dating Swipe App ("swipeMax"):** Swipe right or left. Match rates dynamically calculate from your SMV against targets' strict standards. Succeed in funny chat options to secure relationships.
-7. **Post-Game Forum Roast:** At age 30, your run concludes. See your final biometrics rated and roasted on a simulated looksmaxing forum.
+7. **Interactive Post-Game Forum Roast:** At age 30, your run concludes. See your final biometrics rated and roasted on a simulated looksmaxing forum. Reply to the haters with interactive cope strategies and get roasted in real-time.
 
 ---
 
-## 🛠️ Tech Stack & Features
+## 💎 Roguelite Meta-Progression & Features
 
-- **Core:** HTML5, CSS3, ES6+ Javascript Modules.
+- **Cope Shop Upgrades:** Earn "Cope Tokens" at the end of each run based on your SMV and the number of botched surgeries survived. Spend them in the shop on permanent inherited perks:
+  - *High Metabolism:* Multiplies gym frame gains by 1.2.
+  - *Good Donor Area:* Cuts FUE Hair Transplant surgery costs by 50%.
+  - *Rich Uncle:* Boosts starting cash from $500 to $1,500.
+  - *Symmetrical Genes:* Doubles the probability of rolling a "Symmetrical" symmetry stat at birth.
+- **Dynamic Botched Surgery Scars:** Botching a surgery places physical mutations directly onto your avatar:
+  - *Botched Canthoplasty:* One drooped eye, negative tilt, and red scar marks.
+  - *Botched Jaw Implants:* Crooked asymmetric jaw outline, purple bruising, and black stitch ticks.
+  - *Botched Hair Transplants:* Red scabbed plugs/follicles dotted across the bare forehead.
+  - *Healing:* Succeeding in a subsequent surgery at a high-end clinic clears the botched deformity.
+- **Procedural BGM Synthesizer:** Background retro synthwave music generated dynamically on the fly using native browser **Web Audio API** oscillators (keeps bundle size tiny). Soundtrack tempo and musical scales change according to screen state:
+  - *Genesis Birth Screen:* Slow clinical ambient drone (85 BPM).
+  - *Main Dashboard:* Steady retro synthwave groove (110 BPM).
+  - *Card Combat Arena:* Fast-paced intense battle theme (135 BPM).
 - **Dynamic Avatar:** Real-time `<canvas>` portrait drawing that updates eye tilt, skin spots, shoulder widths, outfits, and Norwood hair shapes live as stats change.
-- **Audio Synthesizer:** Fully native **Web Audio API** retro 8-bit sound effects (menu select, success chirps, error buzzers, Tinder swishes, combat impacts, and level-ups) built directly in code without external file assets.
+- **Audio Synthesizer:** Native 8-bit sound effects (menu select, success chirps, error buzzers, Tinder swishes, combat impacts, and level-ups) built directly in code.
 - **Responsive Layout:** Mobile-friendly layouts adjusting from multi-column desktop dashboards to vertical stacks on smartphones.
 
 ---

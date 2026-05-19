@@ -8,7 +8,7 @@ import { GameState } from './game.js';
 import { drawAvatar } from './avatar.js';
 import { BattleSystem } from './battle.js';
 import { DatingSimulator } from './dating.js';
-import { generateForumThread } from './forum.js';
+import { generateForumThread, getCopingReplies, generateForumResponse } from './forum.js';
 
 // --- Metagame Persistent Upgrades ---
 let copeTokens = parseInt(localStorage.getItem('looksmax_cope_tokens') || '0');
@@ -109,12 +109,145 @@ function startAnimationLoop() {
 let audioCtx = null;
 let soundEnabled = true;
 
+// BGM State
+let bgmInterval = null;
+let bgmNextNoteTime = 0;
+let bgmStepIndex = 0;
+let bgmBPM = 110;
+
+// Chord progression: i - VI - VII - v (Am - F - G - Em)
+const BGM_PROGRESSIONS = {
+  genesis: [110, 110, 110, 110], // slow A minor drone/base
+  gameboard: [110, 87.31, 98.0, 82.41], // steady retro synthwave
+  battle: [110, 130.81, 98.0, 73.42] // fast/intense (A - C - G - D)
+};
+
+function scheduleNextBGMStep(time, step) {
+  if (!audioCtx || !soundEnabled) return;
+
+  // Determine progression based on active screen
+  let mode = 'gameboard';
+  if (screenGenesis && screenGenesis.classList.contains('active')) {
+    mode = 'genesis';
+  } else if (document.querySelector('.battle-arena')) {
+    mode = 'battle';
+  }
+
+  const rootFreqs = BGM_PROGRESSIONS[mode];
+  const chordIndex = Math.floor(step / 16) % rootFreqs.length;
+  const rootFreq = rootFreqs[chordIndex];
+
+  // --- Bassline (eighth notes) ---
+  if (step % 2 === 0) {
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(300, time);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.type = 'sawtooth';
+      const octave = (step % 4 === 0) ? 1 : 2;
+      osc.frequency.setValueAtTime(rootFreq * octave * 0.5, time);
+
+      gain.gain.setValueAtTime(0.007, time);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + (60 / bgmBPM / 2) * 0.9);
+
+      osc.start(time);
+      osc.stop(time + (60 / bgmBPM / 2));
+    } catch (e) {
+      console.warn("BGM Bass Error:", e);
+    }
+  }
+
+  // --- Arpeggiator Lead Melody (16th notes with gate pattern) ---
+  const leadPattern = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0];
+  if (leadPattern[step % 16] === 1 && Math.random() < 0.75) {
+    try {
+      const scaleOffsets = [1.0, 1.2, 1.334, 1.5, 1.8, 2.0];
+      const offset = scaleOffsets[Math.floor(Math.random() * scaleOffsets.length)];
+      const noteFreq = rootFreq * offset * 2.0;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(900, time);
+      filter.Q.setValueAtTime(1.5, time);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.type = Math.random() > 0.5 ? 'triangle' : 'square';
+      osc.frequency.setValueAtTime(noteFreq, time);
+
+      if (Math.random() < 0.25) {
+        osc.frequency.exponentialRampToValueAtTime(noteFreq * 1.33, time + 0.12);
+      }
+
+      gain.gain.setValueAtTime(0.0035, time);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
+
+      osc.start(time);
+      osc.stop(time + 0.18);
+    } catch (e) {
+      console.warn("BGM Lead Error:", e);
+    }
+  }
+}
+
+function startBGM() {
+  if (bgmInterval || !soundEnabled) return;
+  
+  initAudio();
+  if (!audioCtx) return;
+
+  bgmNextNoteTime = audioCtx.currentTime;
+  bgmStepIndex = 0;
+
+  bgmInterval = setInterval(() => {
+    if (!soundEnabled || !audioCtx) return;
+
+    if (screenGenesis && screenGenesis.classList.contains('active')) {
+      bgmBPM = 85;
+    } else if (document.querySelector('.battle-arena')) {
+      bgmBPM = 135;
+    } else {
+      bgmBPM = 110;
+    }
+
+    const scheduleAheadTime = 0.15;
+    const stepDuration = 60 / bgmBPM / 4;
+
+    while (bgmNextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+      scheduleNextBGMStep(bgmNextNoteTime, bgmStepIndex);
+      bgmNextNoteTime += stepDuration;
+      bgmStepIndex++;
+    }
+  }, 45);
+}
+
+function stopBGM() {
+  if (bgmInterval) {
+    clearInterval(bgmInterval);
+    bgmInterval = null;
+  }
+}
+
 function initAudio() {
   if (audioCtx) return;
-  // Initialize context on user interaction
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (AudioContext) {
     audioCtx = new AudioContext();
+  }
+  if (audioCtx && soundEnabled) {
+    startBGM();
   }
 }
 
@@ -324,10 +457,16 @@ function setupAudioControl() {
     if (soundEnabled) {
       btn.classList.remove('disabled');
       btn.querySelector('span').textContent = 'SOUND ON';
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      startBGM();
       playSound('click');
     } else {
       btn.classList.add('disabled');
       btn.querySelector('span').textContent = 'SOUND OFF';
+      stopBGM();
     }
   });
 }
@@ -721,6 +860,80 @@ function triggerGameOver(reasonText) {
     `;
     forumContainer.appendChild(row);
   });
+
+  // Set up interactive reply section
+  const replyArea = document.getElementById('forum-reply-area');
+  const choicesContainer = document.getElementById('forum-reply-choices-container');
+  
+  if (game.isDead) {
+    // Dead players cannot post replies
+    replyArea.style.display = 'none';
+  } else {
+    replyArea.style.display = 'flex';
+    choicesContainer.innerHTML = '';
+    
+    const choices = getCopingReplies(game);
+    choices.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'forum-reply-btn';
+      btn.textContent = c.text;
+      btn.addEventListener('click', () => {
+        // Disable all choices
+        const allBtns = choicesContainer.querySelectorAll('.forum-reply-btn');
+        allBtns.forEach(b => b.disabled = true);
+        
+        // Append user's reply
+        playSound('click');
+        const userPost = document.createElement('div');
+        userPost.className = 'forum-post-row user-response-post';
+        userPost.innerHTML = `
+          <aside class="forum-user-aside" style="border-right: 1.5px solid var(--accent-cyan);">
+            <span class="forum-username" style="color: var(--accent-cyan); font-weight: bold;">${game.name.replace(/\s+/g, '')}99</span>
+            <span class="forum-user-rank">Thread Starter</span>
+            <span class="forum-user-avatar">👤</span>
+            <div class="forum-user-stats">
+              Joined: 2023<br/>
+              Posts: 1,421<br/>
+              Rep: ${game.smv >= 8.5 ? '+890' : '-120'}
+            </div>
+          </aside>
+          <div class="forum-post-body">
+            <p class="forum-post-text" style="color: var(--accent-cyan); font-style: italic;">"${c.text}"</p>
+            <span class="forum-post-footer">Posted Just now</span>
+          </div>
+        `;
+        forumContainer.appendChild(userPost);
+        forumContainer.scrollTop = forumContainer.scrollHeight;
+        
+        // Trigger live roast reply after 800ms
+        setTimeout(() => {
+          const botReply = generateForumResponse(c.id, game);
+          const replyEl = document.createElement('div');
+          replyEl.className = 'forum-post-row';
+          replyEl.innerHTML = `
+            <aside class="forum-user-aside">
+              <span class="forum-username">${botReply.username}</span>
+              <span class="forum-user-rank">${botReply.rank}</span>
+              <span class="forum-user-avatar">${botReply.avatar}</span>
+              <div class="forum-user-stats">
+                Joined: ${botReply.userStats.joined}<br/>
+                Posts: ${botReply.userStats.posts}<br/>
+                Rep: ${botReply.userStats.rep}
+              </div>
+            </aside>
+            <div class="forum-post-body">
+              <p class="forum-post-text">${botReply.content}</p>
+              <span class="forum-post-footer">Posted ${botReply.date}</span>
+            </div>
+          `;
+          forumContainer.appendChild(replyEl);
+          forumContainer.scrollTop = forumContainer.scrollHeight;
+          playSound('error'); // raw buzz roast feedback
+        }, 800);
+      });
+      choicesContainer.appendChild(btn);
+    });
+  }
 }
 
 // --- Render Surgeries Modal ---

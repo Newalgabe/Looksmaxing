@@ -50,20 +50,20 @@ export function drawAvatar(canvas, stats, timeMs = 0) {
   // 2. Draw Neck (attaches to fixed shoulders and moving head)
   drawNeck(ctx, centerX, headY + 20, neckWidth, centerY + 80);
 
-  // 3. Draw Head Shape (influenced by Jaw definition and symmetry)
-  drawHead(ctx, centerX, headY, jawType, asymmetryOffset);
+  // 3. Draw Head Shape (influenced by Jaw definition, symmetry, and botched jaw implants)
+  drawHead(ctx, centerX, headY, jawType, asymmetryOffset, stats.botchedJaw);
 
   // 4. Draw Skin Details (Acne, blemishes, or glowing highlights)
   drawSkinFeatures(ctx, centerX, headY, skinVal);
 
-  // 5. Draw Eyes (influenced by Canthal Tilt and blinking check)
-  drawEyes(ctx, centerX, headY - 10, tiltType, asymmetryOffset, timeMs);
+  // 5. Draw Eyes (influenced by Canthal Tilt, blinking, and botched canthoplasty)
+  drawEyes(ctx, centerX, headY - 10, tiltType, asymmetryOffset, timeMs, stats.botchedCanthoplasty);
 
   // 6. Draw Eyebrows & Mouth
   drawFacialFeatures(ctx, centerX, headY, stats.confidence);
 
-  // 7. Draw Hair (influenced by Norwood Hairline scale)
-  drawHair(ctx, centerX, headY - 45, hairline);
+  // 7. Draw Hair (influenced by Norwood Hairline scale and botched transplants)
+  drawHair(ctx, centerX, headY - 45, hairline, stats.botchedHair);
   
   // 8. Draw Accessories based on style score
   drawAccessories(ctx, centerX, headY, styleVal);
@@ -201,7 +201,7 @@ function drawNeck(ctx, cx, cy, width, shoulderY) {
   ctx.restore();
 }
 
-function drawHead(ctx, cx, cy, jawType, asymmetry) {
+function drawHead(ctx, cx, cy, jawType, asymmetry, botchedJaw) {
   ctx.save();
   
   // Skin gradient (base skin color)
@@ -213,7 +213,7 @@ function drawHead(ctx, cx, cy, jawType, asymmetry) {
   ctx.beginPath();
   
   // Custom Head shape based on Jaw type
-  // Face bounds: top (cy - 40), sides (cx - 45, cx + 45)
+  // Face bounds: top (cy - 45), sides (cx - 42, cx + 42)
   const topY = cy - 45;
   const leftX = cx - 42 + asymmetry;
   const rightX = cx + 42;
@@ -224,7 +224,13 @@ function drawHead(ctx, cx, cy, jawType, asymmetry) {
   ctx.quadraticCurveTo(leftX, topY, leftX, midY);
   
   // Jaw shape definition
-  if (jawType === 'Chiseled') {
+  if (botchedJaw) {
+    // Crooked, lumpy, mutated jawline
+    ctx.lineTo(cx - 36 + asymmetry, cy + 35);
+    ctx.lineTo(cx - 22 + asymmetry, cy + 45); // chin left
+    ctx.lineTo(cx + 5, cy + 34);              // chin skewed up
+    ctx.lineTo(cx + 38, cy + 22);             // jaw corner pulled up/deformed
+  } else if (jawType === 'Chiseled') {
     // Sharp angles, wider base
     ctx.lineTo(cx - 36 + asymmetry, cy + 30);
     ctx.lineTo(cx - 18 + asymmetry, cy + 42); // Square chin
@@ -280,6 +286,37 @@ function drawHead(ctx, cx, cy, jawType, asymmetry) {
   ctx.arc(rightX + 2, cy - 5, 8, Math.PI * 0.5, Math.PI * 1.4, true);
   ctx.fill();
   ctx.stroke();
+
+  // Purple Bruising & Stitches for botched jaw
+  if (botchedJaw) {
+    ctx.save();
+    // Bruise patch (semitransparent dark purple)
+    ctx.fillStyle = 'rgba(120, 50, 180, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 20, cy + 25, 14, 8, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Red surgical stitch base line
+    ctx.strokeStyle = '#ff0055';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx + 10, cy + 33);
+    ctx.lineTo(cx + 34, cy + 24);
+    ctx.stroke();
+
+    // Black stitch ticks
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let x = cx + 14; x <= cx + 30; x += 5) {
+      const progress = (x - (cx + 14)) / 16;
+      const yVal = (cy + 33) * (1 - progress) + (cy + 24) * progress;
+      ctx.moveTo(x, yVal - 4);
+      ctx.lineTo(x + 2, yVal + 4);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.restore();
 }
@@ -355,14 +392,19 @@ function drawSkinFeatures(ctx, cx, cy, skinVal) {
   ctx.restore();
 }
 
-function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs) {
+function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs, botchedCanthoplasty) {
   ctx.save();
   
   // Left eye center: cx - 18, Right eye center: cx + 18
   const lx = cx - 18 + asymmetry;
   const rx = cx + 18;
+  
+  // If canthoplasty is botched, left eye droops down and shrinks asymmetrical
+  const ly = cy + (botchedCanthoplasty ? 4 : 0);
+  const ry = cy;
+  
   const eyeRadiusX = 9;
-  const eyeRadiusY = 4.5;
+  const eyeRadiusY = botchedCanthoplasty ? 3.0 : 4.5;
   
   // Eye shapes
   ctx.fillStyle = '#ffffff';
@@ -376,11 +418,21 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs) {
     ctx.strokeStyle = '#1b1e26';
     ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(lx - eyeRadiusX, cy);
-    ctx.lineTo(lx + eyeRadiusX, cy);
-    ctx.moveTo(rx - eyeRadiusX, cy);
-    ctx.lineTo(rx + eyeRadiusX, cy);
+    ctx.moveTo(lx - eyeRadiusX, ly);
+    ctx.lineTo(lx + eyeRadiusX, ly);
+    ctx.moveTo(rx - eyeRadiusX, ry);
+    ctx.lineTo(rx + eyeRadiusX, ry);
     ctx.stroke();
+    
+    // Draw red scar under blinking left eye too
+    if (botchedCanthoplasty) {
+      ctx.strokeStyle = '#ff003c';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(lx, ly + 4, 6, 0.1 * Math.PI, 0.9 * Math.PI, false);
+      ctx.stroke();
+    }
+    
     ctx.restore();
     return;
   }
@@ -391,21 +443,22 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs) {
   if (tiltType === 'Positive') {
     leftRot = -0.12; // tilted up outwards
     rightRot = 0.12;
-  } else if (tiltType === 'Negative') {
-    leftRot = 0.12; // tilted down outwards
+  } else if (tiltType === 'Negative' || botchedCanthoplasty) {
+    // Botch forces severe negative tilt (droop) on left side!
+    leftRot = botchedCanthoplasty ? 0.35 : 0.12;
     rightRot = -0.12;
   }
 
   // Draw Left Eye
   ctx.save();
-  ctx.translate(lx, cy);
+  ctx.translate(lx, ly);
   ctx.rotate(leftRot);
   ctx.beginPath();
   ctx.ellipse(0, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI*2);
   ctx.fill();
   ctx.stroke();
   // Pupil
-  ctx.fillStyle = '#08090d';
+  ctx.fillStyle = botchedCanthoplasty ? '#800000' : '#08090d';
   ctx.beginPath();
   ctx.arc(0, 0, 2.5, 0, Math.PI*2);
   ctx.fill();
@@ -413,10 +466,10 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs) {
 
   // Draw Right Eye
   ctx.save();
-  ctx.translate(rx, cy);
+  ctx.translate(rx, ry);
   ctx.rotate(rightRot);
   ctx.beginPath();
-  ctx.ellipse(0, 0, eyeRadiusX, eyeRadiusY, 0, 0, Math.PI*2);
+  ctx.ellipse(0, 0, eyeRadiusX, 4.5, 0, 0, Math.PI*2);
   ctx.fill();
   ctx.stroke();
   // Pupil
@@ -425,6 +478,27 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs) {
   ctx.arc(0, 0, 2.5, 0, Math.PI*2);
   ctx.fill();
   ctx.restore();
+
+  // Draw red surgical scar line under left eye
+  if (botchedCanthoplasty) {
+    ctx.strokeStyle = '#ff003c'; // blood red
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(lx, ly + 5, 7, 0, Math.PI, false);
+    ctx.stroke();
+    
+    // Tiny stitch marks
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(lx - 4, ly + 9);
+    ctx.lineTo(lx - 4, ly + 13);
+    ctx.moveTo(lx, ly + 10);
+    ctx.lineTo(lx, ly + 14);
+    ctx.moveTo(lx + 4, ly + 9);
+    ctx.lineTo(lx + 4, ly + 13);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
@@ -488,7 +562,7 @@ function drawFacialFeatures(ctx, cx, cy, confidence) {
   ctx.restore();
 }
 
-function drawHair(ctx, cx, cy, hairline) {
+function drawHair(ctx, cx, cy, hairline, botchedHair) {
   ctx.save();
   ctx.fillStyle = '#08090d'; // Deep black/obsidian hair
   ctx.strokeStyle = '#1b1e26';
@@ -573,6 +647,53 @@ function drawHair(ctx, cx, cy, hairline) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+  }
+
+  // Botched hair transplant scars
+  if (botchedHair) {
+    ctx.save();
+    // Grafts are drawn centered around the bare forehead top area
+    // cy is headY - 45. The bare forehead is around cy + 10 to cy + 30.
+    const graftSpots = [
+      {x: cx - 24, y: cy + 14},
+      {x: cx - 14, y: cy + 10},
+      {x: cx - 5, y: cy + 12},
+      {x: cx + 5, y: cy + 12},
+      {x: cx + 14, y: cy + 10},
+      {x: cx + 24, y: cy + 14},
+      
+      {x: cx - 18, y: cy + 20},
+      {x: cx - 8, y: cy + 18},
+      {x: cx + 8, y: cy + 18},
+      {x: cx + 18, y: cy + 20},
+
+      {x: cx - 10, y: cy + 26},
+      {x: cx, y: cy + 24},
+      {x: cx + 10, y: cy + 26}
+    ];
+
+    graftSpots.forEach(s => {
+      // Red inflamed follicle base
+      ctx.fillStyle = 'rgba(255, 30, 50, 0.85)';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner crusty black scab center
+      ctx.fillStyle = '#1b0005';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tiny stitch tick (failed hair plugs sticking out)
+      ctx.strokeStyle = 'rgba(10, 10, 15, 0.9)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + (s.x > cx ? 1.5 : -1.5), s.y - 2.5);
+      ctx.stroke();
+    });
+    ctx.restore();
   }
 
   ctx.restore();

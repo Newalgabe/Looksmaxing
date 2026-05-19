@@ -1679,6 +1679,59 @@ body {
   margin-top: 10px;
 }
 
+/* Forum Interactive Replies */
+.forum-reply-section {
+  border-top: 1.5px solid var(--border-color);
+  background: #0d0f17;
+  padding: 12px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply-section-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.forum-reply-choices {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+
+.forum-reply-btn {
+  background: #151a26;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.forum-reply-btn:hover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+}
+
+.forum-reply-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.user-response-post .forum-user-aside {
+  border-right: 1.5px solid var(--accent-cyan);
+}
+
+
 .gameover-actions {
   display: flex;
   justify-content: center;
