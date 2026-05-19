@@ -513,7 +513,7 @@ function renderGenesisPreview(player) {
     </div>
     <div class="stat-row-detail clinical-font">
       <span>Height:</span>
-      <strong>${ft}'${inVal}" (${player.height} cm)</strong>
+      <strong>${ft}'${inVal}" (${Math.round(player.height * 2.54)} cm)</strong>
     </div>
     <div class="stat-row-detail clinical-font">
       <span>Jaw Definition:</span>
@@ -566,7 +566,7 @@ function updateDashboard() {
   hudAvatarClass.textContent = `${ft}'${inVal}" // ${game.jaw.toUpperCase()} JAW`;
 
   // Update Biometrics details
-  statHeight.textContent = `${ft}'${inVal}" (${game.height} cm)`;
+  statHeight.textContent = `${ft}'${inVal}" (${Math.round(game.height * 2.54)} cm)`;
   statJaw.textContent = game.jaw;
   statTilt.textContent = game.tilt;
   statSymmetry.textContent = game.symmetry;
@@ -662,7 +662,7 @@ function triggerGameOver(reasonText) {
     </div>
     <div class="stat-row-detail">
       <span>Height:</span>
-      <strong>${ft}'${inVal}"</strong>
+      <strong>${ft}'${inVal}" (${Math.round(game.height * 2.54)} cm)</strong>
     </div>
     <div class="stat-row-detail">
       <span>Jaw Definition:</span>
