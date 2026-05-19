@@ -22,9 +22,31 @@ export class BattleSystem {
     this.isOver = false;
     this.outcome = null; // 'win' or 'lose'
     this.opponentDialog = "";
+    this.lastCardPlayed = null; // Combat Combo tracker
     
     // Opponent Archetypes
     this.opponents = [
+      {
+        id: 'hs_bully',
+        name: 'Biff (High School Bully)',
+        title: 'Ego Destroyer of 9th Grade',
+        avatar: '🎒',
+        skepticism: 40,
+        difficulty: 'Very Easy',
+        reqSMV: 1.0,
+        dialogs: {
+          start: "Nice face, did you get it from a trash can? Gimme your cash, framelet.",
+          hit: "Urgh, you talk too much. Stop standing up for yourself.",
+          attack: "Do you even lift? Norwood hairline lookin' boy.",
+          defeat: "Fine, keep your lunch money. I'm going to smoke behind the gym anyway.",
+          victory: "Easiest lunch money of my life. Stay small."
+        },
+        rewards: {
+          cash: 200,
+          confidence: 25,
+          log: "You stood up to Biff and took back your lunch money! Earned $200 and +25% Confidence!"
+        }
+      },
       {
         id: 'vip_bouncer',
         name: 'Sven (VIP Bouncer)',
@@ -113,6 +135,50 @@ export class BattleSystem {
           style: 15,
           log: "Mr. Sterling hired you on the spot! Earned a $4,000 corporate starting bonus!"
         }
+      },
+      {
+        id: 'brad_boss',
+        name: 'Brad (Managing Director)',
+        title: 'Corporate Dominator',
+        avatar: '👔',
+        skepticism: 150,
+        difficulty: 'Very Hard',
+        reqSMV: 7.5,
+        dialogs: {
+          start: "I need you to work this weekend. Unless you have the presence to negotiate a raise, sit down.",
+          hit: "Okay, you have some serious frame presence. Go on.",
+          attack: "Your posture is weak. You look like a Norwood 3 wage-slave.",
+          defeat: "Incredible presentation. You are promoted to partner. Take this company bonus.",
+          victory: "I'm cutting your salary. Get back to the spreadsheets."
+        },
+        rewards: {
+          cash: 2500,
+          confidence: 30,
+          style: 15,
+          log: "You dominated Brad in the boardroom! Promoted to partner with a $2,500 bonus!"
+        }
+      },
+      {
+        id: 'forum_admin',
+        name: 'GigaCope (Forum Administrator)',
+        title: 'Ultimate Gatekeeper of Looksmaxing.org',
+        avatar: '👑',
+        skepticism: 200,
+        difficulty: 'Impossible',
+        reqSMV: 8.5,
+        dialogs: {
+          start: "Rate thread incoming. If your tilt is negative, you are banned immediately.",
+          hit: "Wait... Positive canthal tilt? Chiseled jaw? Is this a CGI model?",
+          attack: "Bald spot detected! Over. Banned. Lay down and rot!",
+          defeat: "I bow to you. You are the Chosen One. Unbanned, and stickied as Giga-Chad.",
+          victory: "Locked and stickied. Post deleted. User banned. Over."
+        },
+        rewards: {
+          cash: 5000,
+          confidence: 50,
+          style: 20,
+          log: "You defeated the Forum Admin! You are now stickied as GigaChad on the homepage (+5,000 cash, +50% Confidence)!"
+        }
       }
     ];
   }
@@ -143,6 +209,7 @@ export class BattleSystem {
     this.energy = 3;
     this.turn = 1;
     this.opponentDialog = opp.dialogs.start;
+    this.lastCardPlayed = null;
 
     // Compile deck based on player stats
     this.buildDeck();
@@ -203,7 +270,14 @@ export class BattleSystem {
         desc: 'Angle face so shadow cuts like a knife.',
         cost: 2,
         power: 32,
-        effect: (b) => { b.damageOpponent(32); },
+        effect: (b) => {
+          let dmg = 32;
+          if (b.lastCardPlayed === 'Nice Personality' || b.lastCardPlayed === 'Retinol Radiance') {
+            dmg *= 2;
+            b.logCallback("✨ COMBO: 'Model Look' triggered! Double damage!", "success");
+          }
+          b.damageOpponent(dmg);
+        },
         emoji: '📐'
       });
     }
@@ -305,6 +379,9 @@ export class BattleSystem {
     // Remove card from hand
     this.playerHand.splice(cardIndex, 1);
     this.logCallback(`You played [${card.name}] for ${card.cost} Energy!`, "success");
+    
+    // Update combo tracker
+    this.lastCardPlayed = card.name;
 
     // Check Win
     if (this.opponentSkepticism <= 0) {
@@ -328,13 +405,17 @@ export class BattleSystem {
     if (this.isOver) return;
 
     // Opponent turn: Attack Player Confidence
-    const baseAttack = this.opponent.id === 'ceo_interviewer' ? 22 : 
+    const baseAttack = this.opponent.id === 'forum_admin' ? 30 :
+                       this.opponent.id === 'brad_boss' ? 24 :
+                       this.opponent.id === 'ceo_interviewer' ? 22 : 
                        this.opponent.id === 'stacy_tinder' ? 18 : 
                        this.opponent.id === 'chad_gym_bro' ? 14 : 10;
     
     const damage = Math.floor(baseAttack * (0.8 + Math.random() * 0.4));
     this.playerConfidence = Math.max(0, this.playerConfidence - damage);
     this.opponentDialog = this.opponent.dialogs.attack;
+    
+    this.lastCardPlayed = null; // Reset combo tracker on turn transition
 
     this.logCallback(`${this.opponent.name} insults you: "${this.opponentDialog}" (-${damage}% Confidence)`, "event");
 

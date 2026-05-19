@@ -12,21 +12,31 @@ export const FIRST_NAMES = ['Chadwick', 'Hunter', 'Kyle', 'Cope', 'Morty', 'Euge
 export const LAST_NAMES = ['Maxxer', 'Coperson', 'Slayer', 'Framelet', 'Incelius', 'Plugs', 'Chadson', 'Canthal', 'Norwood', 'Giga'];
 
 export class GameState {
-  constructor() {
+  constructor(activePerks = {}) {
+    this.activePerks = activePerks;
     this.reset();
   }
 
-  reset() {
+  reset(activePerks = null) {
+    if (activePerks) {
+      this.activePerks = activePerks;
+    }
     this.name = this.generateRandomName();
     this.age = 18;
-    this.cash = 500;
+    this.cash = (this.activePerks && this.activePerks.rich_uncle) ? 1500 : 500;
     this.ap = 10;
     
     // Genetic Lottery Roll
     this.height = this.rollHeight(); // in inches (60 to 78)
     this.jaw = this.randomElement(JAW_TYPES);
     this.tilt = this.randomElement(TILT_TYPES);
-    this.symmetry = this.randomElement(SYMMETRY_TYPES);
+    
+    if (this.activePerks && this.activePerks.symmetrical_genes) {
+      const symRoll = Math.random();
+      this.symmetry = symRoll < 0.60 ? 'Symmetrical' : symRoll < 0.90 ? 'Average' : 'Asymmetrical';
+    } else {
+      this.symmetry = this.randomElement(SYMMETRY_TYPES);
+    }
     
     // Soft / Modifiable stats
     this.hairline = this.rollHairline(); // 1 to 7 (Norwood Scale)
@@ -166,7 +176,13 @@ export class GameState {
     if (this.ap < 2 || this.cash < 100) return false;
     this.ap -= 2;
     this.cash -= 100;
-    this.frame = Math.min(100, this.frame + this.randomRange(6, 12));
+    
+    let frameGain = this.randomRange(6, 12);
+    if (this.activePerks && this.activePerks.high_metabolism) {
+      frameGain = Math.round(frameGain * 1.2);
+    }
+    this.frame = Math.min(100, this.frame + frameGain);
+    
     this.confidence = Math.min(100, this.confidence + this.randomRange(3, 8));
     // Small chance to improve symmetry (posture improvement)
     if (this.symmetry === 'Asymmetrical' && Math.random() < 0.15) {
@@ -208,6 +224,7 @@ export class GameState {
 
   // SURGERY DETAILS
   getSurgeriesList() {
+    const isCheaperHair = this.activePerks && this.activePerks.good_donor_area;
     return [
       {
         id: 'jaw_implant',
@@ -228,7 +245,7 @@ export class GameState {
       {
         id: 'hair_transplant',
         name: 'FUE Hair Transplant',
-        cost: 6000,
+        cost: isCheaperHair ? 3000 : 6000,
         desc: 'Harvests grafts from back of head to restore the hairline.',
         risk: 0.08, // 8% standard failure
         effect: 'Soft Max: Hairline permanently restored to Norwood 1'

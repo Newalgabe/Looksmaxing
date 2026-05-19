@@ -4,7 +4,7 @@
  * based on the character's physical and styling stats.
  */
 
-export function drawAvatar(canvas, stats) {
+export function drawAvatar(canvas, stats, timeMs = 0) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
@@ -40,28 +40,35 @@ export function drawAvatar(canvas, stats) {
     asymmetryOffset = 4;
   }
 
+  // Animation offset: Breathing neck/head coordinates shift
+  const breathingOffset = Math.sin(timeMs * 0.003) * 1.5;
+  const headY = centerY + breathingOffset;
+
   // 1. Draw Body/Shoulders
   drawShoulders(ctx, centerX, centerY + 80, shoulderWidth, styleVal);
 
-  // 2. Draw Neck
-  drawNeck(ctx, centerX, centerY + 20, neckWidth, centerY + 80);
+  // 2. Draw Neck (attaches to fixed shoulders and moving head)
+  drawNeck(ctx, centerX, headY + 20, neckWidth, centerY + 80);
 
   // 3. Draw Head Shape (influenced by Jaw definition and symmetry)
-  drawHead(ctx, centerX, centerY, jawType, asymmetryOffset);
+  drawHead(ctx, centerX, headY, jawType, asymmetryOffset);
 
   // 4. Draw Skin Details (Acne, blemishes, or glowing highlights)
-  drawSkinFeatures(ctx, centerX, centerY, skinVal);
+  drawSkinFeatures(ctx, centerX, headY, skinVal);
 
-  // 5. Draw Eyes (influenced by Canthal Tilt)
-  drawEyes(ctx, centerX, centerY - 10, tiltType, asymmetryOffset);
+  // 5. Draw Eyes (influenced by Canthal Tilt and blinking check)
+  drawEyes(ctx, centerX, headY - 10, tiltType, asymmetryOffset, timeMs);
 
   // 6. Draw Eyebrows & Mouth
-  drawFacialFeatures(ctx, centerX, centerY, stats.confidence);
+  drawFacialFeatures(ctx, centerX, headY, stats.confidence);
 
   // 7. Draw Hair (influenced by Norwood Hairline scale)
-  drawHair(ctx, centerX, centerY - 45, hairline);
+  drawHair(ctx, centerX, headY - 45, hairline);
   
-  // 8. Height Scale Overlay Indicator
+  // 8. Draw Accessories based on style score
+  drawAccessories(ctx, centerX, headY, styleVal);
+  
+  // 9. Height Scale Overlay Indicator
   drawHeightIndicator(ctx, w, h, heightVal);
 }
 
@@ -348,7 +355,7 @@ function drawSkinFeatures(ctx, cx, cy, skinVal) {
   ctx.restore();
 }
 
-function drawEyes(ctx, cx, cy, tiltType, asymmetry) {
+function drawEyes(ctx, cx, cy, tiltType, asymmetry, timeMs) {
   ctx.save();
   
   // Left eye center: cx - 18, Right eye center: cx + 18
@@ -361,6 +368,22 @@ function drawEyes(ctx, cx, cy, tiltType, asymmetry) {
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#1b1e26';
   ctx.lineWidth = 1.8;
+
+  // Blink logic: Blink for 150ms every 4 seconds
+  const isBlinking = (Math.floor(timeMs / 4000) % 2 === 0) && (timeMs % 4000 < 150);
+
+  if (isBlinking) {
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(lx - eyeRadiusX, cy);
+    ctx.lineTo(lx + eyeRadiusX, cy);
+    ctx.moveTo(rx - eyeRadiusX, cy);
+    ctx.lineTo(rx + eyeRadiusX, cy);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
 
   // Let's determine eye tilt rotation angles
   let leftRot = 0;
@@ -592,6 +615,80 @@ function drawHeightIndicator(ctx, w, h, heightInches) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 9px "JetBrains Mono"';
   ctx.fillText(`${feet}'${inches}"`, w - 46, indicatorY + 3);
+
+  ctx.restore();
+}
+
+function drawAccessories(ctx, cx, headY, styleScore) {
+  ctx.save();
+  
+  // 1. Sunglasses/Glasses (Style >= 50)
+  if (styleScore >= 50) {
+    // Dark Tinted Lenses
+    ctx.fillStyle = 'rgba(12, 14, 20, 0.96)';
+    ctx.strokeStyle = styleScore >= 80 ? '#ffea00' : '#00f0ff'; // neon yellow for high style suit, cyan for streetwear
+    ctx.lineWidth = 1.8;
+    
+    // Left Lens
+    ctx.beginPath();
+    ctx.ellipse(cx - 18, headY - 10, 12, 7, 0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Right Lens
+    ctx.beginPath();
+    ctx.ellipse(cx + 18, headY - 10, 12, 7, -0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Sunglasses Bridge
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, headY - 11);
+    ctx.lineTo(cx + 7, headY - 11);
+    ctx.stroke();
+  }
+
+  // 2. Silver Chain Necklace (Style >= 75)
+  if (styleScore >= 75) {
+    ctx.strokeStyle = '#b0b5c2';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(cx, headY + 32, 18, 0.1 * Math.PI, 0.9 * Math.PI, false);
+    ctx.stroke();
+
+    // Medallion
+    ctx.fillStyle = '#ffca28';
+    ctx.beginPath();
+    ctx.arc(cx, headY + 50, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Luxury Over-Ear Headphones (Style >= 90)
+  if (styleScore >= 90) {
+    // Headband
+    ctx.strokeStyle = '#f8f8f2';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(cx, headY - 18, 43, Math.PI * 1.15, Math.PI * 1.85, false);
+    ctx.stroke();
+
+    // Left Ear Cup
+    ctx.fillStyle = '#f8f8f2';
+    ctx.strokeStyle = '#1b1e26';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx - 45, headY - 4, 6, 13, 0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Right Ear Cup
+    ctx.beginPath();
+    ctx.ellipse(cx + 45, headY - 4, 6, 13, -0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
 
   ctx.restore();
 }

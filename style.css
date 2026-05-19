@@ -131,13 +131,119 @@ body {
 .genesis-content {
   margin: auto;
   width: 100%;
-  max-width: 700px;
+  max-width: 1000px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 30px;
   text-align: center;
 }
+
+.genesis-layout-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.meta-shop-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-align: left;
+}
+
+.shop-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  overflow-y: auto;
+  max-height: 270px;
+  flex: 1;
+}
+
+.shop-item-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.2s ease;
+}
+
+.shop-item-card:hover {
+  border-color: var(--accent-yellow);
+}
+
+.shop-item-card.unlocked {
+  border-color: var(--accent-green);
+  background: rgba(57, 255, 20, 0.02);
+}
+
+.shop-item-info {
+  flex: 1;
+}
+
+.shop-item-name {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shop-item-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.shop-item-buy-btn {
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 184, 108, 0.1);
+  border: 1px solid var(--accent-yellow);
+  color: var(--accent-yellow);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.shop-item-buy-btn:hover {
+  background: var(--accent-yellow);
+  color: #000;
+  box-shadow: 0 0 8px rgba(255, 184, 108, 0.3);
+}
+
+.shop-item-buy-btn.purchased {
+  background: rgba(57, 255, 20, 0.1);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  cursor: default;
+  box-shadow: none;
+}
+
+.shop-item-buy-btn:disabled:not(.purchased) {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
 
 .glitch-title {
   font-size: 4.5rem;
@@ -1753,6 +1859,11 @@ body {
     overflow-y: auto;
     height: auto;
     align-items: flex-start;
+  }
+
+  .genesis-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
   }
 
   .game-container {

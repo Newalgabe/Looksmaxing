@@ -28,19 +28,33 @@
         <h1 class="glitch-title" data-text="ROLL THE DICE">ROLL THE DICE</h1>
         <p class="subtitle">A Genetic Lottery Roguelite</p>
         
-        <div class="genetics-terminal-box">
-          <div class="terminal-header">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-            <span class="terminal-title">GENETIC_LOTTERY_SEQUENCER.EXE</span>
-          </div>
-          <div class="terminal-body" id="genesis-stats-panel">
-            <div class="matrix-loader" id="genesis-loader">
-              <div class="spinner"></div>
-              <p class="loading-text">ROLLING DNA STRANDS...</p>
+        <div class="genesis-layout-grid">
+          <!-- DNA Sequencer Box -->
+          <div class="genetics-terminal-box">
+            <div class="terminal-header">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">GENETIC_LOTTERY_SEQUENCER.EXE</span>
             </div>
-            <div class="rolled-stats-display hidden" id="genesis-stats-display">
+            <div class="terminal-body" id="genesis-stats-panel">
+              <div class="matrix-loader" id="genesis-loader">
+                <div class="spinner"></div>
+                <p class="loading-text">ROLLING DNA STRANDS...</p>
+              </div>
+              <div class="rolled-stats-display hidden" id="genesis-stats-display">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Meta Shop Panel -->
+          <div class="panel meta-shop-panel">
+            <div class="panel-header">
+              <h3>🧬 COPE SHOP // PERMANENT UPGRADES</h3>
+              <span class="neon-tag text-yellow" id="shop-tokens-badge">TOKENS: <strong id="shop-tokens-val">0</strong></span>
+            </div>
+            <div class="panel-body shop-items-container" id="meta-upgrades-list">
               <!-- Rendered via JS -->
             </div>
           </div>

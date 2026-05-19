@@ -10,6 +10,101 @@ import { BattleSystem } from './battle.js';
 import { DatingSimulator } from './dating.js';
 import { generateForumThread } from './forum.js';
 
+// --- Metagame Persistent Upgrades ---
+let copeTokens = parseInt(localStorage.getItem('looksmax_cope_tokens') || '0');
+let unlockedPerks = JSON.parse(localStorage.getItem('looksmax_unlocked_perks') || '{}');
+
+const METAGAME_PERKS = [
+  {
+    id: 'high_metabolism',
+    name: 'High Metabolism',
+    desc: '+20% effect on Gym-maxxing frame gains.',
+    cost: 100
+  },
+  {
+    id: 'good_donor_area',
+    name: 'Good Donor Area',
+    desc: '50% cheaper hair transplants ($3,000 instead of $6,000).',
+    cost: 150
+  },
+  {
+    id: 'rich_uncle',
+    name: 'Rich Uncle',
+    desc: 'Start each life with $1,500 cash instead of $500.',
+    cost: 200
+  },
+  {
+    id: 'symmetrical_genes',
+    name: 'Symmetrical Genes',
+    desc: '60% chance to roll Symmetrical structure at birth.',
+    cost: 250
+  }
+];
+
+function renderShop() {
+  const container = document.getElementById('meta-upgrades-list');
+  const tokensVal = document.getElementById('shop-tokens-val');
+  
+  if (!container || !tokensVal) return;
+  
+  tokensVal.textContent = copeTokens;
+  container.innerHTML = '';
+  
+  METAGAME_PERKS.forEach(perk => {
+    const card = document.createElement('div');
+    const isUnlocked = unlockedPerks[perk.id] === true;
+    card.className = `shop-item-card ${isUnlocked ? 'unlocked' : ''}`;
+    
+    card.innerHTML = `
+      <div class="shop-item-info">
+        <div class="shop-item-name">
+          <span>${perk.name}</span>
+          ${isUnlocked ? '<span class="neon-tag text-green" style="font-size: 8px; padding: 2px 4px;">ACTIVE</span>' : ''}
+        </div>
+        <div class="shop-item-desc">${perk.desc}</div>
+      </div>
+      <button class="shop-item-buy-btn ${isUnlocked ? 'purchased' : ''}" data-id="${perk.id}" ${isUnlocked ? '' : (copeTokens < perk.cost ? 'disabled' : '')}>
+        ${isUnlocked ? 'UNLOCKED' : `${perk.cost} C`}
+      </button>
+    `;
+    
+    if (!isUnlocked && copeTokens >= perk.cost) {
+      card.querySelector('.shop-item-buy-btn').addEventListener('click', () => {
+        copeTokens -= perk.cost;
+        unlockedPerks[perk.id] = true;
+        localStorage.setItem('looksmax_cope_tokens', copeTokens);
+        localStorage.setItem('looksmax_unlocked_perks', JSON.stringify(unlockedPerks));
+        
+        playSound('success');
+        logToConsole(`Purchased perk: ${perk.name}!`, 'success');
+        renderShop();
+        
+        // Re-reset active game instance with new perks so immediate roll accounts for it
+        game.reset(unlockedPerks);
+        renderGenesisPreview(game);
+      });
+    }
+    
+    container.appendChild(card);
+  });
+}
+
+let animationFrameId = null;
+function startAnimationLoop() {
+  if (animationFrameId) return;
+  function tick(timestamp) {
+    if (screenGenesis.classList.contains('active')) {
+      // Background loop idle, draw dummy avatar occasionally if desired
+    } else if (screenGameBoard.classList.contains('active')) {
+      drawAvatar(mainCanvas, game, timestamp);
+    } else if (screenGameOver.classList.contains('active')) {
+      drawAvatar(finalCanvas, game, timestamp);
+    }
+    animationFrameId = requestAnimationFrame(tick);
+  }
+  animationFrameId = requestAnimationFrame(tick);
+}
+
 // --- Web Audio API Synth ---
 let audioCtx = null;
 let soundEnabled = true;
@@ -218,6 +313,8 @@ let dating = null;
 function init() {
   setupEventListeners();
   setupAudioControl();
+  renderShop();
+  startAnimationLoop();
 }
 
 function setupAudioControl() {
@@ -354,6 +451,7 @@ function setupEventListeners() {
 
   document.getElementById('btn-restart').addEventListener('click', () => {
     playSound('click');
+    renderShop();
     switchScreen('screen-genesis');
     // Hide game board and final blocks
     btnRollGenetics.classList.remove('hidden');
@@ -389,7 +487,7 @@ function triggerRollAnimation() {
       clearInterval(rollInterval);
       
       // Roll player's actual genetics
-      game.reset();
+      game.reset(unlockedPerks);
       renderGenesisPreview(game);
       
       genesisLoader.classList.add('hidden');
@@ -509,8 +607,7 @@ function updateDashboard() {
   // Avatar Canvas Ticker
   avatarTicker.textContent = `STATUS: ONLINE // SMV: ${game.smv} // PARTNER: ${game.hasDatingPartner ? game.partnerName : 'SINGLE'}`;
 
-  // Redraw Canvas Avatar
-  drawAvatar(mainCanvas, game);
+  // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }
 
 // --- Year Progression & Events ---
@@ -543,8 +640,12 @@ function triggerGameOver(reasonText) {
   switchScreen('screen-gameover');
   document.getElementById('txt-death-reason').textContent = reasonText;
 
-  // Render final avatar canvas
-  drawAvatar(finalCanvas, game);
+  // Render final avatar canvas (handled by loop now)
+
+  // Calculate Cope Tokens earned: base SMV + botched surgeries
+  const tokensEarned = Math.round(game.smv * 15 + game.surgeryBotchedCount * 10);
+  copeTokens += tokensEarned;
+  localStorage.setItem('looksmax_cope_tokens', copeTokens);
 
   // Compile final biometrics list
   const ft = Math.floor(game.height / 12);
@@ -582,6 +683,10 @@ function triggerGameOver(reasonText) {
     <div class="stat-row-detail">
       <span>Surgeries Botched:</span>
       <strong class="${game.surgeryBotchedCount > 0 ? 'text-pink' : ''}">${game.surgeryBotchedCount}</strong>
+    </div>
+    <div class="stat-row-detail highlight-row" style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 5px;">
+      <span>Cope Tokens Earned:</span>
+      <strong class="text-yellow">+${tokensEarned} Tokens</strong>
     </div>
   `;
 
