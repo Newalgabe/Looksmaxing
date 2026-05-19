@@ -48,7 +48,7 @@ export class GameState {
     this.style = this.randomRange(10, 50); // 0-100
     this.confidence = this.randomRange(40, 85); // 0-100
 
-    this.smv = 5.0;
+    this.smv = 4.0;
     this.socialTier = 'NORMIE';
     this.log = [];
     this.isDead = false;
@@ -58,6 +58,8 @@ export class GameState {
     this.hasDatingPartner = false;
     this.partnerName = "";
     this.datingScore = 0;
+    this.followers = 0;
+    this.hasInfluencerCard = false;
     this.opponentsDefeated = [];
     
     // Botch tracking for rendering scars/visual debuffs
@@ -172,28 +174,169 @@ export class GameState {
     // Botched Surgeries Penalty
     score -= (this.surgeryBotchedCount * 1.5);
 
-    // Clamp score
-    this.smv = parseFloat(Math.max(1.0, Math.min(10.0, score)).toFixed(1));
+    // Clamp score (adjusted to PSL 8 scale)
+    let pslScore = parseFloat((score * 0.8).toFixed(1));
+    this.smv = parseFloat(Math.max(1.0, Math.min(8.0, pslScore)).toFixed(1));
 
     // Social Tier Mapping
     if (this.gender === 'female') {
-      if (this.smv >= 9.0) this.socialTier = 'STACY / ASCENDED';
-      else if (this.smv >= 7.5) this.socialTier = 'STACYLITE';
-      else if (this.smv >= 6.0) this.socialTier = 'HIGH TIER BECKY';
-      else if (this.smv >= 4.5) this.socialTier = 'BECKY';
-      else if (this.smv >= 3.0) this.socialTier = 'SUB-HUMAN';
+      if (this.smv >= 7.2) this.socialTier = 'STACY / ASCENDED';
+      else if (this.smv >= 6.0) this.socialTier = 'STACYLITE';
+      else if (this.smv >= 4.8) this.socialTier = 'HIGH TIER BECKY';
+      else if (this.smv >= 3.6) this.socialTier = 'BECKY';
+      else if (this.smv >= 2.4) this.socialTier = 'SUB-HUMAN';
       else this.socialTier = 'FEMCEL';
     } else {
-      if (this.smv >= 9.0) this.socialTier = 'GIGACHAD / ASCENDED';
-      else if (this.smv >= 7.5) this.socialTier = 'CHADLITE';
-      else if (this.smv >= 6.0) this.socialTier = 'HIGH TIER NORMAL';
-      else if (this.smv >= 4.5) this.socialTier = 'NORMIE';
-      else if (this.smv >= 3.0) this.socialTier = 'SUB-HUMAN';
+      if (this.smv >= 7.2) this.socialTier = 'GIGACHAD / ASCENDED';
+      else if (this.smv >= 6.0) this.socialTier = 'CHADLITE';
+      else if (this.smv >= 4.8) this.socialTier = 'HIGH TIER NORMAL';
+      else if (this.smv >= 3.6) this.socialTier = 'NORMIE';
+      else if (this.smv >= 2.4) this.socialTier = 'SUB-HUMAN';
       else this.socialTier = 'TRUECEL';
     }
   }
 
   // ACTIONS
+  postTikTok(styleId) {
+    if (this.ap < 2) return { error: "Not enough Action Points (AP). Need 2 AP." };
+    if (this.cash < 100) return { error: "Not enough cash. Need $100 for camera/lighting gear." };
+
+    this.ap -= 2;
+    this.cash -= 100;
+
+    let views = 0;
+    let likes = 0;
+    let newFollowers = 0;
+    let cashEarned = 0;
+    let confidenceEffect = 0;
+    let comments = [];
+
+    const isFemale = this.gender === 'female';
+
+    if (styleId === 'sigma_jaw') {
+      const hasGoodJaw = this.jaw === 'Chiseled' || this.jaw === 'Sharp';
+      if (hasGoodJaw) {
+        views = this.randomRange(5000, 25000);
+        likes = Math.floor(views * this.randomRange(15, 30) / 100);
+        newFollowers = Math.floor(likes * 0.4);
+        cashEarned = Math.floor(views * 0.02);
+        confidenceEffect = 15;
+        comments = [
+          isFemale ? "Gigastacy jawline is insane 😭" : "Gigachad jawline is insane 😭",
+          "Bro is cut from marble",
+          "What is that bone structure?!",
+          "Mogged by a shadow flex.",
+          "Shadow line goes crazy"
+        ];
+      } else {
+        views = this.randomRange(500, 2000);
+        likes = Math.floor(views * this.randomRange(2, 6) / 100);
+        newFollowers = Math.floor(likes * 0.1);
+        confidenceEffect = -10;
+        comments = [
+          "Receding jaw detected, delete this",
+          "Bro tried to filter his jawline",
+          "Bro has no chin support",
+          "Underbite flex?",
+          "Lmao stick to writing guides"
+        ];
+      }
+    } else if (styleId === 'retinol_glaze') {
+      if (this.skin >= 60) {
+        views = this.randomRange(4000, 18000);
+        likes = Math.floor(views * this.randomRange(12, 25) / 100);
+        newFollowers = Math.floor(likes * 0.35);
+        cashEarned = Math.floor(views * 0.015);
+        confidenceEffect = 10;
+        comments = [
+          "Glass skin routine please!",
+          "That glow is unreal",
+          "Bro is literally radiating",
+          "Drop the skincare stack",
+          "10/10 glazed donut aesthetic"
+        ];
+      } else {
+        views = this.randomRange(300, 1500);
+        likes = Math.floor(views * this.randomRange(2, 5) / 100);
+        newFollowers = Math.floor(likes * 0.05);
+        confidenceEffect = -15;
+        comments = [
+          "Cystic acne breakout spotted",
+          "Need accutane immediately",
+          "Is that a pimple or a third eye?",
+          "Bro looks greasy, not glazed",
+          "Bro needs to wash his pillowcases"
+        ];
+      }
+    } else if (styleId === 'height_flex') {
+      const isTall = isFemale ? this.height >= 69 : this.height >= 72;
+      if (isTall) {
+        views = this.randomRange(6000, 30000);
+        likes = Math.floor(views * this.randomRange(15, 35) / 100);
+        newFollowers = Math.floor(likes * 0.45);
+        cashEarned = Math.floor(views * 0.025);
+        confidenceEffect = 20;
+        comments = [
+          isFemale ? "Model height queen!" : "6'3+ absolute titan",
+          "The camera angle is wild",
+          "Legs for days",
+          "Mogging the ceiling fan",
+          "Skeletal frame maxxing"
+        ];
+      } else {
+        views = this.randomRange(400, 2500);
+        likes = Math.floor(views * this.randomRange(3, 7) / 100);
+        newFollowers = Math.floor(likes * 0.1);
+        confidenceEffect = -12;
+        comments = [
+          "Bro is standing on a stool",
+          "Short king energy",
+          "Bad camera angle cope",
+          "Literally 5'5 framelet",
+          "We can see the shoe inserts"
+        ];
+      }
+    } else {
+      views = this.randomRange(2000, 10000);
+      likes = Math.floor(views * this.randomRange(10, 20) / 100);
+      newFollowers = Math.floor(likes * 0.2);
+      cashEarned = Math.floor(views * 0.01);
+      confidenceEffect = 5;
+      comments = [
+        "Realest post on the app",
+        "Literally me",
+        "Cope of the century",
+        "Lay down and rot gang",
+        "Bro speaks fluent brainrot"
+      ];
+    }
+
+    this.followers += newFollowers;
+    this.cash += cashEarned;
+    this.confidence = Math.max(0, Math.min(100, this.confidence + confidenceEffect));
+
+    let cardUnlocked = false;
+    if (this.followers >= 5000 && !this.hasInfluencerCard) {
+      this.hasInfluencerCard = true;
+      cardUnlocked = true;
+      this.log.push("✨ Unlocked Combat Card: INFLUENCER AURA! (5,000+ followers reached)");
+    }
+
+    this.updateSMV();
+
+    return {
+      success: true,
+      views,
+      likes,
+      newFollowers,
+      cashEarned,
+      confidenceEffect,
+      comments,
+      cardUnlocked,
+      totalFollowers: this.followers
+    };
+  }
+
   doWork() {
     if (this.ap < 2) return false;
     this.ap -= 2;

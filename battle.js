@@ -55,7 +55,7 @@ export class BattleSystem {
           avatar: '🕶️',
           skepticism: 60,
           difficulty: 'Easy',
-          reqSMV: 4.5,
+          reqSMV: 3.6,
           dialogs: {
             start: "Shoes aren't right, hair is suspicious. You aren't on the list, sweetie.",
             hit: "Okay, your skin is somewhat glowing. Let me review my clipboard.",
@@ -77,7 +77,7 @@ export class BattleSystem {
           avatar: '🧘‍♀️',
           skepticism: 85,
           difficulty: 'Medium',
-          reqSMV: 5.5,
+          reqSMV: 4.4,
           dialogs: {
             start: "Nice clavicles, did your mother design them? Post abs or walk away.",
             hit: "Okay, you've been doing core. But what's your waist-to-hip ratio?",
@@ -99,7 +99,7 @@ export class BattleSystem {
           avatar: '🏋️‍♂️',
           skepticism: 110,
           difficulty: 'Hard',
-          reqSMV: 6.5,
+          reqSMV: 5.2,
           dialogs: {
             start: "I only date girls who are at least 8/10 Stacy. Convince me, or I swipe left.",
             hit: "Ooh, nice V-line jaw. Did a surgeon do that or is it genetics?",
@@ -122,7 +122,7 @@ export class BattleSystem {
           avatar: '💼',
           skepticism: 130,
           difficulty: 'Extreme',
-          reqSMV: 7.0,
+          reqSMV: 5.6,
           dialogs: {
             start: "Your resume is average. Show me you have the visual presence of a leader.",
             hit: "Imposing posture. Very well, proceed with your proposal.",
@@ -138,13 +138,35 @@ export class BattleSystem {
           }
         },
         {
+          id: 'clav_influencer',
+          name: 'Clav (@clavicular0)',
+          title: 'Aesthetic Reviewer & Influencer',
+          avatar: '🎭',
+          skepticism: 140,
+          difficulty: 'Hard',
+          reqSMV: 5.8,
+          dialogs: {
+            start: "Midface ratio is too long. Let me see your eye area, or you get blocked.",
+            hit: "Hollow cheekbones shadow detected. Not bad, your facial thirds align.",
+            attack: "Zero jaw projection and negative tilt. Mid. Blocked.",
+            defeat: "Aesthetic bones. I'm reposting you on my reels. Ascended.",
+            victory: "Banned from the DMs. You lack the bone aesthetics. Over."
+          },
+          rewards: {
+            cash: 2000,
+            confidence: 30,
+            frame: 15,
+            log: "Clav rated you as a solid high-tier aesthetic model and reposted you! Earned $2,000 and +15 Frame!"
+          }
+        },
+        {
           id: 'brad_boss',
           name: 'Brad (Managing Director)',
           title: 'Corporate Dominator',
           avatar: '👔',
           skepticism: 150,
           difficulty: 'Very Hard',
-          reqSMV: 7.5,
+          reqSMV: 6.0,
           dialogs: {
             start: "I need you to work this weekend. Unless you have the presence to negotiate a raise, sit down.",
             hit: "Okay, you have some serious posture presence. Go on.",
@@ -166,7 +188,7 @@ export class BattleSystem {
           avatar: '👑',
           skepticism: 200,
           difficulty: 'Impossible',
-          reqSMV: 8.5,
+          reqSMV: 6.8,
           dialogs: {
             start: "Rate thread incoming. If your Ludwig scale is 3, you are banned immediately.",
             hit: "Wait... Perfect symmetry? V-line jaw? Is this a CGI model?",
@@ -178,7 +200,7 @@ export class BattleSystem {
             cash: 5000,
             confidence: 50,
             style: 20,
-            log: "You defeated the Forum Admin! You are now stickied as Stacy on the homepage (+5,000 cash, +50% Confidence)!"
+            log: "You defeated the Forum Admin! You are now stickied as Stacy on the homepage (+5,000 cash, +50% Confidence)."
           }
         }
       ];
@@ -212,7 +234,7 @@ export class BattleSystem {
           avatar: '🕶️',
           skepticism: 60,
           difficulty: 'Easy',
-          reqSMV: 4.5,
+          reqSMV: 3.6,
           dialogs: {
             start: "Shoes aren't right, hairline is suspicious. You aren't on the list, bro.",
             hit: "Okay, your jawline is somewhat solid. Let me review my clipboard.",
@@ -234,7 +256,7 @@ export class BattleSystem {
           avatar: '🏋️',
           skepticism: 85,
           difficulty: 'Medium',
-          reqSMV: 5.5,
+          reqSMV: 4.4,
           dialogs: {
             start: "Nice clavicles, did your mother design them? Post physique or walk away.",
             hit: "Okay, you've been benching. But what's your deadlift?",
@@ -256,7 +278,7 @@ export class BattleSystem {
           avatar: '💅',
           skepticism: 110,
           difficulty: 'Hard',
-          reqSMV: 6.5,
+          reqSMV: 5.2,
           dialogs: {
             start: "I only date guys over 6'1. Convince me, or I swipe left.",
             hit: "Ooh, chiseled chin. Did a surgeon do that or is it genetics?",
@@ -279,7 +301,7 @@ export class BattleSystem {
           avatar: '💼',
           skepticism: 130,
           difficulty: 'Extreme',
-          reqSMV: 7.0,
+          reqSMV: 5.6,
           dialogs: {
             start: "Your resume is average. Show me you have the visual presence of a leader.",
             hit: "Imposing height. Very well, proceed with your proposal.",
@@ -295,13 +317,35 @@ export class BattleSystem {
           }
         },
         {
+          id: 'clav_influencer',
+          name: 'Clav (@clavicular0)',
+          title: 'Aesthetic Reviewer & Influencer',
+          avatar: '🎭',
+          skepticism: 140,
+          difficulty: 'Hard',
+          reqSMV: 5.8,
+          dialogs: {
+            start: "Midface ratio is too long. Let me see your eye area, or you get blocked.",
+            hit: "Hollow cheekbones shadow detected. Not bad, your facial thirds align.",
+            attack: "Zero jaw projection and negative tilt. Mid. Blocked.",
+            defeat: "Aesthetic bones. I'm reposting you on my reels. Ascended.",
+            victory: "Banned from the DMs. You lack the bone aesthetics. Over."
+          },
+          rewards: {
+            cash: 2000,
+            confidence: 30,
+            frame: 15,
+            log: "Clav rated you as a solid high-tier aesthetic model and reposted you! Earned $2,000 and +15 Frame!"
+          }
+        },
+        {
           id: 'brad_boss',
           name: 'Brad (Managing Director)',
           title: 'Corporate Dominator',
           avatar: '👔',
           skepticism: 150,
           difficulty: 'Very Hard',
-          reqSMV: 7.5,
+          reqSMV: 6.0,
           dialogs: {
             start: "I need you to work this weekend. Unless you have the presence to negotiate a raise, sit down.",
             hit: "Okay, you have some serious frame presence. Go on.",
@@ -323,7 +367,7 @@ export class BattleSystem {
           avatar: '👑',
           skepticism: 200,
           difficulty: 'Impossible',
-          reqSMV: 8.5,
+          reqSMV: 6.8,
           dialogs: {
             start: "Rate thread incoming. If your tilt is negative, you are banned immediately.",
             hit: "Wait... Positive canthal tilt? Chiseled jaw? Is this a CGI model?",
@@ -497,6 +541,21 @@ export class BattleSystem {
         power: 26,
         effect: (b) => { b.damageOpponent(26); },
         emoji: '🧥'
+      });
+    }
+
+    // 8. TIKTOK / SOCIAL MEDIA CARDS
+    if (this.player.hasInfluencerCard) {
+      cardPool.push({
+        name: 'Influencer Aura',
+        desc: 'Unleash social media clout. High damage and heal.',
+        cost: 2,
+        power: 30,
+        effect: (b) => {
+          b.damageOpponent(30);
+          b.healPlayer(20);
+        },
+        emoji: '🤳'
       });
     }
 

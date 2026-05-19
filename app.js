@@ -13,7 +13,13 @@ import { generateForumThread, getCopingReplies, generateForumResponse } from './
 // --- Metagame Persistent Upgrades ---
 let copeTokens = parseInt(localStorage.getItem('looksmax_cope_tokens') || '0');
 let unlockedPerks = JSON.parse(localStorage.getItem('looksmax_unlocked_perks') || '{}');
+let unlockedThemes = JSON.parse(localStorage.getItem('looksmax_unlocked_themes') || '{"default":true}');
+let activeTheme = localStorage.getItem('looksmax_active_theme') || 'default';
+let activeShopTab = 'perks';
 let chosenGender = 'male';
+
+// Apply active theme immediately on startup
+document.body.setAttribute('data-theme', activeTheme);
 
 const METAGAME_PERKS = [
   {
@@ -42,6 +48,14 @@ const METAGAME_PERKS = [
   }
 ];
 
+const THEME_OPTIONS = [
+  { id: 'default', name: 'Default Obsidian', desc: 'Standard cyber dark mode.', cost: 0 },
+  { id: 'stacy-magenta', name: 'Stacy Magenta', desc: 'Bubblegum pink glassmorphism style.', cost: 50 },
+  { id: 'obsidian-incel', name: 'Obsidian Incel', desc: 'High-contrast retro green terminal.', cost: 80 },
+  { id: 'beverly-hills', name: 'Beverly Hills Emerald', desc: 'Luxury gold & emerald green.', cost: 100 },
+  { id: 'turkey-neon', name: 'Turkey Neon', desc: 'Cyberpunk orange & neon green.', cost: 120 }
+];
+
 function renderShop() {
   const container = document.getElementById('meta-upgrades-list');
   const tokensVal = document.getElementById('shop-tokens-val');
@@ -51,43 +65,159 @@ function renderShop() {
   tokensVal.textContent = copeTokens;
   container.innerHTML = '';
   
-  METAGAME_PERKS.forEach(perk => {
-    const card = document.createElement('div');
-    const isUnlocked = unlockedPerks[perk.id] === true;
-    card.className = `shop-item-card ${isUnlocked ? 'unlocked' : ''}`;
-    
-    card.innerHTML = `
-      <div class="shop-item-info">
-        <div class="shop-item-name">
-          <span>${perk.name}</span>
-          ${isUnlocked ? '<span class="neon-tag text-green" style="font-size: 8px; padding: 2px 4px;">ACTIVE</span>' : ''}
+  // Highlight active tab
+  document.querySelectorAll('.shop-tab-btn').forEach(btn => {
+    if (btn.getAttribute('data-shop-tab') === activeShopTab) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  if (activeShopTab === 'perks') {
+    METAGAME_PERKS.forEach(perk => {
+      const card = document.createElement('div');
+      const isUnlocked = unlockedPerks[perk.id] === true;
+      card.className = `shop-item-card ${isUnlocked ? 'unlocked' : ''}`;
+      
+      card.innerHTML = `
+        <div class="shop-item-info">
+          <div class="shop-item-name">
+            <span>${perk.name}</span>
+            ${isUnlocked ? '<span class="neon-tag text-green" style="font-size: 8px; padding: 2px 4px;">ACTIVE</span>' : ''}
+          </div>
+          <div class="shop-item-desc">${perk.desc}</div>
         </div>
-        <div class="shop-item-desc">${perk.desc}</div>
-      </div>
-      <button class="shop-item-buy-btn ${isUnlocked ? 'purchased' : ''}" data-id="${perk.id}" ${isUnlocked ? '' : (copeTokens < perk.cost ? 'disabled' : '')}>
-        ${isUnlocked ? 'UNLOCKED' : `${perk.cost} C`}
-      </button>
-    `;
-    
-    if (!isUnlocked && copeTokens >= perk.cost) {
-      card.querySelector('.shop-item-buy-btn').addEventListener('click', () => {
-        copeTokens -= perk.cost;
-        unlockedPerks[perk.id] = true;
-        localStorage.setItem('looksmax_cope_tokens', copeTokens);
-        localStorage.setItem('looksmax_unlocked_perks', JSON.stringify(unlockedPerks));
-        
-        playSound('success');
-        logToConsole(`Purchased perk: ${perk.name}!`, 'success');
-        renderShop();
-        
-        // Re-reset active game instance with new perks so immediate roll accounts for it
-        game.reset(unlockedPerks);
-        renderGenesisPreview(game);
-      });
+        <button class="shop-item-buy-btn ${isUnlocked ? 'purchased' : ''}" data-id="${perk.id}" ${isUnlocked ? '' : (copeTokens < perk.cost ? 'disabled' : '')}>
+          ${isUnlocked ? 'UNLOCKED' : `${perk.cost} C`}
+        </button>
+      `;
+      
+      if (!isUnlocked && copeTokens >= perk.cost) {
+        card.querySelector('.shop-item-buy-btn').addEventListener('click', () => {
+          copeTokens -= perk.cost;
+          unlockedPerks[perk.id] = true;
+          localStorage.setItem('looksmax_cope_tokens', copeTokens);
+          localStorage.setItem('looksmax_unlocked_perks', JSON.stringify(unlockedPerks));
+          
+          playSound('success');
+          logToConsole(`Purchased perk: ${perk.name}!`, 'success');
+          renderShop();
+          
+          // Re-reset active game instance with new perks so immediate roll accounts for it
+          game.reset(unlockedPerks);
+          renderGenesisPreview(game);
+        });
+      }
+      
+      container.appendChild(card);
+    });
+  } 
+  else if (activeShopTab === 'themes') {
+    THEME_OPTIONS.forEach(theme => {
+      const card = document.createElement('div');
+      const isUnlocked = unlockedThemes[theme.id] === true;
+      const isActive = activeTheme === theme.id;
+      card.className = `shop-item-card ${isUnlocked ? 'unlocked' : ''} ${isActive ? 'active' : ''}`;
+      
+      card.innerHTML = `
+        <div class="shop-item-info">
+          <div class="shop-item-name">
+            <span>${theme.name}</span>
+            ${isActive ? '<span class="neon-tag text-cyan" style="font-size: 8px; padding: 2px 4px;">EQUIPPED</span>' : ''}
+          </div>
+          <div class="shop-item-desc">${theme.desc}</div>
+        </div>
+        <button class="shop-item-buy-btn ${isActive ? 'purchased' : (isUnlocked ? 'equip-btn' : '')}" data-id="${theme.id}" ${(!isUnlocked && copeTokens < theme.cost) ? 'disabled' : ''}>
+          ${isActive ? 'ACTIVE' : (isUnlocked ? 'EQUIP' : `${theme.cost} C`)}
+        </button>
+      `;
+      
+      const btn = card.querySelector('.shop-item-buy-btn');
+      if (!isUnlocked && copeTokens >= theme.cost) {
+        btn.addEventListener('click', () => {
+          copeTokens -= theme.cost;
+          unlockedThemes[theme.id] = true;
+          localStorage.setItem('looksmax_cope_tokens', copeTokens);
+          localStorage.setItem('looksmax_unlocked_themes', JSON.stringify(unlockedThemes));
+          
+          playSound('success');
+          logToConsole(`Unlocked theme: ${theme.name}!`, 'success');
+          renderShop();
+        });
+      } else if (isUnlocked && !isActive) {
+        btn.addEventListener('click', () => {
+          activeTheme = theme.id;
+          localStorage.setItem('looksmax_active_theme', activeTheme);
+          document.body.setAttribute('data-theme', activeTheme);
+          playSound('click');
+          logToConsole(`Equipped theme: ${theme.name}.`, 'success');
+          renderShop();
+        });
+      }
+      
+      container.appendChild(card);
+    });
+  } 
+  else if (activeShopTab === 'memories') {
+    const pastRuns = JSON.parse(localStorage.getItem('looksmax_past_runs') || '[]');
+    if (pastRuns.length === 0) {
+      container.innerHTML = `<div style="color: var(--text-muted); font-size: 11px; text-align: center; padding: 20px;">No genetic memories recorded yet. Ascend or rot to leave a legacy.</div>`;
+      return;
     }
     
-    container.appendChild(card);
-  });
+    pastRuns.forEach((run, index) => {
+      const card = document.createElement('div');
+      card.className = 'shop-item-card memory-item-card';
+      card.style.display = 'flex';
+      card.style.gap = '15px';
+      card.style.alignItems = 'center';
+      card.style.padding = '12px';
+      card.style.background = 'var(--bg-tertiary)';
+      card.style.border = '1px solid var(--border-color)';
+      card.style.borderRadius = 'var(--radius-md)';
+      card.style.marginBottom = '10px';
+      
+      card.innerHTML = `
+        <canvas class="memory-canvas-${index}" width="70" height="90" style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #000; flex-shrink: 0;"></canvas>
+        <div style="flex: 1; text-align: left;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="color: var(--accent-cyan); font-size: 12px;">${run.name} (${run.gender === 'female' ? 'F' : 'M'})</strong>
+            <span style="font-size: 9px; color: var(--text-muted);">${run.date}</span>
+          </div>
+          <div style="font-size: 10px; color: var(--text-main); margin-top: 4px; line-height: 1.4;">
+            PSL Rating: <strong class="text-cyan">${run.smv.toFixed(2)}</strong> // Status: <strong class="text-green">${run.socialTier}</strong><br>
+            Wealth: <strong class="text-yellow">$${(run.cash || 0).toLocaleString()}</strong> // Age Reached: <strong>${run.age}</strong><br>
+            <em style="color: var(--accent-magenta); font-size: 9px;">${run.reason || ''}</em>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+      
+      // Draw the portrait on the memory canvas
+      setTimeout(() => {
+        const cvs = card.querySelector(`.memory-canvas-${index}`);
+        if (cvs) {
+          const stats = {
+            gender: run.gender,
+            height: run.avatarData ? run.avatarData.height : 68,
+            jaw: run.avatarData ? run.avatarData.jaw : 'Average',
+            tilt: run.avatarData ? run.avatarData.tilt : 'Neutral',
+            hairline: run.avatarData ? run.avatarData.hairline : 2,
+            skin: run.avatarData ? run.avatarData.skin : 50,
+            frame: run.avatarData ? run.avatarData.frame : 50,
+            style: run.avatarData ? run.avatarData.style : 30,
+            symmetry: run.avatarData ? run.avatarData.symmetry : 'Average',
+            confidence: 80,
+            botchedJaw: run.avatarData ? run.avatarData.botchedJaw : false,
+            botchedHair: run.avatarData ? run.avatarData.botchedHair : false,
+            botchedCanthoplasty: run.avatarData ? run.avatarData.botchedCanthoplasty : false
+          };
+          drawAvatar(cvs, stats, 0);
+        }
+      }, 20);
+    });
+  }
 }
 
 let animationFrameId = null;
@@ -435,6 +565,15 @@ const eventDesc = document.getElementById('event-modal-desc');
 const eventImpact = document.getElementById('event-modal-impact');
 const btnCloseEvent = document.getElementById('btn-close-event');
 
+// TikTok Modals & Actions
+const actTiktok = document.getElementById('act-tiktok');
+const tiktokModal = document.getElementById('tiktok-modal');
+const btnTiktokCancel = document.getElementById('btn-tiktok-cancel');
+const btnTiktokClose = document.getElementById('btn-tiktok-close');
+const tiktokChooseStage = document.getElementById('tiktok-choose-stage');
+const tiktokResultStage = document.getElementById('tiktok-result-stage');
+const tiktokCommentsContainer = document.getElementById('tiktok-comments-container');
+
 // Navigation Tabs
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -587,6 +726,109 @@ function setupEventListeners() {
     surgeryMenu.classList.add('hidden');
   });
 
+  // TikTok Studio actions
+  actTiktok.addEventListener('click', () => {
+    openTiktokStudio();
+  });
+
+  btnTiktokCancel.addEventListener('click', () => {
+    playSound('click');
+    tiktokModal.classList.add('hidden');
+  });
+
+  btnTiktokClose.addEventListener('click', () => {
+    playSound('click');
+    tiktokModal.classList.add('hidden');
+  });
+
+  // Theme Shop Tabs Click
+  document.querySelectorAll('.shop-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      activeShopTab = btn.getAttribute('data-shop-tab');
+      renderShop();
+    });
+  });
+
+  // TikTok post option buttons
+  document.querySelectorAll('.tiktok-option-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const style = btn.getAttribute('data-style');
+      handleTikTokPost(style);
+    });
+  });
+
+  function openTiktokStudio() {
+    playSound('click');
+    tiktokChooseStage.classList.remove('hidden');
+    tiktokResultStage.classList.add('hidden');
+    tiktokModal.classList.remove('hidden');
+
+    const btnJaw = document.getElementById('btn-tiktok-jaw');
+    const btnSkin = document.getElementById('btn-tiktok-skin');
+    const btnHeight = document.getElementById('btn-tiktok-height');
+
+    const hasGoodJaw = game.jaw === 'Chiseled' || game.jaw === 'Sharp';
+    btnJaw.disabled = !hasGoodJaw;
+    
+    btnSkin.disabled = game.skin < 60;
+    
+    const isFemale = game.gender === 'female';
+    const isTall = isFemale ? game.height >= 69 : game.height >= 72;
+    btnHeight.disabled = !isTall;
+  }
+
+  function handleTikTokPost(styleId) {
+    const result = game.postTikTok(styleId);
+    if (result.error) {
+      playSound('error');
+      logToConsole(result.error, 'error');
+      tiktokModal.classList.add('hidden');
+      return;
+    }
+
+    playSound('success');
+
+    // Switch to result stage
+    tiktokChooseStage.classList.add('hidden');
+    tiktokResultStage.classList.remove('hidden');
+
+    // Populate results
+    document.getElementById('tiktok-res-views').textContent = result.views.toLocaleString();
+    document.getElementById('tiktok-res-likes').textContent = result.likes.toLocaleString();
+    document.getElementById('tiktok-res-followers').textContent = `+${result.newFollowers.toLocaleString()}`;
+
+    const impactDiv = document.getElementById('tiktok-res-impact');
+    let impactHtml = `Earned $${result.cashEarned.toLocaleString()} // Total Followers: ${result.totalFollowers.toLocaleString()}`;
+    if (result.confidenceEffect > 0) {
+      impactHtml += `<br><span style="color: var(--accent-green);">+${result.confidenceEffect}% Confidence</span>`;
+    } else if (result.confidenceEffect < 0) {
+      impactHtml += `<br><span style="color: var(--accent-pink);">${result.confidenceEffect}% Confidence (Roasted!)</span>`;
+    }
+    impactDiv.innerHTML = impactHtml;
+
+    // Comments feed animation
+    tiktokCommentsContainer.innerHTML = '';
+    const commentUsers = ["lookmaxxer_x", "skincare_fanatic", "psl_god_99", "cope_dealer", "femcel_girl", "stacy_slayer", "chad_inspector"];
+    
+    let delay = 300;
+    result.comments.forEach((commentText) => {
+      setTimeout(() => {
+        if (tiktokModal.classList.contains('hidden') || tiktokResultStage.classList.contains('hidden')) return;
+        const user = commentUsers[Math.floor(Math.random() * commentUsers.length)];
+        const row = document.createElement('div');
+        row.className = 'tiktok-comment-row';
+        row.innerHTML = `<span class="tiktok-comment-user">@${user}:</span><span class="tiktok-comment-text">${commentText}</span>`;
+        tiktokCommentsContainer.appendChild(row);
+        tiktokCommentsContainer.scrollTop = tiktokCommentsContainer.scrollHeight;
+        playSound('click'); // micro audio feedback
+      }, delay);
+      delay += 800; // stagger comments scrolling in
+    });
+
+    updateDashboard();
+  }
+
   btnEndYear.addEventListener('click', () => {
     endYear();
   });
@@ -715,7 +957,10 @@ function updateDashboard() {
   // Text values
   hudAge.textContent = game.age;
   hudCash.textContent = `$${game.cash.toLocaleString()}`;
-  hudSMV.textContent = `${game.smv} / 10`;
+  hudSMV.textContent = `${game.smv.toFixed(1)} / 8`;
+  if (document.getElementById('hud-followers')) {
+    document.getElementById('hud-followers').textContent = game.followers.toLocaleString();
+  }
   hudAP.textContent = game.ap;
   hudSocialTier.textContent = game.socialTier;
   
@@ -768,9 +1013,12 @@ function updateDashboard() {
   actGym.disabled = game.ap < 2 || game.cash < 100;
   actSkincare.disabled = game.ap < 1 || game.cash < 50;
   actStyling.disabled = game.ap < 1 || game.cash < 150;
+  if (actTiktok) {
+    actTiktok.disabled = game.ap < 2 || game.cash < 100;
+  }
 
   // Avatar Canvas Ticker
-  avatarTicker.textContent = `STATUS: ONLINE // SMV: ${game.smv} // PARTNER: ${game.hasDatingPartner ? game.partnerName : 'SINGLE'}`;
+  avatarTicker.textContent = `STATUS: ONLINE // PSL: ${game.smv.toFixed(1)} // PARTNER: ${game.hasDatingPartner ? game.partnerName : 'SINGLE'}`;
 
   // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }
@@ -812,6 +1060,42 @@ function triggerGameOver(reasonText) {
   copeTokens += tokensEarned;
   localStorage.setItem('looksmax_cope_tokens', copeTokens);
 
+  // Save run to Memories gallery
+  const pastRuns = JSON.parse(localStorage.getItem('looksmax_past_runs') || '[]');
+  const runInfo = {
+    name: game.name,
+    age: game.age,
+    gender: game.gender,
+    smv: game.smv,
+    cash: game.cash,
+    socialTier: game.socialTier,
+    hasDatingPartner: game.hasDatingPartner,
+    partnerName: game.partnerName,
+    surgeryBotchedCount: game.surgeryBotchedCount,
+    reason: reasonText,
+    date: new Date().toLocaleDateString(),
+    avatarData: {
+      gender: game.gender,
+      height: game.height,
+      jaw: game.jaw,
+      tilt: game.tilt,
+      hairline: game.hairline,
+      skin: game.skin,
+      frame: game.frame,
+      style: game.style,
+      symmetry: game.symmetry,
+      botchedJaw: game.botchedJaw,
+      botchedHair: game.botchedHair,
+      botchedCanthoplasty: game.botchedCanthoplasty
+    }
+  };
+  pastRuns.unshift(runInfo);
+  if (pastRuns.length > 10) pastRuns.pop();
+  localStorage.setItem('looksmax_past_runs', JSON.stringify(pastRuns));
+  
+  // Re-render shop
+  renderShop();
+
   // Compile final biometrics list
   const ft = Math.floor(game.height / 12);
   const inVal = game.height % 12;
@@ -819,7 +1103,7 @@ function triggerGameOver(reasonText) {
   finalStatsList.innerHTML = `
     <div class="stat-row-detail">
       <span>Final Rating:</span>
-      <strong class="text-cyan">${game.smv} / 10</strong>
+      <strong class="text-cyan">${game.smv.toFixed(1)} / 8</strong>
     </div>
     <div class="stat-row-detail">
       <span>Social Status:</span>
@@ -1283,6 +1567,9 @@ function renderActiveBattle(container) {
   const oppSkepticismPct = Math.round((battle.opponentSkepticism / battle.opponentMaxSkepticism) * 100);
 
   arena.innerHTML = `
+    <!-- Overlay Canvas for Animations -->
+    <canvas class="battle-effects-canvas" id="combat-fx-canvas" width="400" height="400"></canvas>
+    
     <!-- Opponent Header HUD -->
     <div class="battle-opponent-row" id="opponent-card">
       <span class="battle-opponent-avatar">${opp.avatar}</span>
@@ -1336,15 +1623,22 @@ function renderActiveBattle(container) {
 
     if (battle.energy >= card.cost) {
       cardEl.addEventListener('click', () => {
+        // Prevent clicking multiple cards during animation
+        cardsContainer.querySelectorAll('.battle-card').forEach(c => c.style.pointerEvents = 'none');
+        
         playSound('hit');
-        triggerCardShake();
+        triggerCardAnimation(card.name, arena);
         battle.playCard(idx);
-        if (battle.isOver) {
-          renderBattleResolution(container);
-          updateDashboard();
-        } else {
-          renderSocialTab();
-        }
+        
+        // Wait for animation to finish before rendering next state
+        setTimeout(() => {
+          if (battle.isOver) {
+            renderBattleResolution(container);
+            updateDashboard();
+          } else {
+            renderSocialTab();
+          }
+        }, 800);
       });
     }
 
@@ -1366,13 +1660,91 @@ function renderActiveBattle(container) {
   });
 }
 
-function triggerCardShake() {
+function triggerCardAnimation(cardName, arena) {
+  const canvas = arena.querySelector('#combat-fx-canvas');
+  if (!canvas) return;
+  
+  // Set accurate dimensions
+  canvas.width = arena.clientWidth || 400;
+  canvas.height = arena.clientHeight || 400;
+  
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  let startTime = performance.now();
+  
+  function drawFloatingText(ctx, text, progress, color, x, y) {
+    ctx.save();
+    ctx.font = 'bold 24px var(--font-display)';
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 1 - progress;
+    ctx.translate(x, y - progress * 50);
+    ctx.scale(1 + progress * 0.5, 1 + progress * 0.5);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
+
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / 800, 1);
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    if (cardName === 'Jawline Flash' || cardName === 'Hunter Eye Lock') {
+      const color = cardName === 'Jawline Flash' ? '#00f0ff' : '#ff007f';
+      const startX = 0;
+      const startY = h;
+      const endX = w * progress;
+      const endY = h - (h * progress);
+      
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 10 * (1 - progress);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 20;
+      ctx.stroke();
+      
+      drawFloatingText(ctx, "LASER SHADOW!", progress, color, w/2, h/3);
+    } 
+    else if (cardName === 'Retinol Radiance') {
+      ctx.beginPath();
+      ctx.arc(w/2, h/3, progress * 300, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0, 240, 255, ${1 - progress})`;
+      ctx.lineWidth = 15;
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 30;
+      ctx.stroke();
+      
+      drawFloatingText(ctx, "GLAZED RADIANCE!", progress, '#00f0ff', w/2, h/3);
+    }
+    else if (cardName === 'Model Look' || cardName === 'Influencer Aura' || cardName === 'Loom Over') {
+      ctx.fillStyle = `rgba(255, 0, 127, ${(1 - progress) * 0.5})`;
+      ctx.fillRect(0, 0, w, h);
+      drawFloatingText(ctx, "CRITICAL HIT!", progress, '#ffea00', w/2, h/3);
+    }
+    else {
+      drawFloatingText(ctx, "HIT!", progress, '#ffffff', w/2, h/3);
+    }
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+  
+  requestAnimationFrame(animate);
+
   const oppCard = document.getElementById('opponent-card');
-  if (oppCard) {
-    oppCard.classList.add('shake');
-    setTimeout(() => {
-      oppCard.classList.remove('shake');
-    }, 300);
+  if (cardName === 'Model Look' || cardName === 'Influencer Aura' || cardName === 'Loom Over') {
+    if (oppCard) oppCard.classList.add('shake-heavy');
+    playSound('level-up'); // Use a loud sound for heavy hits
+    setTimeout(() => { if (oppCard) oppCard.classList.remove('shake-heavy') }, 400);
+  } else {
+    if (oppCard) oppCard.classList.add('shake');
+    setTimeout(() => { if (oppCard) oppCard.classList.remove('shake') }, 200);
   }
 }
 

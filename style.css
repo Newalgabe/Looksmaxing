@@ -2117,3 +2117,251 @@ body {
   }
 }
 
+/* ==================== CUSTOM COSMETIC THEMES ==================== */
+body[data-theme="stacy-magenta"] {
+  --bg-primary: #12030f;
+  --bg-secondary: #220b1f;
+  --bg-tertiary: #30102b;
+  --bg-translucent: rgba(34, 11, 31, 0.85);
+  --accent-cyan: #ff00ff;
+  --accent-cyan-glow: rgba(255, 0, 255, 0.4);
+  --accent-magenta: #ff66cc;
+  --accent-magenta-glow: rgba(255, 102, 204, 0.4);
+  --accent-green: #00ffcc;
+  --accent-green-glow: rgba(0, 255, 204, 0.4);
+  --border-color: #591651;
+  --text-main: #ffe6fb;
+  --text-muted: #b580aa;
+}
+
+body[data-theme="obsidian-incel"] {
+  --bg-primary: #020202;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #121212;
+  --bg-translucent: rgba(10, 10, 10, 0.9);
+  --accent-cyan: #39ff14;
+  --accent-cyan-glow: rgba(57, 255, 20, 0.4);
+  --accent-magenta: #00ff00;
+  --accent-magenta-glow: rgba(0, 255, 0, 0.3);
+  --accent-green: #33cc33;
+  --accent-green-glow: rgba(51, 204, 51, 0.3);
+  --accent-yellow: #00ff66;
+  --border-color: #003300;
+  --text-main: #00ff33;
+  --text-muted: #006622;
+}
+
+body[data-theme="beverly-hills"] {
+  --bg-primary: #021a11;
+  --bg-secondary: #052d1e;
+  --bg-tertiary: #0c3e2b;
+  --bg-translucent: rgba(5, 45, 30, 0.85);
+  --accent-cyan: #d4af37; /* gold */
+  --accent-cyan-glow: rgba(212, 175, 55, 0.4);
+  --accent-magenta: #ffd700;
+  --accent-magenta-glow: rgba(255, 215, 0, 0.4);
+  --accent-green: #00ff88;
+  --accent-green-glow: rgba(0, 255, 136, 0.4);
+  --accent-yellow: #eedd82;
+  --border-color: #11573c;
+  --text-main: #e8f5e9;
+  --text-muted: #81c784;
+}
+
+body[data-theme="turkey-neon"] {
+  --bg-primary: #0d0600;
+  --bg-secondary: #1a0f02;
+  --bg-tertiary: #2a1b08;
+  --bg-translucent: rgba(26, 15, 2, 0.85);
+  --accent-cyan: #ff7700; /* Cyber Orange */
+  --accent-cyan-glow: rgba(255, 119, 0, 0.4);
+  --accent-magenta: #00ff66;
+  --accent-magenta-glow: rgba(0, 255, 102, 0.4);
+  --accent-green: #39ff14;
+  --accent-green-glow: rgba(57, 255, 20, 0.4);
+  --border-color: #552b00;
+  --text-main: #ffeedd;
+  --text-muted: #c2a88e;
+}
+
+/* ==================== SHOP TABS STYLE ==================== */
+.shop-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+.shop-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+.shop-tab-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+.shop-tab-btn.active {
+  color: var(--accent-cyan);
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid var(--accent-cyan);
+}
+
+/* ==================== TIKTOK MODAL ==================== */
+.tiktok-modal-content {
+  max-width: 500px !important;
+}
+.tiktok-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.tiktok-option-btn {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-color) !important;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 15px;
+  text-align: left;
+  border-radius: var(--radius-md);
+  color: var(--text-main) !important;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+.tiktok-option-btn:hover:not(:disabled) {
+  border-color: var(--accent-magenta) !important;
+  background: rgba(255, 0, 127, 0.05) !important;
+  transform: translateY(-1px);
+}
+.tiktok-option-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+.tiktok-option-btn .btn-icon {
+  font-size: 24px;
+}
+.tiktok-option-btn .btn-text strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-main);
+  text-transform: uppercase;
+}
+.tiktok-option-btn .btn-text p {
+  margin: 2px 0 0 0;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* TikTok Result State */
+.tiktok-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 10px 0;
+}
+.tiktok-stat-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 8px;
+  text-align: center;
+}
+.tiktok-stat-card .label {
+  display: block;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.tiktok-stat-card strong {
+  font-size: 16px;
+  font-family: var(--font-mono);
+}
+.tiktok-impact-summary {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+  color: var(--accent-green);
+  background: rgba(57, 255, 20, 0.05);
+  border: 1px dashed rgba(57, 255, 20, 0.2);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  margin-bottom: 10px;
+}
+.tiktok-comments-box {
+  background: #000;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  height: 140px;
+}
+.comment-box-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent-magenta);
+  margin-bottom: 6px;
+}
+.tiktok-comments-feed {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 5px;
+}
+.tiktok-comment-row {
+  font-size: 11px;
+  line-height: 1.3;
+  animation: fadeIn 0.3s ease-out;
+  text-align: left;
+}
+.tiktok-comment-user {
+  color: var(--accent-cyan);
+  font-weight: 700;
+  margin-right: 5px;
+}
+.tiktok-comment-text {
+  color: #fff;
+}
+
+/* Battle Overlay Canvas */
+.battle-effects-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+.battle-arena {
+  position: relative; /* ensure effect canvas anchors properly */
+}
+
+/* Screen Shakes */
+.shake-heavy {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+.shake {
+  animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+

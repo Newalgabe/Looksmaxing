@@ -50,9 +50,16 @@
 
           <!-- Meta Shop Panel -->
           <div class="panel meta-shop-panel">
-            <div class="panel-header">
-              <h3>🧬 COPE SHOP // PERMANENT UPGRADES</h3>
-              <span class="neon-tag text-yellow" id="shop-tokens-badge">TOKENS: <strong id="shop-tokens-val">0</strong></span>
+            <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h3>🧬 COPE SHOP</h3>
+                <span class="neon-tag text-yellow" id="shop-tokens-badge">TOKENS: <strong id="shop-tokens-val">0</strong></span>
+              </div>
+              <div class="shop-tabs">
+                <button class="shop-tab-btn active" id="tab-shop-perks" data-shop-tab="perks">🧬 Perks</button>
+                <button class="shop-tab-btn" id="tab-shop-themes" data-shop-tab="themes">🎨 Themes</button>
+                <button class="shop-tab-btn" id="tab-shop-memories" data-shop-tab="memories">🏛️ Memories</button>
+              </div>
             </div>
             <div class="panel-body shop-items-container" id="meta-upgrades-list">
               <!-- Rendered via JS -->
@@ -98,8 +105,12 @@
                 <span class="stat-value text-yellow" id="hud-cash">$500</span>
               </div>
               <div class="stat-row highlight">
-                <span class="stat-label">SMV SCORE:</span>
-                <span class="stat-value text-cyan" id="hud-smv">5.0 / 10</span>
+                <span class="stat-label">PSL RATING:</span>
+                <span class="stat-value text-cyan" id="hud-smv">4.0 / 8</span>
+              </div>
+              <div class="stat-row highlight" style="margin-top: 5px;">
+                <span class="stat-label">TIKTOK FOLLOWERS:</span>
+                <span class="stat-value text-magenta" id="hud-followers">0</span>
               </div>
             </div>
 
@@ -245,7 +256,16 @@
                   </div>
                 </button>
 
-                <button class="action-card warning-card" id="act-surgery">
+                 <button class="action-card" id="act-tiktok">
+                   <div class="action-icon">🤳</div>
+                   <div class="action-details">
+                     <h4>TikTok Maxxing</h4>
+                     <p class="desc">Post content to gain followers, cash, and unlocks.</p>
+                     <span class="cost text-magenta">-$100 cash / -$2 AP</span>
+                   </div>
+                 </button>
+
+                 <button class="action-card warning-card" id="act-surgery">
                   <div class="action-icon">💉</div>
                   <div class="action-details">
                     <h4>Risky Surgery</h4>
@@ -364,6 +384,84 @@
           <!-- -2 Skin, -10 Confidence -->
         </div>
         <button class="btn primary-btn" id="btn-close-event">DEAL WITH IT</button>
+      </div>
+    </div>
+
+    <!-- TikTok Modal -->
+    <div class="modal-overlay hidden" id="tiktok-modal">
+      <div class="event-modal-content tiktok-modal-content">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">📱</span>
+          <h3>TIKTOK-MAXXING STUDIO</h3>
+        </div>
+        
+        <!-- Choose Stage -->
+        <div id="tiktok-choose-stage">
+          <p class="event-desc">Select a content style to record and post. Creating high-tier video content requires correct biometrics, or you will get roasted and ratioed in the comments section.</p>
+          <div class="tiktok-options-list">
+            <button class="btn tiktok-option-btn" id="btn-tiktok-jaw" data-style="sigma_jaw">
+              <span class="btn-icon">📐</span>
+              <div class="btn-text">
+                <strong>Sigma Jaw Shadow Flex</strong>
+                <p>Highlight sharp jaw bone shadow. (Requires Chiseled/Sharp Jaw)</p>
+              </div>
+            </button>
+            <button class="btn tiktok-option-btn" id="btn-tiktok-skin" data-style="retinol_glaze">
+              <span class="btn-icon">✨</span>
+              <div class="btn-text">
+                <strong>Retinol Glazed Transition</strong>
+                <p>Blind them with glowing glass-skin radiance. (Requires Skin >= 60)</p>
+              </div>
+            </button>
+            <button class="btn tiktok-option-btn" id="btn-tiktok-height" data-style="height_flex">
+              <span class="btn-icon">🦒</span>
+              <div class="btn-text">
+                <strong>Looming Height Flex</strong>
+                <p>Stand tall. Show off skeletal vertical stats. (Requires tall height)</p>
+              </div>
+            </button>
+            <button class="btn tiktok-option-btn" id="btn-tiktok-meme" data-style="cope_meme">
+              <span class="btn-icon">🧠</span>
+              <div class="btn-text">
+                <strong>Cope-Core Meme Shitpost</strong>
+                <p>Self-deprecating humor. Low risk, moderate growth. (Always available)</p>
+              </div>
+            </button>
+          </div>
+          <button class="btn secondary-btn" id="btn-tiktok-cancel" style="margin-top: 15px; width: 100%;">CANCEL</button>
+        </div>
+
+        <!-- Result Stage -->
+        <div id="tiktok-result-stage" class="hidden">
+          <div class="tiktok-stats-summary">
+            <div class="tiktok-stat-card">
+              <span class="label">VIEWS</span>
+              <strong id="tiktok-res-views">0</strong>
+            </div>
+            <div class="tiktok-stat-card">
+              <span class="label">LIKES</span>
+              <strong id="tiktok-res-likes" class="text-pink">0</strong>
+            </div>
+            <div class="tiktok-stat-card">
+              <span class="label">FOLLOWERS GAINED</span>
+              <strong id="tiktok-res-followers" class="text-magenta">0</strong>
+            </div>
+          </div>
+          
+          <div class="tiktok-impact-summary" id="tiktok-res-impact">
+            <!-- Confidence / cash impact -->
+          </div>
+
+          <div class="tiktok-comments-box">
+            <span class="comment-box-title">🔴 LIVE COMMENTS:</span>
+            <div class="tiktok-comments-feed" id="tiktok-comments-container">
+              <!-- Animated comments scroll in here -->
+            </div>
+          </div>
+
+          <button class="btn primary-btn" id="btn-tiktok-close" style="width: 100%; margin-top: 15px;">KEEP GRINDING</button>
+        </div>
       </div>
     </div>
 
