@@ -11,7 +11,32 @@ import { DatingSimulator } from './dating.js';
 import { generateForumThread, getCopingReplies, generateForumResponse } from './forum.js';
 
 // --- Metagame Persistent Upgrades ---
-let copeTokens = parseInt(localStorage.getItem('looksmax_cope_tokens') || '0');
+function _copeChecksum(val) {
+  let hash = 5381;
+  const str = String(val);
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+function _loadCopeTokens() {
+  const stored = localStorage.getItem('looksmax_cope_tokens');
+  const storedChk = localStorage.getItem('looksmax_cope_tokens_c');
+  if (!stored) return 0;
+  if (storedChk !== _copeChecksum(stored)) {
+    console.warn('[ANTI-CHEAT] Cope token tampering detected — reset to 0');
+    localStorage.removeItem('looksmax_cope_tokens');
+    localStorage.removeItem('looksmax_cope_tokens_c');
+    return 0;
+  }
+  return parseInt(stored) || 0;
+}
+function _saveCopeTokens(val) {
+  localStorage.setItem('looksmax_cope_tokens', val);
+  localStorage.setItem('looksmax_cope_tokens_c', _copeChecksum(val));
+}
+let copeTokens = _loadCopeTokens();
 let unlockedPerks = JSON.parse(localStorage.getItem('looksmax_unlocked_perks') || '{}');
 let unlockedThemes = JSON.parse(localStorage.getItem('looksmax_unlocked_themes') || '{"default":true}');
 let activeTheme = localStorage.getItem('looksmax_active_theme') || 'default';
@@ -97,7 +122,7 @@ function renderShop() {
         card.querySelector('.shop-item-buy-btn').addEventListener('click', () => {
           copeTokens -= perk.cost;
           unlockedPerks[perk.id] = true;
-          localStorage.setItem('looksmax_cope_tokens', copeTokens);
+          _saveCopeTokens(copeTokens);
           localStorage.setItem('looksmax_unlocked_perks', JSON.stringify(unlockedPerks));
           
           playSound('success');
@@ -138,7 +163,7 @@ function renderShop() {
         btn.addEventListener('click', () => {
           copeTokens -= theme.cost;
           unlockedThemes[theme.id] = true;
-          localStorage.setItem('looksmax_cope_tokens', copeTokens);
+          _saveCopeTokens(copeTokens);
           localStorage.setItem('looksmax_unlocked_themes', JSON.stringify(unlockedThemes));
           
           playSound('success');
@@ -1553,7 +1578,7 @@ function triggerGameOver(reasonText) {
   // Calculate Cope Tokens earned: base SMV + achievements + botched surgeries
   const tokensEarned = Math.round(game.smv * 15 + game.surgeryBotchedCount * 10 + game.achievementsUnlocked.length * 5);
   copeTokens += tokensEarned;
-  localStorage.setItem('looksmax_cope_tokens', copeTokens);
+  _saveCopeTokens(copeTokens);
 
   // Save run to Memories gallery
   const pastRuns = JSON.parse(localStorage.getItem('looksmax_past_runs') || '[]');

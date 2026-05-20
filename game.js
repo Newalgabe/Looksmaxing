@@ -278,28 +278,30 @@ export class GameState {
     score += careerMap[this.careerTier] || 0;
 
     let pslScore = parseFloat((score * 0.8).toFixed(1));
-    this.smv = parseFloat(Math.max(1.0, Math.min(8.0, pslScore)).toFixed(1));
+    pslScore = parseFloat(Math.max(1.0, Math.min(8.0, pslScore)).toFixed(1));
+    this._smvCache = pslScore;
 
     // Social Tier Mapping
     if (this.gender === 'female') {
-      if (this.smv >= 7.2) this.socialTier = 'STACY / ASCENDED';
-      else if (this.smv >= 6.0) this.socialTier = 'STACYLITE';
-      else if (this.smv >= 4.8) this.socialTier = 'HIGH TIER BECKY';
-      else if (this.smv >= 3.6) this.socialTier = 'BECKY';
-      else if (this.smv >= 2.4) this.socialTier = 'SUB-HUMAN';
+      if (this._smvCache >= 7.2) this.socialTier = 'STACY / ASCENDED';
+      else if (this._smvCache >= 6.0) this.socialTier = 'STACYLITE';
+      else if (this._smvCache >= 4.8) this.socialTier = 'HIGH TIER BECKY';
+      else if (this._smvCache >= 3.6) this.socialTier = 'BECKY';
+      else if (this._smvCache >= 2.4) this.socialTier = 'SUB-HUMAN';
       else this.socialTier = 'FEMCEL';
     } else {
-      if (this.smv >= 7.2) this.socialTier = 'GIGACHAD / ASCENDED';
-      else if (this.smv >= 6.0) this.socialTier = 'CHADLITE';
-      else if (this.smv >= 4.8) this.socialTier = 'HIGH TIER NORMAL';
-      else if (this.smv >= 3.6) this.socialTier = 'NORMIE';
-      else if (this.smv >= 2.4) this.socialTier = 'SUB-HUMAN';
+      if (this._smvCache >= 7.2) this.socialTier = 'GIGACHAD / ASCENDED';
+      else if (this._smvCache >= 6.0) this.socialTier = 'CHADLITE';
+      else if (this._smvCache >= 4.8) this.socialTier = 'HIGH TIER NORMAL';
+      else if (this._smvCache >= 3.6) this.socialTier = 'NORMIE';
+      else if (this._smvCache >= 2.4) this.socialTier = 'SUB-HUMAN';
       else this.socialTier = 'TRUECEL';
     }
   }
 
   // ACTIONS
   postTikTok(styleId) {
+    this._validateState();
     if (this.ap < 2) return { error: "Not enough Action Points (AP). Need 2 AP." };
     if (this.cash < 100) return { error: "Not enough cash. Need $100 for camera/lighting gear." };
 
@@ -440,6 +442,7 @@ export class GameState {
   }
 
   doGym() {
+    this._validateState();
     if (this.ap < 2 || this.cash < 100) return false;
     this.ap -= 2;
     this.cash -= 100;
@@ -463,6 +466,7 @@ export class GameState {
   }
 
   doSkincare() {
+    this._validateState();
     if (this.ap < 1 || this.cash < 50) return false;
     this.ap -= 1;
     this.cash -= 50;
@@ -476,6 +480,7 @@ export class GameState {
   }
 
   doStyling() {
+    this._validateState();
     if (this.ap < 1 || this.cash < 150) return false;
     this.ap -= 1;
     this.cash -= 150;
@@ -501,6 +506,7 @@ export class GameState {
   }
 
   doWork() {
+    this._validateState();
     const tier = CAREER_TIERS.find(t => t.id === this.careerTier);
     if (!tier || tier.apCost === 0) {
       // Unemployed - can still hustle
@@ -522,6 +528,7 @@ export class GameState {
   }
 
   seekPromotion() {
+    this._validateState();
     const idx = CAREER_TIERS.findIndex(t => t.id === this.careerTier);
     if (idx >= CAREER_TIERS.length - 1) return { error: 'Already at the highest career tier (CEO)!' };
     const next = CAREER_TIERS[idx + 1];
@@ -565,6 +572,7 @@ export class GameState {
 
   // === SUBSTANCE SYSTEM ===
   takeSubstance(substanceId) {
+    this._validateState();
     const sub = SUBSTANCES.find(s => s.id === substanceId);
     if (!sub) return { error: 'Unknown substance.' };
     if (this.cash < sub.cost) return { error: `Need $${sub.cost} for ${sub.name}.` };
@@ -628,6 +636,7 @@ export class GameState {
 
   // === LINEAGE ===
   procreate() {
+    this._validateState();
     if (!this.hasDatingPartner) return { error: 'Need a partner to procreate.' };
     if (this.hasProcreated) return { error: 'Already have a child this run.' };
     if (this.age < 20) return { error: 'Too young to start a family.' };
@@ -691,10 +700,12 @@ export class GameState {
       if (desc && !desc.configurable) return;
     } catch (e) {}
     const clamped = {
-      cash: [0, Infinity], ap: [0, 99], height: [48, 96],
+      cash: [0, 100000], ap: [0, 99], height: [48, 96],
       confidence: [0, 100], skin: [0, 100], frame: [0, 100],
-      style: [0, 100], rizz: [0, 100], smv: [1, 8],
-      hairline: [1, 7], age: [18, 50], followers: [0, Infinity]
+      style: [0, 100], rizz: [0, 100],
+      hairline: [1, 7], age: [18, 50], followers: [0, 10000000],
+      talentPoints: [0, 99], surgeryBotchedCount: [0, 20],
+      addictionLevel: [0, 100], promotionChances: [0, 100]
     };
     Object.entries(clamped).forEach(([prop, [min, max]]) => {
       let value = this[prop];
@@ -708,25 +719,46 @@ export class GameState {
       } catch (e) {}
       this[prop] = value;
     });
+    // Career tier: only allow known tiers
+    const validTiers = ['unemployed', 'entry', 'junior', 'mid', 'senior', 'manager', 'director', 'executive', 'ceo'];
+    let _careerTier = validTiers.includes(this.careerTier) ? this.careerTier : 'unemployed';
+    Object.defineProperty(this, 'careerTier', {
+      get() { return _careerTier; },
+      set(v) { _careerTier = validTiers.includes(v) ? v : 'unemployed'; },
+      enumerable: true, configurable: false
+    });
+    this.careerTier = _careerTier;
+    // SMV: computed getter, always read from updateSMV()
+    Object.defineProperty(this, 'smv', {
+      get() { this.updateSMV(); return this._smvCache; },
+      set(v) {},
+      enumerable: true, configurable: false
+    });
+    this._smvCache = this.smv;
+  }
+
+  _validateState() {
+    let reverted = false;
+    // Recalculate SMV silently (getter does it)
+    const smv = this.smv;
+    // Check cash progression: can't have more than reasonable max
+    if (this.cash > 100000) { this.cash = 100000; reverted = true; }
+    // Check career tier exists
+    const validTiers = ['unemployed', 'entry', 'junior', 'mid', 'senior', 'manager', 'director', 'executive', 'ceo'];
+    if (!validTiers.includes(this.careerTier)) { this.careerTier = 'unemployed'; reverted = true; }
+    // Check no NaN stats
+    const numericStats = ['cash','ap','height','confidence','skin','frame','style','rizz','talentPoints','surgeryBotchedCount','addictionLevel','followers'];
+    numericStats.forEach(s => {
+      if (typeof this[s] !== 'number' || isNaN(this[s]) || !isFinite(this[s])) {
+        this[s] = 0;
+        reverted = true;
+      }
+    });
+    return reverted;
   }
 
   validateIntegrity() {
-    let flagged = false;
-    const oldSMV = this.smv;
-    this.updateSMV();
-    if (Math.abs(this.smv - oldSMV) > 1.0) {
-      console.warn('[ANTI-CHEAT] SMV tampering detected — recalculated');
-      this._tamperFlagged = true;
-      flagged = true;
-    }
-    const statsToCheck = ['confidence', 'skin', 'frame', 'style', 'rizz'];
-    statsToCheck.forEach(s => {
-      if (typeof this[s] !== 'number' || isNaN(this[s])) {
-        this[s] = 50;
-        flagged = true;
-      }
-    });
-    return !flagged;
+    return !this._validateState();
   }
 
   // === DEBUG / SERIALIZATION ===
@@ -826,6 +858,7 @@ export class GameState {
   }
 
   performSurgery(surgeryId, clinicTier) {
+    this._validateState();
     const surgery = this.getSurgeriesList().find(s => s.id === surgeryId);
     if (!surgery) return false;
 
