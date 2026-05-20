@@ -604,7 +604,15 @@ export class BattleSystem {
         desc: 'Widen shoulders. Block next opponent attack value.',
         cost: 2,
         power: 15,
-        effect: (b) => { b.damageOpponent(15); b.healPlayer(10); },
+        effect: (b) => {
+          let dmg = 15;
+          let heal = 10;
+          if (b.lastCardPlayed === 'Drip Overload') {
+            dmg *= 2; heal += 10;
+            b.logCallback("💪 COMBO: 'Sigma Grind' triggered! Double damage + extra heal!", "success");
+          }
+          b.damageOpponent(dmg); b.healPlayer(heal);
+        },
         emoji: '🛡️'
       });
     }
@@ -650,7 +658,14 @@ export class BattleSystem {
         desc: 'Overwhelming presence. High damage.',
         cost: 2,
         power: 30,
-        effect: (b) => { b.damageOpponent(30); },
+        effect: (b) => {
+          let dmg = 30;
+          if (b.lastCardPlayed === 'Rizz Flash') {
+            dmg *= 2;
+            b.logCallback("🔥 COMBO: 'Charisma Cascade' triggered! Double damage!", "success");
+          }
+          b.damageOpponent(dmg);
+        },
         emoji: '✨'
       });
     }
@@ -679,8 +694,14 @@ export class BattleSystem {
         cost: 2,
         power: 30,
         effect: (b) => {
-          b.damageOpponent(30);
-          b.healPlayer(20);
+          let dmg = 30;
+          let heal = 20;
+          if (b.lastCardPlayed === 'Power Move') {
+            dmg = 50; heal = 30;
+            b.logCallback("💼 COMBO: 'Power Executive' triggered! Devastating damage!", "success");
+          }
+          b.damageOpponent(dmg);
+          b.healPlayer(heal);
         },
         emoji: '🤳'
       });
@@ -810,6 +831,13 @@ export class BattleSystem {
       this.player.confidence = 10; // confidence crushed
       this.player.cash = Math.max(0, this.player.cash - 150); // lost wallet/shame costs
       this.player.updateSMV();
+
+      // "Impossible" difficulty defeat = death from social humiliation
+      if (this.opponent.difficulty === 'Impossible') {
+        this.player.isDead = true;
+        this.player.log.push(`FATAL: Mogged to death by ${this.opponent.name}.`);
+        this.logCallback(`💀 FATAL: ${this.opponent.name} destroyed your will to live. You have been mogged to death.`, "error");
+      }
 
       this.logCallback(`DEFEAT! ${this.opponent.name} crushed your social confidence. Cash and mental stats penalized.`, "error");
     }

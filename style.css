@@ -62,21 +62,21 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-main);
   font-family: var(--font-display);
-  overflow: hidden;
-  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 100vh;
   width: 100vw;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
 }
 
 /* ==================== LAYOUT CONTAINERS ==================== */
 .game-container {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   max-width: 1400px;
-  max-height: 900px;
-  padding: 20px;
+  padding: 60px 20px 20px;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -85,7 +85,7 @@ body {
 .game-screen {
   display: none;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   flex-direction: column;
   animation: fadeIn 0.4s ease-out forwards;
 }
@@ -96,10 +96,6 @@ body {
 
 /* ==================== AUDIO TOGGLE ==================== */
 .audio-control {
-  position: absolute;
-  top: 15px;
-  right: 25px;
-  z-index: 100;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   padding: 6px 12px;
@@ -123,10 +119,10 @@ body {
   height: 14px;
 }
 .audio-bar {
-  position: absolute;
+  position: fixed;
   top: 15px;
   right: 25px;
-  z-index: 100;
+  z-index: 200;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -528,6 +524,52 @@ body {
   box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
 }
 
+.difficulty-selection-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.difficulty-selection-container .cyber-label {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+  color: var(--accent-yellow);
+  text-shadow: 0 0 5px rgba(255, 234, 0, 0.4);
+}
+
+.difficulty-options {
+  display: flex;
+  gap: 10px;
+}
+
+.difficulty-options .difficulty-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  padding: 8px 24px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.difficulty-options .difficulty-btn:hover {
+  border-color: var(--accent-yellow);
+  color: var(--text-light);
+}
+
+.difficulty-options .difficulty-btn.active {
+  background: rgba(255, 234, 0, 0.12);
+  border-color: var(--accent-yellow);
+  color: var(--text-light);
+  box-shadow: 0 0 8px rgba(255, 234, 0, 0.25);
+}
+
 .genesis-actions {
   display: flex;
   gap: 15px;
@@ -541,8 +583,7 @@ body {
   display: grid;
   grid-template-columns: 320px 1fr 480px;
   gap: 15px;
-  overflow: hidden;
-  height: calc(100% - 130px); /* Leave room for log console */
+  overflow: auto;
   margin-bottom: 15px;
 }
 
@@ -575,10 +616,9 @@ body {
 
 .panel-body {
   padding: 15px;
-  flex: 1;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  overflow-x: hidden;
+  flex: 1;
 }
 
 /* Clinical Font details */
@@ -2233,8 +2273,6 @@ body {
   }
 
   .audio-control {
-    top: 5px;
-    right: 5px;
     padding: 4px 8px;
     font-size: 9px;
   }

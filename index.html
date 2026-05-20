@@ -115,6 +115,14 @@
           </div>
         </div>
 
+        <div class="difficulty-selection-container">
+          <span class="cyber-label">DIFFICULTY:</span>
+          <div class="difficulty-options">
+            <button class="btn difficulty-btn active" data-difficulty="normal">NORMAL</button>
+            <button class="btn difficulty-btn" data-difficulty="hard">HARD</button>
+          </div>
+        </div>
+
         <div class="genesis-actions">
           <button id="btn-roll-genetics" class="btn primary-btn pulse-glow">ROLL GENETICS</button>
           <button id="btn-start-life" class="btn success-btn hidden">EMBARK ON LIFE (AGE 18)</button>
@@ -130,7 +138,10 @@
         <aside class="panel left-panel">
           <div class="panel-header">
             <h3>CLINICAL DATA</h3>
-            <span class="neon-tag text-green" id="hud-social-tier">NORMIE</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span class="neon-tag text-green" id="hud-social-tier">NORMIE</span>
+              <span class="neon-tag text-yellow" id="hud-difficulty">NORMAL</span>
+            </div>
           </div>
           <div class="panel-body">
             

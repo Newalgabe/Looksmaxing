@@ -42,6 +42,7 @@ let unlockedThemes = JSON.parse(localStorage.getItem('looksmax_unlocked_themes')
 let activeTheme = localStorage.getItem('looksmax_active_theme') || 'default';
 let activeShopTab = 'perks';
 let chosenGender = 'male';
+let _endYearLock = false;
 
 // Apply active theme immediately on startup
 document.body.setAttribute('data-theme', activeTheme);
@@ -261,325 +262,67 @@ function startAnimationLoop() {
   animationFrameId = requestAnimationFrame(tick);
 }
 
-// --- Web Audio API Synthesizer ---
+// --- Web Audio API (SFX only - BGM uses HTML5 Audio) ---
 let audioCtx = null;
 let soundEnabled = true;
-let bgmGainNode = null;
 
 // BGM State
-let bgmInterval = null;
-let bgmNextNoteTime = 0;
-let bgmStepIndex = 0;
 let bgmMode = 'genesis';
-let bgmModeCheckCounter = 0;
+let bgmAudio = null;
+let bgmModeTimer = null;
 
-// Chord progressions (root frequencies for each chord)
-// Each mode has 4 chords cycling in a progression
-const BGM_PROGRESSIONS = {
-  genesis: {
-    bpm: 85,
-    chords: [
-      { root: 110, type: 'min', name: 'Am' },
-      { root: 98, type: 'maj', name: 'F' },
-      { root: 130.81, type: 'min', name: 'Cm' },
-      { root: 82.41, type: 'maj', name: 'E' }
-    ],
-    bassPattern: 'root_fifth',
-    leadOctave: 3,
-    drumIntensity: 0.3
-  },
-  gameboard: {
-    bpm: 100,
-    chords: [
-      { root: 110, type: 'min', name: 'Am' },
-      { root: 87.31, type: 'maj', name: 'F' },
-      { root: 98.0, type: 'maj', name: 'G' },
-      { root: 82.41, type: 'min', name: 'Em' }
-    ],
-    bassPattern: 'octave_walk',
-    leadOctave: 4,
-    drumIntensity: 0.6
-  },
-  battle: {
-    bpm: 130,
-    chords: [
-      { root: 110, type: 'min', name: 'Am' },
-      { root: 130.81, type: 'maj', name: 'C' },
-      { root: 98.0, type: 'maj', name: 'G' },
-      { root: 73.42, type: 'min', name: 'Dm' }
-    ],
-    bassPattern: 'driving',
-    leadOctave: 5,
-    drumIntensity: 0.9
-  },
-  gameover: {
-    bpm: 75,
-    chords: [
-      { root: 110, type: 'min', name: 'Am' },
-      { root: 73.42, type: 'min', name: 'Dm' },
-      { root: 98.0, type: 'maj', name: 'G' },
-      { root: 65.41, type: 'maj', name: 'C' }
-    ],
-    bassPattern: 'root_fifth',
-    leadOctave: 3,
-    drumIntensity: 0.1
-  }
+const BGM_FILES = {
+  genesis: '/assets/audio/genesis.mp3',
+  gameboard: '/assets/audio/gameboard.mp3',
+  battle: '/assets/audio/battle.mp3',
+  gameover: '/assets/audio/gameover.mp3'
 };
-
-// A minor pentatonic scale multipliers (for lead melodies)
-const PENTATONIC_MINOR = [1.0, 1.2, 1.334, 1.5, 1.8, 2.0, 2.4, 2.668];
-
-// Melody patterns - call-response structures for each mode
-const MELODY_PATTERNS = {
-  genesis: { noteIndices: [0,2,4,3,2,0,3,1,0,2,4,5,3,1,2,0], gate: [1,0,1,0,1,1,0,1,0,1,0,1,1,1,0,0], density: 0.55 },
-  gameboard: { noteIndices: [0,2,4,5,4,2,0,1,3,5,6,5,4,2,1,0], gate: [1,0,1,1,0,1,0,1,1,0,1,1,0,1,1,0], density: 0.7 },
-  battle: { noteIndices: [4,5,6,5,4,2,0,1,5,6,7,6,5,4,2,0], gate: [1,1,1,0,1,1,0,1,1,1,1,0,1,1,1,1], density: 0.85 },
-  gameover: { noteIndices: [0,1,0,2,1,0,3,2,0,1,0,2,3,1,0,0], gate: [1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,0], density: 0.4 }
-};
-
-const HAT_PATTERN = [1, 0.6, 1, 0.8, 1, 0.5, 1, 0.7, 1, 0.6, 1, 0.9, 1, 0.5, 1, 0.7];
-
-// Cached noise buffers (created once to avoid createBuffer in hot path)
-let cachedNoise = null;
-
-function initNoiseBuffers() {
-  if (cachedNoise || !audioCtx) return;
-  const sr = audioCtx.sampleRate;
-  cachedNoise = {
-    snare: createNoiseBuffer(sr, 0.08),
-    hat: createNoiseBuffer(sr, 0.04),
-    rim: createNoiseBuffer(sr, 0.03)
-  };
-}
-
-function createNoiseBuffer(sr, dur) {
-  const len = Math.ceil(sr * dur);
-  const buf = audioCtx.createBuffer(1, len, sr);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  return buf;
-}
-
-function applyEnvelope(buf, type) {
-  const d = buf.getChannelData(0);
-  const len = d.length;
-  if (type === 'snare') {
-    for (let i = 0; i < len; i++) d[i] *= (1 - i / len);
-  } else if (type === 'hat') {
-    for (let i = 0; i < len; i++) d[i] *= Math.pow(1 - i / len, 3);
-  }
-}
-
-// Pre-allocated reusable arrays to avoid garbage in hot path
-const _chordFreqs = [0, 0, 0];
 
 function getBgmMode() {
-  return bgmMode; // updated by updateBgmMode() at a lower rate
+  return bgmMode;
 }
 
 function updateBgmMode() {
-  if (screenGenesis && screenGenesis.classList.contains('active')) { bgmMode = 'genesis'; return; }
-  if (screenGameOver && screenGameOver.classList.contains('active')) { bgmMode = 'gameover'; return; }
+  if (screenGenesis && screenGenesis.classList.contains('active')) { return 'genesis'; }
+  if (screenGameOver && screenGameOver.classList.contains('active')) { return 'gameover'; }
   const arena = document.querySelector('.battle-arena');
-  bgmMode = arena ? 'battle' : 'gameboard';
+  return arena ? 'battle' : 'gameboard';
 }
 
-const _bgmDest = () => bgmGainNode || audioCtx.destination;
-
-function scheduleNextBGMStep(time, step) {
-  if (!audioCtx || !soundEnabled) return;
-
-  // Check mode only every 8 steps (~80-130ms) instead of every step
-  bgmModeCheckCounter++;
-  if (bgmModeCheckCounter >= 8) {
-    bgmModeCheckCounter = 0;
-    updateBgmMode();
+function switchBGM() {
+  const newMode = updateBgmMode();
+  if (bgmMode === newMode && bgmAudio) return;
+  bgmMode = newMode;
+  if (bgmAudio) {
+    bgmAudio.pause();
+    bgmAudio.currentTime = 0;
+    bgmAudio = null;
   }
-
-  const prog = BGM_PROGRESSIONS[bgmMode];
-  const bpm = prog.bpm;
-  const stepDuration = 60 / bpm / 4;
-  const chordIdx = Math.floor(step / 16) % prog.chords.length;
-  const chord = prog.chords[chordIdx];
-  const rootFreq = chord.root;
-  const beat = step % 16;
-
-  try {
-    // ===== 1. KICK DRUM (quarter notes) =====
-    if (beat % 4 === 0) {
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      const f = audioCtx.createBiquadFilter();
-      f.type = 'lowpass';
-      f.frequency.setValueAtTime(150, time);
-      f.frequency.exponentialRampToValueAtTime(40, time + 0.1);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(120, time);
-      osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
-      osc.connect(f); f.connect(g); g.connect(_bgmDest());
-    }
-
-    // ===== 2. SNARE / CLAP (beats 2 and 4) =====
-      if ((beat === 4 || beat === 12) && cachedNoise) {
-        const src = audioCtx.createBufferSource();
-        src.buffer = cachedNoise.snare;
-        const f = audioCtx.createBiquadFilter();
-        f.type = 'highpass'; f.frequency.setValueAtTime(800, time);
-        const g = audioCtx.createGain();
-        g.gain.setValueAtTime(0.08 * prog.drumIntensity, time);
-        g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-        src.connect(f); f.connect(g); g.connect(_bgmDest());
-        src.start(time); src.stop(time + 0.08);
-
-        const tone = audioCtx.createOscillator();
-        const tg = audioCtx.createGain();
-        tone.type = 'triangle';
-        tone.frequency.setValueAtTime(200, time);
-        tone.frequency.exponentialRampToValueAtTime(80, time + 0.06);
-        tone.connect(tg); tg.connect(_bgmDest());
-        tg.gain.setValueAtTime(0.04 * prog.drumIntensity, time);
-        tg.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
-        tone.start(time); tone.stop(time + 0.06);
-      }
-
-    // ===== 3. HI-HAT (16th notes with pattern) =====
-    const hatVel = HAT_PATTERN[beat];
-    if (hatVel > 0 && prog.drumIntensity > 0.2 && cachedNoise) {
-      const src = audioCtx.createBufferSource();
-      src.buffer = cachedNoise.hat;
-      const f = audioCtx.createBiquadFilter();
-      f.type = 'highpass'; f.frequency.setValueAtTime(4000, time);
-      const g = audioCtx.createGain();
-      g.gain.setValueAtTime(0.025 * hatVel * prog.drumIntensity, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-      src.connect(f); f.connect(g); g.connect(_bgmDest());
-      src.start(time); src.stop(time + 0.04);
-    }
-
-    // ===== 4. BASS LINE =====
-    if (beat % 2 === 0) {
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      const f = audioCtx.createBiquadFilter();
-      f.type = 'lowpass';
-      f.frequency.setValueAtTime(400, time);
-      f.frequency.exponentialRampToValueAtTime(200, time + stepDuration * 0.8);
-      osc.type = 'sawtooth';
-
-      let freq = rootFreq * 0.5;
-      if (prog.bassPattern === 'octave_walk') {
-        freq = (beat % 8 === 0) ? rootFreq * 0.5 : (beat % 8 === 4 ? rootFreq * 0.75 : rootFreq * 0.5);
-      } else if (prog.bassPattern === 'driving') {
-        freq = (beat % 8 === 0) ? rootFreq * 0.5 : (beat % 8 === 4 ? rootFreq * 1.0 : rootFreq * 0.5);
-      }
-
-      if (beat % 8 === 4 && prog.bassPattern !== 'root_fifth') {
-        osc.frequency.setValueAtTime(freq * 0.9, time);
-        osc.frequency.exponentialRampToValueAtTime(freq, time + 0.04);
-      } else {
-        osc.frequency.setValueAtTime(freq, time);
-      }
-
-      osc.connect(f); f.connect(g); g.connect(_bgmDest());
-      const dur = stepDuration * 0.95;
-      g.gain.setValueAtTime(0.018 * (beat % 8 === 0 ? 1.3 : 0.9), time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + dur);
-      osc.start(time); osc.stop(time + dur);
-    }
-
-    // ===== 5. PAD / CHORDS (sustained, changes every measure) =====
-    if (beat === 0) {
-      const thirdMult = chord.type === 'min' ? 1.2 : 1.25;
-      _chordFreqs[0] = rootFreq * 0.25;
-      _chordFreqs[1] = rootFreq * thirdMult * 0.25;
-      _chordFreqs[2] = rootFreq * 1.5 * 0.25;
-      for (let i = 0; i < 3; i++) {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        const f = audioCtx.createBiquadFilter();
-        f.type = 'lowpass';
-        f.frequency.setValueAtTime(1200, time);
-        f.frequency.setValueAtTime(800, time + 0.5);
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(_chordFreqs[i], time);
-        osc.connect(f); f.connect(g); g.connect(_bgmDest());
-        g.gain.setValueAtTime(0, time);
-        g.gain.linearRampToValueAtTime(0.006 * prog.drumIntensity, time + 0.2);
-        g.gain.setValueAtTime(0.006 * prog.drumIntensity, time + stepDuration * 14);
-        g.gain.linearRampToValueAtTime(0.001, time + stepDuration * 16);
-        osc.start(time); osc.stop(time + stepDuration * 16 + 0.1);
-      }
-    }
-
-    // ===== 6. LEAD MELODY (16th note arp with pentatonic scale) =====
-    const melody = MELODY_PATTERNS[bgmMode];
-    if (melody.gate[beat] === 1 && Math.random() < melody.density) {
-      const offset = PENTATONIC_MINOR[melody.noteIndices[beat] % PENTATONIC_MINOR.length];
-      const leadFreq = rootFreq * offset * (prog.leadOctave === 5 ? 4 : 2);
-
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      const f = audioCtx.createBiquadFilter();
-      f.type = 'bandpass'; f.frequency.setValueAtTime(1200, time); f.Q.setValueAtTime(2, time);
-      osc.type = 'square'; osc.frequency.setValueAtTime(leadFreq, time);
-
-      if (beat > 0 && melody.gate[beat - 1] === 1) {
-        const prevFreq = rootFreq * PENTATONIC_MINOR[melody.noteIndices[beat - 1] % PENTATONIC_MINOR.length] * (prog.leadOctave === 5 ? 4 : 2);
-        if (prevFreq !== leadFreq) {
-          osc.frequency.setValueAtTime(prevFreq, time);
-          osc.frequency.exponentialRampToValueAtTime(leadFreq, time + 0.03);
-        }
-      }
-
-      osc.connect(f); f.connect(g); g.connect(_bgmDest());
-      g.gain.setValueAtTime(0.005 * (beat === 0 || beat === 8 ? 1.3 : 0.8) * (prog.drumIntensity + 0.2), time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + stepDuration * 0.7);
-      osc.start(time); osc.stop(time + stepDuration * 0.7 + 0.01);
-    }
-
-    // ===== 7. RIMSHOT / ACCENT (occasional) =====
-    if ((beat === 2 || beat === 6 || beat === 10 || beat === 14) && prog.drumIntensity > 0.4 && cachedNoise && Math.random() < 0.3) {
-      const src = audioCtx.createBufferSource();
-      src.buffer = cachedNoise.rim;
-      const f = audioCtx.createBiquadFilter();
-      f.type = 'bandpass'; f.frequency.setValueAtTime(2500, time); f.Q.setValueAtTime(20, time);
-      const g = audioCtx.createGain();
-      g.gain.setValueAtTime(0.015 * prog.drumIntensity, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
-      src.connect(f); f.connect(g); g.connect(_bgmDest());
-      src.start(time); src.stop(time + 0.03);
-    }
-
-  } catch (e) {}
+  if (!soundEnabled) return;
+  const src = BGM_FILES[newMode];
+  if (!src) return;
+  bgmAudio = new Audio(src);
+  bgmAudio.loop = true;
+  bgmAudio.volume = parseFloat(localStorage.getItem('looksmax_bgm_vol') || '0.7');
+  bgmAudio.play().catch(() => {});
 }
 
 function startBGM() {
-  if (bgmInterval || !soundEnabled) return;
-  initAudio();
-  if (!audioCtx) return;
-
-  initNoiseBuffers();
-  updateBgmMode();
-  bgmModeCheckCounter = 0;
-  bgmNextNoteTime = audioCtx.currentTime;
-  bgmStepIndex = 0;
-
-  bgmInterval = setInterval(() => {
-    if (!soundEnabled || !audioCtx) return;
-    const bpm = BGM_PROGRESSIONS[bgmMode].bpm;
-    const stepDuration = 60 / bpm / 4;
-    while (bgmNextNoteTime < audioCtx.currentTime + 0.25) {
-      scheduleNextBGMStep(bgmNextNoteTime, bgmStepIndex);
-      bgmNextNoteTime += stepDuration;
-      bgmStepIndex++;
-    }
-  }, 50);
+  if (bgmModeTimer) return;
+  if (!soundEnabled) return;
+  switchBGM();
+  bgmModeTimer = setInterval(switchBGM, 500);
 }
 
 function stopBGM() {
-  if (bgmInterval) {
-    clearInterval(bgmInterval);
-    bgmInterval = null;
+  if (bgmModeTimer) {
+    clearInterval(bgmModeTimer);
+    bgmModeTimer = null;
+  }
+  if (bgmAudio) {
+    bgmAudio.pause();
+    bgmAudio.currentTime = 0;
+    bgmAudio = null;
   }
 }
 
@@ -588,10 +331,6 @@ function initAudio() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (Ctx) {
     audioCtx = new Ctx();
-    bgmGainNode = audioCtx.createGain();
-    bgmGainNode.gain.setValueAtTime(parseFloat(localStorage.getItem('looksmax_bgm_vol') || '0.7'), audioCtx.currentTime);
-    bgmGainNode.connect(audioCtx.destination);
-    initNoiseBuffers();
   }
   if (audioCtx && soundEnabled) startBGM();
 }
@@ -899,8 +638,8 @@ function setupAudioControl() {
     volSlider.addEventListener('input', () => {
       const vol = parseInt(volSlider.value) / 100;
       localStorage.setItem('looksmax_bgm_vol', vol.toString());
-      if (bgmGainNode) {
-        bgmGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+      if (bgmAudio) {
+        bgmAudio.volume = vol;
       }
     });
   }
@@ -924,6 +663,18 @@ function setupEventListeners() {
       genderBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       chosenGender = btn.getAttribute('data-gender');
+    });
+  });
+
+  // Difficulty Choice
+  const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+  let chosenDifficulty = 'normal';
+  difficultyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      difficultyBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      chosenDifficulty = btn.getAttribute('data-difficulty');
     });
   });
 
@@ -1287,12 +1038,18 @@ function setupEventListeners() {
   }
 
   btnEndYear.addEventListener('click', () => {
+    if (_endYearLock) return;
+    if (!confirm('Advance to the next year? Unused AP will be lost.')) return;
+    _endYearLock = true;
+    btnEndYear.disabled = true;
     endYear();
   });
 
   btnCloseEvent.addEventListener('click', () => {
     playSound('click');
     eventModal.classList.add('hidden');
+    _endYearLock = false;
+    if (btnEndYear) btnEndYear.disabled = false;
     checkGameOver();
   });
 
@@ -1341,7 +1098,9 @@ function triggerRollAnimation() {
       clearInterval(rollInterval);
       
       // Roll player's actual genetics
-      game.reset(unlockedPerks, activeGender);
+      const difficultyBtn = document.querySelector('.difficulty-btn.active');
+      const chosenDifficulty = difficultyBtn ? difficultyBtn.getAttribute('data-difficulty') : 'normal';
+      game.reset(unlockedPerks, activeGender, chosenDifficulty);
       renderGenesisPreview(game);
       
       genesisLoader.classList.add('hidden');
@@ -1423,6 +1182,11 @@ function updateDashboard() {
   }
   hudAP.textContent = game.ap;
   hudSocialTier.textContent = game.socialTier;
+  const hudDifficulty = document.getElementById('hud-difficulty');
+  if (hudDifficulty) {
+    hudDifficulty.textContent = game.difficulty.toUpperCase();
+    hudDifficulty.style.color = game.difficulty === 'hard' ? 'var(--accent-pink)' : 'var(--accent-yellow)';
+  }
   
   // Format avatar subtitle class tag
   const ft = Math.floor(game.height / 12);
@@ -1506,15 +1270,28 @@ function endYear() {
 
   updateDashboard();
 
+  // Check for depression death
+  if (result.depression) {
+    logToConsole('DEPRESSION: Years of crushing loneliness took their toll.', 'error');
+    triggerGameOver("Succumbed to years of crushing depression after living at rock-bottom.");
+    _endYearLock = false;
+    if (btnEndYear) btnEndYear.disabled = false;
+    return;
+  }
+
   // Check achievements
   const newAchs = game.checkAchievements();
   newAchs.forEach(ach => showAchievementToast(ach));
 
-  // Check for seasonal event first
+  // Show seasonal event as a modal (before random event)
   if (result.seasonal) {
     const seas = result.seasonal;
-    // Apply seasonal effect
+    eventTitle.textContent = seas.icon + ' ' + seas.name;
+    eventDesc.textContent = seas.desc;
+    eventImpact.textContent = `EFFECTS: Seasonal event applied.`;
+    eventModal.classList.remove('hidden');
     logToConsole(`Seasonal Event: ${seas.icon} ${seas.name} - ${seas.desc}`, 'event');
+    return; // wait for modal close before showing next event
   }
 
   // Show midlife crisis event
@@ -1525,22 +1302,41 @@ function endYear() {
     eventImpact.textContent = `EFFECTS: ${me.impactText}`;
     eventModal.classList.remove('hidden');
     logToConsole(`Midlife Crisis: ${me.title}`, 'event');
+    return; // wait for modal close before random event
   }
 
   // Show random event
-  const event = result.event;
-  eventTitle.textContent = event.icon + ' ' + event.title;
-  eventDesc.textContent = event.desc;
-  eventImpact.textContent = `EFFECTS: ${event.impactText}`;
-  eventModal.classList.remove('hidden');
+  if (result.event) {
+    const event = result.event;
+    eventTitle.textContent = event.icon + ' ' + event.title;
+    eventDesc.textContent = event.desc;
+    eventImpact.textContent = `EFFECTS: ${event.impactText}`;
+    eventModal.classList.remove('hidden');
+    logToConsole(`Advanced to Age ${game.age}. Random Event triggered: ${event.title}`, 'event');
+    return;
+  }
 
-  logToConsole(`Advanced to Age ${game.age}. Random Event triggered: ${event.title}`, 'event');
+  // If no events at all (shouldn't happen), release lock
+  _endYearLock = false;
+  if (btnEndYear) btnEndYear.disabled = false;
 }
 
 function checkGameOver() {
   if (game.isDead) {
     playSound('error');
-    triggerGameOver("Fatality due to surgical botch.");
+    // Determine death reason from context
+    const lastLog = game.log.length > 0 ? game.log[game.log.length - 1] : '';
+    if (lastLog.includes('depression') || lastLog.includes('Depression')) {
+      triggerGameOver("Succumbed to years of crushing depression.");
+    } else if (lastLog.includes('FATAL')) {
+      // Extract death reason from the last Fatal log entry
+      const fatalMatch = lastLog.match(/FATAL[^:]*:\s*(.+?)(?:\.|$)/);
+      triggerGameOver(fatalMatch ? fatalMatch[1] : "Fatal incident.");
+    } else if (game.surgeryBotchedCount > 0) {
+      triggerGameOver("Fatality due to surgical error.");
+    } else {
+      triggerGameOver("Your journey was cut short.");
+    }
   } else if (game.age >= 50) {
     playSound('success');
     triggerGameOver("Life journey completed at Age 50.");
@@ -2181,6 +1977,7 @@ function renderActiveBattle(container) {
           if (battle.isOver) {
             renderBattleResolution(container);
             updateDashboard();
+            if (game.isDead) checkGameOver();
           } else {
             renderSocialTab();
           }
@@ -2194,12 +1991,13 @@ function renderActiveBattle(container) {
   container.appendChild(arena);
 
   // End turn listener
-  document.getElementById('btn-end-turn').addEventListener('click', () => {
+    document.getElementById('btn-end-turn').addEventListener('click', () => {
     playSound('error');
     battle.endTurn();
     if (battle.isOver) {
       renderBattleResolution(container);
       updateDashboard();
+      if (game.isDead) checkGameOver();
     } else {
       renderSocialTab();
     }

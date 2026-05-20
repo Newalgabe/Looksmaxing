@@ -55,7 +55,7 @@ export const ACHIEVEMENTS = [
   { id: 'truecel', name: 'Truecel', desc: 'Finish with SMV under 2.5', icon: '😭', check: (p) => p.smv <= 2.5 },
   { id: 'influencer', name: 'TikTok Famous', desc: 'Reach 10,000 followers.', icon: '📱', check: (p) => p.followers >= 10000 },
   { id: 'surgery_survivor', name: 'Knife Magnet', desc: 'Survive 3+ botched surgeries.', icon: '💉', check: (p) => p.surgeryBotchedCount >= 3 },
-  { id: 'heartbreaker', name: 'Heartbreaker', desc: 'Date 3+ different partners across runs.', icon: '💔', check: (p) => false },
+  { id: 'heartbreaker', name: 'Heartbreaker', desc: 'Secure a dating partner in a run.', icon: '💔', check: (p) => p.hasDatingPartner },
   { id: 'mogger', name: 'Ultimate Mogger', desc: 'Defeat all opponents in battle.', icon: '🏆', check: (p) => p.opponentsDefeated.length >= 8 },
   { id: 'ceo_grind', name: 'CEO Grindset', desc: 'Reach CEO career tier.', icon: '💼', check: (p) => p.careerTier === 'ceo' },
   { id: 'surgeon_savvy_ach', name: 'Natural Beauty', desc: 'Complete a run with 0 surgeries.', icon: '🌿', check: (p) => p.surgeryBotchedCount === 0 },
@@ -89,11 +89,12 @@ export class GameState {
     this.reset();
   }
 
-  reset(activePerks = null, chosenGender = 'male') {
+  reset(activePerks = null, chosenGender = 'male', difficulty = 'normal') {
     if (activePerks) {
       this.activePerks = activePerks;
     }
     this.gender = chosenGender;
+    this.difficulty = difficulty;
     this.name = this.generateRandomName();
     this.age = 18;
     this.cash = (this.activePerks && this.activePerks.rich_uncle) ? 1500 : 500;
@@ -123,6 +124,7 @@ export class GameState {
     this.socialTier = 'NORMIE';
     this.log = [];
     this.isDead = false;
+    this._depressionYears = 0;
     this.surgeryBotchedCount = 0;
 
     // Milestones & accomplishments
@@ -150,6 +152,12 @@ export class GameState {
     this.substancesUsed = 0;
     this.activeSubstances = [];
     this.addictionLevel = 0;
+
+    // NEW: Difficulty mode
+    this.difficulty = 'normal';
+
+    // Depression tracking
+    this._depressionYears = 0;
 
     // NEW: Lineage
     this.children = [];
@@ -451,9 +459,11 @@ export class GameState {
     if (this.activePerks && this.activePerks.high_metabolism) {
       frameGain = Math.round(frameGain * 1.2);
     }
+    const gymRatRank = this.getTalentEffect('gym_rat');
+    if (gymRatRank > 0) frameGain = Math.round(frameGain * (1 + 0.15 * gymRatRank));
     this.frame = Math.min(100, this.frame + frameGain);
     
-    this.confidence = Math.min(100, this.confidence + this.randomRange(3, 8));
+    this.confidence = Math.min(100, this.confidence + this._charismaConfidenceBonus(this.randomRange(3, 8)));
     // Small chance to improve symmetry (posture improvement)
     if (this.symmetry === 'Asymmetrical' && Math.random() < 0.15) {
       this.symmetry = 'Average';
@@ -470,8 +480,11 @@ export class GameState {
     if (this.ap < 1 || this.cash < 50) return false;
     this.ap -= 1;
     this.cash -= 50;
-    this.skin = Math.min(100, this.skin + this.randomRange(8, 15));
-    this.confidence = Math.min(100, this.confidence + 2);
+    let skinGain = this.randomRange(8, 15);
+    const skinRank = this.getTalentEffect('skin_whisperer');
+    if (skinRank > 0) skinGain = Math.round(skinGain * (1 + 0.15 * skinRank));
+    this.skin = Math.min(100, this.skin + skinGain);
+    this.confidence = Math.min(100, this.confidence + this._charismaConfidenceBonus(2));
     this.updateSMV();
     return {
       message: `You executed a rigorous 10-step skincare routine (-$50 cash, -1 AP). Skin cleared up.`,
@@ -484,8 +497,11 @@ export class GameState {
     if (this.ap < 1 || this.cash < 150) return false;
     this.ap -= 1;
     this.cash -= 150;
-    this.style = Math.min(100, this.style + this.randomRange(10, 20));
-    this.confidence = Math.min(100, this.confidence + this.randomRange(5, 10));
+    let styleGain = this.randomRange(10, 20);
+    const fashionRank = this.getTalentEffect('fashion_icon');
+    if (fashionRank > 0) styleGain = Math.round(styleGain * (1 + 0.20 * fashionRank));
+    this.style = Math.min(100, this.style + styleGain);
+    this.confidence = Math.min(100, this.confidence + this._charismaConfidenceBonus(this.randomRange(5, 10)));
     // Hair styling makes you feel like you have better hairline temporarily
     this.updateSMV();
     return {
@@ -570,6 +586,12 @@ export class GameState {
     return this.talents[talentId] || 0;
   }
 
+  _charismaConfidenceBonus(gain) {
+    const rank = this.getTalentEffect('charisma');
+    if (rank > 0) gain = Math.round(gain * (1 + 0.10 * rank));
+    return gain;
+  }
+
   // === SUBSTANCE SYSTEM ===
   takeSubstance(substanceId) {
     this._validateState();
@@ -590,9 +612,15 @@ export class GameState {
     if (Math.random() < sub.risk) {
       this.skin = Math.max(0, this.skin - 10);
       this.confidence = Math.max(0, this.confidence - 20);
-      if (substanceId === 'steroids' && Math.random() < 0.1) {
+      if (substanceId === 'steroids' && Math.random() < (this.addictionLevel >= 5 ? 0.25 : 0.1)) {
         this.isDead = true;
+        this.log.push(`FATAL: ${sub.name} caused cardiac arrest. You died.`);
         return { success: false, message: `FATAL: ${sub.name} caused cardiac arrest. You died.`, type: 'error' };
+      }
+      if (this.addictionLevel >= 5 && Math.random() < 0.15) {
+        this.isDead = true;
+        this.log.push(`FATAL OVERDOSE: Your body couldn't handle ${sub.name}.`);
+        return { success: false, message: `FATAL OVERDOSE: Your body couldn't handle ${sub.name}. You died.`, type: 'error' };
       }
       return { success: false, message: `BAD REACTION: ${sub.name} caused side effects! (-10 Skin, -20 Confidence)`, type: 'error', effects: sub.effects };
     }
@@ -778,7 +806,8 @@ export class GameState {
       substancesUsed: this.substancesUsed, activeSubstances: this.activeSubstances,
       addictionLevel: this.addictionLevel, hasProcreated: this.hasProcreated,
       children: this.children, statTimeline: this.statTimeline,
-      activePerks: this.activePerks
+      activePerks: this.activePerks,
+      difficulty: this.difficulty
     }));
   }
 
@@ -880,7 +909,8 @@ export class GameState {
     }
 
     const finalCost = surgery.cost * costMult;
-    const finalRisk = surgery.risk * riskMult;
+    const surgeonRank = this.getTalentEffect('surgeon_savvy');
+    const finalRisk = surgery.risk * riskMult * (1 - 0.10 * surgeonRank);
 
     if (this.cash < finalCost) {
       return {
@@ -909,6 +939,7 @@ export class GameState {
       } else if (surgeryId === 'leg_lengthening') {
         if (Math.random() < 0.4) {
           this.isDead = true;
+          this.log.push(`FATAL: Surgery botch during ${surgery.name}.`);
           botchText = this.gender === 'female'
             ? "CATASTROPHIC FAILURE! You contracted a severe fat embolism during the fat transfer. The BBL was fatal. Rest in Peace."
             : "CATASTROPHIC FAILURE! You contracted a severe bone infection (osteomyelitis). The leg lengthening was fatal. Rest in Peace.";
@@ -987,31 +1018,49 @@ export class GameState {
   // YEAR CYCLE & RANDOM EVENTS
   advanceYear() {
     this.age += 1;
-    this.ap = 10;
+    const isHard = this.difficulty === 'hard';
+    this.ap = isHard ? 8 : 10;
 
     this.validateIntegrity();
 
     // Inflation / passive expenses
-    this.cash = Math.max(0, this.cash - 100);
+    this.cash = Math.max(0, this.cash - (isHard ? 200 : 100));
 
     // Give a talent point each year
     this.getTalentPoint();
 
     // Passive aging effects on hairline & skin
-    if (this.age >= 25 && Math.random() < 0.20 && this.hairline < 7) {
+    const hairlineChance = isHard ? 0.30 : 0.20;
+    if (this.age >= 25 && Math.random() < hairlineChance && this.hairline < 7) {
       this.hairline++;
     }
     // Skin degrades slightly after 35
-    if (this.age >= 35 && Math.random() < 0.15) {
-      this.skin = Math.max(0, this.skin - 3);
+    const skinChance = isHard ? 0.25 : 0.15;
+    if (this.age >= 35 && Math.random() < skinChance) {
+      this.skin = Math.max(0, this.skin - (isHard ? 5 : 3));
     }
     // Frame degrades after 45
-    if (this.age >= 45 && Math.random() < 0.10) {
-      this.frame = Math.max(0, this.frame - 3);
+    const frameChance = isHard ? 0.15 : 0.10;
+    if (this.age >= 45 && Math.random() < frameChance) {
+      this.frame = Math.max(0, this.frame - (isHard ? 5 : 3));
     }
     // Rizz improves with age (wisdom)
     if (this.age >= 30 && Math.random() < 0.20) {
       this.rizz = Math.min(100, this.rizz + 2);
+    }
+
+    // Depression tracking: if confidence at 0 for 3+ consecutive years → suicide
+    if (this.confidence <= 5) {
+      this._depressionYears++;
+      if (this._depressionYears >= 3) {
+        this.isDead = true;
+        this.log.push("You succumbed to years of crushing depression.");
+        this.updateSMV();
+        this.recordStatTimeline();
+        return { event: null, seasonal: null, midlifeEvent: null, depression: true };
+      }
+    } else {
+      this._depressionYears = 0;
     }
 
     this.updateSMV();
