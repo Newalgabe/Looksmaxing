@@ -239,6 +239,7 @@ function startAnimationLoop() {
 // --- Web Audio API Synthesizer ---
 let audioCtx = null;
 let soundEnabled = true;
+let bgmGainNode = null;
 
 // BGM State
 let bgmInterval = null;
@@ -358,6 +359,8 @@ function updateBgmMode() {
   bgmMode = arena ? 'battle' : 'gameboard';
 }
 
+const _bgmDest = () => bgmGainNode || audioCtx.destination;
+
 function scheduleNextBGMStep(time, step) {
   if (!audioCtx || !soundEnabled) return;
 
@@ -388,34 +391,31 @@ function scheduleNextBGMStep(time, step) {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(120, time);
       osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
-      osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
-      g.gain.setValueAtTime((beat === 0 ? 0.18 : 0.12) * prog.drumIntensity, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-      osc.start(time); osc.stop(time + 0.15);
+      osc.connect(f); f.connect(g); g.connect(_bgmDest());
     }
 
     // ===== 2. SNARE / CLAP (beats 2 and 4) =====
-    if ((beat === 4 || beat === 12) && cachedNoise) {
-      const src = audioCtx.createBufferSource();
-      src.buffer = cachedNoise.snare;
-      const f = audioCtx.createBiquadFilter();
-      f.type = 'highpass'; f.frequency.setValueAtTime(800, time);
-      const g = audioCtx.createGain();
-      g.gain.setValueAtTime(0.08 * prog.drumIntensity, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
-      src.start(time); src.stop(time + 0.08);
+      if ((beat === 4 || beat === 12) && cachedNoise) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = cachedNoise.snare;
+        const f = audioCtx.createBiquadFilter();
+        f.type = 'highpass'; f.frequency.setValueAtTime(800, time);
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.08 * prog.drumIntensity, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+        src.connect(f); f.connect(g); g.connect(_bgmDest());
+        src.start(time); src.stop(time + 0.08);
 
-      const tone = audioCtx.createOscillator();
-      const tg = audioCtx.createGain();
-      tone.type = 'triangle';
-      tone.frequency.setValueAtTime(200, time);
-      tone.frequency.exponentialRampToValueAtTime(80, time + 0.06);
-      tone.connect(tg); tg.connect(audioCtx.destination);
-      tg.gain.setValueAtTime(0.04 * prog.drumIntensity, time);
-      tg.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
-      tone.start(time); tone.stop(time + 0.06);
-    }
+        const tone = audioCtx.createOscillator();
+        const tg = audioCtx.createGain();
+        tone.type = 'triangle';
+        tone.frequency.setValueAtTime(200, time);
+        tone.frequency.exponentialRampToValueAtTime(80, time + 0.06);
+        tone.connect(tg); tg.connect(_bgmDest());
+        tg.gain.setValueAtTime(0.04 * prog.drumIntensity, time);
+        tg.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+        tone.start(time); tone.stop(time + 0.06);
+      }
 
     // ===== 3. HI-HAT (16th notes with pattern) =====
     const hatVel = HAT_PATTERN[beat];
@@ -427,7 +427,7 @@ function scheduleNextBGMStep(time, step) {
       const g = audioCtx.createGain();
       g.gain.setValueAtTime(0.025 * hatVel * prog.drumIntensity, time);
       g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.connect(f); f.connect(g); g.connect(_bgmDest());
       src.start(time); src.stop(time + 0.04);
     }
 
@@ -455,7 +455,7 @@ function scheduleNextBGMStep(time, step) {
         osc.frequency.setValueAtTime(freq, time);
       }
 
-      osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      osc.connect(f); f.connect(g); g.connect(_bgmDest());
       const dur = stepDuration * 0.95;
       g.gain.setValueAtTime(0.018 * (beat % 8 === 0 ? 1.3 : 0.9), time);
       g.gain.exponentialRampToValueAtTime(0.001, time + dur);
@@ -477,7 +477,7 @@ function scheduleNextBGMStep(time, step) {
         f.frequency.setValueAtTime(800, time + 0.5);
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(_chordFreqs[i], time);
-        osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+        osc.connect(f); f.connect(g); g.connect(_bgmDest());
         g.gain.setValueAtTime(0, time);
         g.gain.linearRampToValueAtTime(0.006 * prog.drumIntensity, time + 0.2);
         g.gain.setValueAtTime(0.006 * prog.drumIntensity, time + stepDuration * 14);
@@ -506,7 +506,7 @@ function scheduleNextBGMStep(time, step) {
         }
       }
 
-      osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      osc.connect(f); f.connect(g); g.connect(_bgmDest());
       g.gain.setValueAtTime(0.005 * (beat === 0 || beat === 8 ? 1.3 : 0.8) * (prog.drumIntensity + 0.2), time);
       g.gain.exponentialRampToValueAtTime(0.001, time + stepDuration * 0.7);
       osc.start(time); osc.stop(time + stepDuration * 0.7 + 0.01);
@@ -521,7 +521,7 @@ function scheduleNextBGMStep(time, step) {
       const g = audioCtx.createGain();
       g.gain.setValueAtTime(0.015 * prog.drumIntensity, time);
       g.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
-      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.connect(f); f.connect(g); g.connect(_bgmDest());
       src.start(time); src.stop(time + 0.03);
     }
 
@@ -563,6 +563,9 @@ function initAudio() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (Ctx) {
     audioCtx = new Ctx();
+    bgmGainNode = audioCtx.createGain();
+    bgmGainNode.gain.setValueAtTime(parseFloat(localStorage.getItem('looksmax_bgm_vol') || '0.7'), audioCtx.currentTime);
+    bgmGainNode.connect(audioCtx.destination);
     initNoiseBuffers();
   }
   if (audioCtx && soundEnabled) startBGM();
@@ -828,8 +831,20 @@ let dating = null;
 function init() {
   setupEventListeners();
   setupAudioControl();
+  setupTutorial();
   renderShop();
   startAnimationLoop();
+}
+
+function setupTutorial() {
+  if (localStorage.getItem('looksmax_tutorial_done')) return;
+  const overlay = document.getElementById('tutorial-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  document.getElementById('btn-close-tutorial').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    localStorage.setItem('looksmax_tutorial_done', '1');
+  });
 }
 
 function setupAudioControl() {
@@ -851,6 +866,19 @@ function setupAudioControl() {
       stopBGM();
     }
   });
+
+  const volSlider = document.getElementById('bgm-volume-slider');
+  if (volSlider) {
+    const saved = localStorage.getItem('looksmax_bgm_vol');
+    if (saved) volSlider.value = Math.round(parseFloat(saved) * 100);
+    volSlider.addEventListener('input', () => {
+      const vol = parseInt(volSlider.value) / 100;
+      localStorage.setItem('looksmax_bgm_vol', vol.toString());
+      if (bgmGainNode) {
+        bgmGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+      }
+    });
+  }
 }
 
 function logToConsole(message, type = 'system') {
@@ -1498,6 +1526,29 @@ function triggerGameOver(reasonText) {
   switchScreen('screen-gameover');
   document.getElementById('txt-death-reason').textContent = reasonText;
   document.getElementById('final-age-display').textContent = game.age;
+
+  // Determine ending title
+  const endTitleEl = document.getElementById('txt-end-title');
+  const endCareer = CAREER_TIERS.find(t => t.id === game.careerTier);
+  let ending = '';
+  if (game.isDead && game.surgeryBotchedCount > 0) {
+    ending = 'THE BUTCHER\'S BILL \u2014 Death by surgeon\'s mistake';
+  } else if (game.isDead) {
+    ending = 'GONE BEFORE GLORY \u2014 You left unfinished business';
+  } else if (endCareer && endCareer.id === 'ceo') {
+    ending = 'THE ASCENDED \u2014 CEO, total genetic victory';
+  } else if (game.smv >= 7.0) {
+    ending = 'LOOKSMAXED \u2014 You reached the pinnacle of genetic potential';
+  } else if (endCareer && endCareer.pay >= 3000) {
+    ending = 'HIGH VALUE \u2014 Comfortable life with a strong career';
+  } else if (game.hasDatingPartner) {
+    ending = 'SETTLED DOWN \u2014 Love conquered where looks couldn\'t';
+  } else if (game.smv >= 5.0) {
+    ending = 'DECENT RUN \u2014 Above average, room for improvement next life';
+  } else {
+    ending = 'COPER\'S END \u2014 The journey continues in the next life';
+  }
+  endTitleEl.textContent = ending;
 
   // Calculate Cope Tokens earned: base SMV + achievements + botched surgeries
   const tokensEarned = Math.round(game.smv * 15 + game.surgeryBotchedCount * 10 + game.achievementsUnlocked.length * 5);

@@ -11,13 +11,52 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="cyber-theme">
-  <!-- Game Audio Toggle -->
-  <div class="audio-control" id="audio-toggle-btn" title="Toggle Sound FX">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="speaker-icon">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-    </svg>
-    <span>SOUND ON</span>
+  <!-- Game Audio Controls -->
+  <div class="audio-bar">
+    <div class="audio-control" id="audio-toggle-btn" title="Toggle Sound FX">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="speaker-icon">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+      <span>SOUND ON</span>
+    </div>
+    <div class="volume-control">
+      <label for="bgm-volume-slider" class="volume-label">BGM</label>
+      <input type="range" id="bgm-volume-slider" min="0" max="100" value="70" class="volume-slider">
+    </div>
+  </div>
+
+  <!-- Tutorial Overlay (shown on first visit) -->
+  <div id="tutorial-overlay" class="tutorial-overlay hidden">
+    <div class="tutorial-modal">
+      <div class="tutorial-header">
+        <h2 class="text-cyan">FIRST TIME?</h2>
+        <p class="tutorial-subtitle">Quick guide to looksmaxxing your way to genetic glory</p>
+      </div>
+      <div class="tutorial-body">
+        <div class="tutorial-step" id="tutorial-step-0">
+          <div class="tutorial-step-number">1</div>
+          <p><strong>ROLL THE DICE</strong> — Click "ROLL GENETICS" to randomize your starting stats. Height, jaw, tilt, and hairline are permanent; the rest can be improved.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-1">
+          <div class="tutorial-step-number">2</div>
+          <p><strong>YEARLY ACTIONS</strong> — Each year you get <strong>10 AP</strong>. Spend them on gym, skincare, surgeries, dating, career, substances, or social media. Plan wisely.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-2">
+          <div class="tutorial-step-number">3</div>
+          <p><strong>STATS & SMV</strong> — Your SMV rating (1.0–8.0) determines your social tier. Higher stats = better career, dating, and battle outcomes.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-3">
+          <div class="tutorial-step-number">4</div>
+          <p><strong>RISK & REWARD</strong> — Surgeries and substances can boost stats fast but carry risk of botching, addiction, or death. Don't gamble what you can't lose.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-4">
+          <div class="tutorial-step-number">5</div>
+          <p><strong>REINCARNATION</strong> — Die or reach Age 50 to earn <strong>Cope Tokens</strong>. Spend them in the Shop on permanent perks for future runs.</p>
+        </div>
+      </div>
+      <button id="btn-close-tutorial" class="btn tutorial-btn">GOT IT, LET'S GO</button>
+    </div>
   </div>
 
   <main class="game-container">
@@ -137,7 +176,7 @@
             <div class="stat-group-title">SOFT MAXES (IMPROVABLE)</div>
             <div class="meter-stat">
               <div class="meter-label">
-                <span>Skin Quality:</span>
+                <span title="Affected by: Skincare actions, retinol, substances, age >35 (degrades)">Skin Quality:</span>
                 <span id="txt-skin">Blotchy</span>
               </div>
               <div class="progress-bar-container">
@@ -147,7 +186,7 @@
 
             <div class="meter-stat">
               <div class="meter-label">
-                <span id="lbl-hairline">Hairline (Norwood):</span>
+                <span id="lbl-hairline" title="Affected by: Genetics (permanent), age 25+ degrades over time">Hairline (Norwood):</span>
                 <span id="txt-hairline">NW 2</span>
               </div>
               <div class="progress-bar-container">
@@ -157,7 +196,7 @@
 
             <div class="meter-stat">
               <div class="meter-label">
-                <span>Frame/Build:</span>
+                <span title="Affected by: Gym-maxxing, height surgery, substances, age 45+ (degrades)">Frame/Build:</span>
                 <span id="txt-frame">Average</span>
               </div>
               <div class="progress-bar-container">
@@ -167,7 +206,7 @@
 
             <div class="meter-stat">
               <div class="meter-label">
-                <span>Styling & Grooming:</span>
+                <span title="Affected by: Styling actions, TikTok influence, substances, dating unlock">Styling & Grooming:</span>
                 <span id="txt-style">Basic</span>
               </div>
               <div class="progress-bar-container">
@@ -177,7 +216,7 @@
 
             <div class="meter-stat">
               <div class="meter-label">
-                <span>Confidence (Mental):</span>
+                <span title="Affected by: Social media, dating, battles, mirror game, career promotions">Confidence (Mental):</span>
                 <span id="txt-confidence">70%</span>
               </div>
               <div class="progress-bar-container">
@@ -187,7 +226,7 @@
 
             <div class="meter-stat">
               <div class="meter-label">
-                <span>Rizz (Charisma):</span>
+                <span title="Affected by: Dating, mirror game, substances, age 30+ (improves), career promotions">Rizz (Charisma):</span>
                 <span id="txt-rizz">50</span>
               </div>
               <div class="progress-bar-container">
@@ -402,6 +441,7 @@
         <header class="gameover-header">
           <h2 class="text-pink">RUN COMPLETED // AGE <span id="final-age-display">30</span> REACHED</h2>
           <p class="subtitle" id="txt-death-reason">You have finalized your genetic path. Here is how the community rates you.</p>
+          <p class="ending-title" id="txt-end-title"></p>
         </header>
 
         <div class="gameover-grid">

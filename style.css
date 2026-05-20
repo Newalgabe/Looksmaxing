@@ -122,6 +122,129 @@ body {
   width: 14px;
   height: 14px;
 }
+.audio-bar {
+  position: absolute;
+  top: 15px;
+  right: 25px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+}
+.volume-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.volume-slider {
+  width: 60px;
+  height: 4px;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+/* ==================== TUTORIAL OVERLAY ==================== */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(4,5,8,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tutorial-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--accent-cyan);
+  border-radius: var(--radius-lg);
+  padding: 30px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.tutorial-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.tutorial-header h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  margin: 0 0 6px 0;
+}
+.tutorial-subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.tutorial-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.tutorial-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.tutorial-step-number {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  color: #000;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+}
+.tutorial-step p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tutorial-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 10px 30px;
+  font-size: 13px;
+}
+
+/* ==================== ENDING TITLE ==================== */
+.ending-title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 4px 0 0 0;
+}
+
+/* ==================== STAT TOOLTIPS ==================== */
+.stat-label {
+  cursor: help;
+  border-bottom: 1px dotted var(--text-muted);
+}
+.stat-label:hover {
+  color: var(--accent-cyan);
+  border-bottom-color: var(--accent-cyan);
+}
+
 .audio-control.disabled {
   text-decoration: line-through;
   opacity: 0.5;
