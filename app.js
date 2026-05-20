@@ -278,10 +278,6 @@ const BGM_FILES = {
   gameover: '/assets/audio/gameover.mp3'
 };
 
-function getBgmMode() {
-  return bgmMode;
-}
-
 function updateBgmMode() {
   if (screenGenesis && screenGenesis.classList.contains('active')) { return 'genesis'; }
   if (screenGameOver && screenGameOver.classList.contains('active')) { return 'gameover'; }
@@ -551,6 +547,7 @@ const actPromotion = document.getElementById('act-promotion');
 const actSubstances = document.getElementById('act-substances');
 const actTalents = document.getElementById('act-talents');
 const actProcreate = document.getElementById('act-procreate');
+const actRehab = document.getElementById('act-rehab');
 const actMirrorGame = document.getElementById('act-mirror-game');
 const btnEndYear = document.getElementById('btn-end-year');
 
@@ -559,6 +556,8 @@ const substanceModal = document.getElementById('substance-modal');
 const talentModal = document.getElementById('talent-modal');
 const mirrorModal = document.getElementById('minigame-mirror-modal');
 const achievementToast = document.getElementById('achievement-toast');
+const procreateModal = document.getElementById('procreate-modal');
+const btnCloseProcreate = document.getElementById('btn-close-procreate');
 
 // Modals
 const eventModal = document.getElementById('event-modal');
@@ -821,6 +820,44 @@ tabBtns.forEach(btn => {
     } else {
       playSound('success');
       logToConsole(res.message, res.type);
+      const child = res.child;
+      const ft = Math.floor(child.height / 12);
+      const inc = child.height % 12;
+      document.getElementById('procreate-desc').textContent = `You had a child: ${child.name}!`;
+      document.getElementById('procreate-stats').innerHTML = `
+        <strong style="color:var(--accent-cyan);">${child.name}</strong>
+        <span style="font-size:9px;color:var(--text-muted);display:block;margin-bottom:6px;">
+          ${child.gender === 'male' ? '♂' : '♀'} Born at ${ft}'${inc}" 
+        </span>
+        <div style="font-size:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+          <span>Jaw: <strong>${child.jaw}</strong></span>
+          <span>Tilt: <strong>${child.tilt}</strong></span>
+          <span>Symmetry: <strong>${child.symmetry}</strong></span>
+          <span>Skin: <strong>${child.skin}/100</strong></span>
+          <span>Frame: <strong>${child.frame}/100</strong></span>
+          <span>Rizz: <strong>${child.rizz}/100</strong></span>
+          <span>Hairline: <strong>NW ${Math.min(7, Math.max(1, Math.round(child.hairline)))}</strong></span>
+        </div>
+      `;
+      procreateModal.classList.remove('hidden');
+      updateDashboard();
+    }
+  });
+
+  btnCloseProcreate.addEventListener('click', () => {
+    playSound('click');
+    procreateModal.classList.add('hidden');
+  });
+
+  // NEW: Rehab
+  actRehab.addEventListener('click', () => {
+    const res = game.doRehab();
+    if (res.error) {
+      playSound('error');
+      logToConsole(res.error, 'error');
+    } else {
+      playSound('success');
+      logToConsole(res.message, 'action');
       updateDashboard();
     }
   });
@@ -1068,14 +1105,23 @@ tabBtns.forEach(btn => {
     if (btnEndYear) btnEndYear.disabled = false;
     renderShop();
     switchScreen('screen-genesis');
-    btnRollGenetics.classList.remove('hidden');
-    btnStartLife.classList.add('hidden');
-    genesisStatsDisplay.classList.add('hidden');
-    genesisLoader.classList.add('hidden');
-    // Reset game for fresh run
-    game = new GameState(unlockedPerks);
-    if (dating) dating.rollProfile();
-    battle.active = false;
+  });
+
+  document.getElementById('btn-continue-lineage').addEventListener('click', () => {
+    playSound('success');
+    const heir = game.createChildRun();
+    if (!heir) return;
+    // Switch to heir as the new player
+    game = heir;
+    dating = new DatingSimulator(game, logToConsole);
+    battle = new BattleSystem(game, logToConsole);
+    game.recordStatTimeline();
+    const achs = game.checkAchievements();
+    achs.forEach(ach => showAchievementToast(ach));
+    switchScreen('screen-gameboard');
+    tabBtns[0].click();
+    updateDashboard();
+    logToConsole(`Lineage continues with ${game.name}! Inherited stats from parent.`, 'success');
   });
 }
 
@@ -1249,6 +1295,23 @@ function updateDashboard() {
   txtCareer.textContent = careerTier ? careerTier.title : 'Unknown';
   txtTalentPoints.textContent = game.talentPoints;
 
+  // Addiction display
+  const addictionRow = document.getElementById('hud-addiction-row');
+  const txtAddiction = document.getElementById('txt-addiction');
+  const barAddiction = document.getElementById('bar-addiction');
+  if (game.addictionLevel > 0) {
+    addictionRow.style.display = 'block';
+    txtAddiction.textContent = `${game.addictionLevel}/10`;
+    barAddiction.style.width = `${(game.addictionLevel / 10) * 100}%`;
+  } else {
+    addictionRow.style.display = 'none';
+  }
+
+  // Rehab button visibility
+  if (actRehab) {
+    actRehab.style.display = game.addictionLevel > 0 ? '' : 'none';
+  }
+
   // Enable/Disable Action buttons based on resources
   const careerInfo = CAREER_TIERS.find(t => t.id === game.careerTier);
   actWork.disabled = (careerInfo && careerInfo.apCost > 0) ? game.ap < careerInfo.apCost : game.ap < 1;
@@ -1419,6 +1482,12 @@ function triggerGameOver(reasonText) {
 
   // Update leaderboard
   updateLeaderboard(runInfo);
+
+  // Show/hide lineage continuation button
+  const continueBtn = document.getElementById('btn-continue-lineage');
+  if (continueBtn) {
+    continueBtn.style.display = (game.children && game.children.length > 0) ? '' : 'none';
+  }
 
   // Re-render shop
   renderShop();

@@ -274,6 +274,10 @@ export class DatingSimulator {
     if (this.player.rizz >= 60) prob += 10;
     if (this.player.rizz >= 80) prob += 15;
 
+    // Smooth Operator talent bonus
+    const smoRank = this.player.getTalentEffect('smooth_operator');
+    if (smoRank > 0) prob += smoRank * 8;
+
     return Math.max(0, Math.min(99, Math.round(prob)));
   }
 

@@ -34,7 +34,11 @@ export const TALENTS = [
   { id: 'skin_whisperer', name: 'Skin Whisperer', desc: '+15% Skin gains per rank', maxRank: 3, effect: null },
   { id: 'fashion_icon', name: 'Fashion Icon', desc: '+20% Style gains per rank', maxRank: 3, effect: null },
   { id: 'charisma', name: 'Charisma', desc: '+10% Confidence cap per rank', maxRank: 3, effect: null },
-  { id: 'surgeon_savvy', name: 'Surgeon Savvy', desc: '-10% Surgery risk per rank', maxRank: 3, effect: null }
+  { id: 'surgeon_savvy', name: 'Surgeon Savvy', desc: '-10% Surgery risk per rank', maxRank: 3, effect: null },
+  { id: 'tiktok_guru', name: 'TikTok Guru', desc: '+25% Follower gains per rank', maxRank: 3, effect: null },
+  { id: 'smooth_operator', name: 'Smooth Operator', desc: '+15% Dating success per rank', maxRank: 3, effect: null },
+  { id: 'hustler', name: 'Hustler', desc: '+20% Career earnings per rank', maxRank: 3, effect: null },
+  { id: 'iron_stomach', name: 'Iron Stomach', desc: '-20% Substance risk per rank', maxRank: 3, effect: null }
 ];
 
 // Substance definitions
@@ -417,7 +421,7 @@ export class GameState {
       ];
     }
 
-    this.followers += newFollowers;
+    this.followers += this._getFollowerBonus(newFollowers);
     this.cash += cashEarned;
     this.confidence = Math.max(0, Math.min(100, this.confidence + confidenceEffect));
 
@@ -528,7 +532,7 @@ export class GameState {
     }
     if (this.ap < tier.apCost) return false;
     this.ap -= tier.apCost;
-    this.cash += tier.pay;
+    this.cash += this._getCareerBonus(tier.pay);
     this.confidence = Math.max(0, this.confidence - 3);
     this.updateSMV();
     return {
@@ -586,6 +590,29 @@ export class GameState {
     return gain;
   }
 
+  _getFollowerBonus(gain) {
+    const rank = this.getTalentEffect('tiktok_guru');
+    if (rank > 0) gain = Math.round(gain * (1 + 0.25 * rank));
+    return gain;
+  }
+
+  _getDatingBonus(gain) {
+    const rank = this.getTalentEffect('smooth_operator');
+    if (rank > 0) gain = Math.round(gain * (1 + 0.15 * rank));
+    return gain;
+  }
+
+  _getCareerBonus(amount) {
+    const rank = this.getTalentEffect('hustler');
+    if (rank > 0) amount = Math.round(amount * (1 + 0.20 * rank));
+    return amount;
+  }
+
+  _getSubstanceRiskReduction() {
+    const rank = this.getTalentEffect('iron_stomach');
+    return rank > 0 ? (1 - 0.20 * rank) : 1;
+  }
+
   // === SUBSTANCE SYSTEM ===
   takeSubstance(substanceId) {
     this._validateState();
@@ -602,8 +629,9 @@ export class GameState {
       this.addictionLevel = Math.min(10, this.addictionLevel + 1);
     }
 
-    // Risk check
-    if (Math.random() < sub.risk) {
+    // Risk check (reduced by iron_stomach talent)
+    const finalRisk = sub.risk * this._getSubstanceRiskReduction();
+    if (Math.random() < finalRisk) {
       this.skin = Math.max(0, this.skin - 10);
       this.confidence = Math.max(0, this.confidence - 20);
       if (substanceId === 'steroids' && Math.random() < (this.addictionLevel >= 5 ? 0.25 : 0.1)) {
@@ -679,6 +707,47 @@ export class GameState {
     this.children.push(child);
     this.cash = Math.max(0, this.cash - 2000); // Child costs
     return { success: true, child, message: `You had a child: ${child.name}! They inherit some of your traits.`, type: 'success' };
+  }
+
+  doRehab() {
+    this._validateState();
+    if (this.addictionLevel <= 0) return { error: 'No addiction to treat.' };
+    if (this.ap < 2) return { error: 'Need 2 AP for rehab.' };
+    if (this.cash < 500) return { error: 'Rehab costs $500.' };
+    this.ap -= 2;
+    this.cash -= 500;
+    const reduction = Math.min(this.addictionLevel, this.randomRange(1, 3));
+    this.addictionLevel = Math.max(0, this.addictionLevel - reduction);
+    this.confidence = Math.max(0, this.confidence - 5);
+    this.log.push(`Completed rehab. Addiction reduced by ${reduction} level(s).`);
+    this.updateSMV();
+    return { success: true, message: `Rehab complete! Addiction dropped by ${reduction} level(s) (now ${this.addictionLevel}/10).`, type: 'action', reduction };
+  }
+
+  createChildRun(childIndex = 0) {
+    if (this.children.length === 0 || !this.children[childIndex]) return null;
+    const child = this.children[childIndex];
+    const g = new GameState();
+    g.name = child.name;
+    g.gender = child.gender;
+    g.age = 18;
+    g.height = child.height;
+    g.jaw = child.jaw;
+    g.tilt = child.tilt;
+    g.symmetry = child.symmetry;
+    g.hairline = Math.min(7, Math.max(1, Math.round(child.hairline)));
+    g.skin = Math.min(100, Math.max(0, child.skin));
+    g.frame = Math.min(100, Math.max(0, child.frame));
+    g.rizz = Math.min(100, Math.max(0, child.rizz));
+    g.cash = Math.max(500, Math.round(this.cash * 0.3));
+    g.confidence = 50;
+    g.style = this.randomRange(10, 50);
+    g.log = [`Born as ${child.name}, child of ${this.name}. The lineage continues.`];
+    g.achievementsUnlocked = JSON.parse(JSON.stringify(this.achievementsUnlocked));
+    g.difficulty = this.difficulty;
+    g.hasInfluencerCard = false;
+    g.updateSMV();
+    return g;
   }
 
   // === STAT TIMELINE ===
@@ -1231,6 +1300,55 @@ export class GameState {
         effect: (p) => { p.cash += 3000; p.confidence = Math.min(100, p.confidence + 10); },
         impactText: "+$3,000 Cash, +10% Confidence",
         icon: "🎊"
+      },
+      {
+        title: "Hair Transplant Deal",
+        desc: "A clinic offers a BOGO deal on hair transplants. You can't say no.",
+        effect: (p) => { p.style = Math.min(100, p.style + 8); p.cash = Math.max(0, p.cash - 1500); },
+        impactText: "+8 Style, -$1,500 Cash",
+        icon: "💇"
+      },
+      {
+        title: "Expo Hall Free Samples",
+        desc: "You wander into a beauty expo and grab a bag of premium skincare samples.",
+        effect: (p) => { p.skin = Math.min(100, p.skin + 10); },
+        impactText: "+10 Skin Quality",
+        icon: "🎁"
+      },
+      {
+        title: "Identity Theft Scare",
+        desc: "Someone drains your bank account. You recover most of it but the stress lingers.",
+        effect: (p) => { p.cash = Math.max(0, p.cash - 800); p.confidence = Math.max(0, p.confidence - 10); },
+        impactText: "-$800 Cash, -10% Confidence",
+        icon: "🚨"
+      },
+      {
+        title: "Compliment from a Stranger",
+        desc: isFemale ? "A girl tells you your eyeliner is sharp enough to kill." : "A random girl says you smell nice. You ride this high for weeks.",
+        effect: (p) => { p.confidence = Math.min(100, p.confidence + 12); p.rizz = Math.min(100, p.rizz + 3); },
+        impactText: "+12% Confidence, +3 Rizz",
+        icon: "💬"
+      },
+      {
+        title: "Lucky Lottery Scratch",
+        desc: "You buy a scratch card on a whim and actually win something for once.",
+        effect: (p) => { p.cash += 500; },
+        impactText: "+$500 Cash",
+        icon: "🍀"
+      },
+      {
+        title: "Bad Hair Day Gone Viral",
+        desc: "A photo of your disastrous bedhead gets 50k likes. Embarrassing but you gain followers.",
+        effect: (p) => { p.followers += 800; p.confidence = Math.max(0, p.confidence - 8); },
+        impactText: "+800 Followers, -8% Confidence",
+        icon: "🤳"
+      },
+      {
+        title: "Free Gym Membership",
+        desc: "A new gym opens in your area and offers a free year. Frame gains are cheaper!",
+        effect: (p) => { p.frame = Math.min(100, p.frame + 10); p.cash = Math.max(0, p.cash - 100); },
+        impactText: "+10 Frame, -$100 Admin Fee",
+        icon: "🏋️"
       }
     ];
 

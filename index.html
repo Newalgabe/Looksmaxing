@@ -259,6 +259,16 @@
               </div>
             </div>
 
+            <div class="meter-stat" id="hud-addiction-row" style="display:none;">
+              <div class="meter-label">
+                <span>Addiction Level:</span>
+                <span id="txt-addiction" class="text-pink">0/10</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-pink" id="bar-addiction" style="width:0%"></div>
+              </div>
+            </div>
+
           </div>
         </aside>
 
@@ -381,6 +391,15 @@
                     <h4>Start a Family</h4>
                     <p class="desc">Have a child to continue your lineage.</p>
                     <span class="cost text-green">-$2,000 (Need partner)</span>
+                  </div>
+                </button>
+
+                 <button class="action-card" id="act-rehab" style="display:none;">
+                  <div class="action-icon">🏥</div>
+                  <div class="action-details">
+                    <h4>Go to Rehab</h4>
+                    <p class="desc">Detox from substances and reduce addiction.</p>
+                    <span class="cost text-cyan">-$500 cash / -$2 AP</span>
                   </div>
                 </button>
 
@@ -522,6 +541,7 @@
 
         <div class="gameover-actions">
           <button class="btn primary-btn pulse-glow" id="btn-restart">RE-ROLL GENETICS (NEW RUN)</button>
+          <button class="btn secondary-btn" id="btn-continue-lineage" style="display:none;">CONTINUE AS HEIR</button>
         </div>
       </div>
     </section>
@@ -583,6 +603,20 @@
           <span class="achievement-name" id="ach-name">Achievement Name</span>
           <span class="achievement-desc" id="ach-desc">Description</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Procreation Result Modal -->
+    <div class="modal-overlay hidden" id="procreate-modal">
+      <div class="event-modal-content" style="max-width:400px;">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">👶</span>
+          <h3>NEW LIFE</h3>
+        </div>
+        <p class="event-desc" id="procreate-desc">Your child has been born!</p>
+        <div id="procreate-stats" style="font-family:var(--font-mono);font-size:11px;margin:10px 0;padding:8px;background:var(--bg-tertiary);border-radius:var(--radius-sm);"></div>
+        <button class="btn primary-btn" id="btn-close-procreate">CONTINUE</button>
       </div>
     </div>
 
