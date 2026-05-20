@@ -202,6 +202,50 @@ export class BattleSystem {
             style: 20,
             log: "You defeated the Forum Admin! You are now stickied as Stacy on the homepage (+5,000 cash, +50% Confidence)."
           }
+        },
+        // NEW OPPONENTS
+        {
+          id: 'plastic_surgeon',
+          name: 'Dr. Riviera (Plastic Surgeon)',
+          title: 'Gatekeeper of Aesthetics',
+          avatar: '🔪',
+          skepticism: 130,
+          difficulty: 'Hard',
+          reqSMV: 5.0,
+          dialogs: {
+            start: "Let me analyze your facial thirds. Hmm, your midface ratio is off.",
+            hit: "Your zygomatic bones are decent. I can work with this.",
+            attack: "Zero forward growth. You need a full bimax advancement.",
+            defeat: "Remarkable proportions. You are my masterpiece.",
+            victory: "You need at least $50k in work. Next patient!"
+          },
+          rewards: {
+            cash: 1500,
+            confidence: 25,
+            style: 10,
+            log: "Dr. Riviera complimented your bone structure! Earned $1,500 and +10 Style!"
+          }
+        },
+        {
+          id: 'tiktok_rat',
+          name: '@looksmax_algo (TikTok Algorithm)',
+          title: 'The Shadow Ban Enforcer',
+          avatar: '🤖',
+          skepticism: 100,
+          difficulty: 'Medium',
+          reqSMV: 4.0,
+          dialogs: {
+            start: "Your content is mid. Shadow banning your account.",
+            hit: "Decent engagement rate. Your facial symmetry trending.",
+            attack: "Reported for false advertising. Your SMV doesn't match your captions.",
+            defeat: "Viral algorithm boost granted. Your DMs are about to explode.",
+            victory: "Your content ratio is abysmal. Algorithm rejected."
+          },
+          rewards: {
+            cash: 800,
+            confidence: 20,
+            log: "You beat the TikTok algorithm! Your content is now trending! (+$800, +20% Confidence)"
+          }
         }
       ];
     } else {
@@ -381,6 +425,50 @@ export class BattleSystem {
             style: 20,
             log: "You defeated the Forum Admin! You are now stickied as GigaChad on the homepage (+5,000 cash, +50% Confidence)!"
           }
+        },
+        // NEW OPPONENTS
+        {
+          id: 'plastic_surgeon',
+          name: 'Dr. Riviera (Plastic Surgeon)',
+          title: 'Gatekeeper of Aesthetics',
+          avatar: '🔪',
+          skepticism: 130,
+          difficulty: 'Hard',
+          reqSMV: 5.0,
+          dialogs: {
+            start: "Let me analyze your facial thirds. Hmm, your midface ratio is off.",
+            hit: "Your zygomatic bones are decent. I can work with this.",
+            attack: "Zero forward growth. You need a full bimax advancement.",
+            defeat: "Remarkable proportions. You are my masterpiece.",
+            victory: "You need at least $50k in work. Next patient!"
+          },
+          rewards: {
+            cash: 1500,
+            confidence: 25,
+            style: 10,
+            log: "Dr. Riviera complimented your bone structure! Earned $1,500 and +10 Style!"
+          }
+        },
+        {
+          id: 'tiktok_rat',
+          name: '@looksmax_algo (TikTok Algorithm)',
+          title: 'The Shadow Ban Enforcer',
+          avatar: '🤖',
+          skepticism: 100,
+          difficulty: 'Medium',
+          reqSMV: 4.0,
+          dialogs: {
+            start: "Your content is mid. Shadow banning your account.",
+            hit: "Decent engagement rate. Your facial symmetry trending.",
+            attack: "Reported for false advertising. Your SMV doesn't match your captions.",
+            defeat: "Viral algorithm boost granted. Your DMs are about to explode.",
+            victory: "Your content ratio is abysmal. Algorithm rejected."
+          },
+          rewards: {
+            cash: 800,
+            confidence: 20,
+            log: "You beat the TikTok algorithm! Your content is now trending! (+$800, +20% Confidence)"
+          }
         }
       ];
     }
@@ -544,7 +632,46 @@ export class BattleSystem {
       });
     }
 
-    // 8. TIKTOK / SOCIAL MEDIA CARDS
+    // 8. RIZZ-BASED CARDS
+    if (this.player.rizz >= 60) {
+      cardPool.push({
+        name: 'Rizz Flash',
+        desc: 'Turn on the charm. Smooth talking.',
+        cost: 1,
+        power: 18,
+        effect: (b) => { b.damageOpponent(18); b.healPlayer(8); },
+        emoji: '🔥'
+      });
+    }
+
+    if (this.player.rizz >= 80) {
+      cardPool.push({
+        name: 'Charisma Overload',
+        desc: 'Overwhelming presence. High damage.',
+        cost: 2,
+        power: 30,
+        effect: (b) => { b.damageOpponent(30); },
+        emoji: '✨'
+      });
+    }
+
+    // 9. CAREER-BASED CARDS
+    const careerRank = ['unemployed','entry','junior','mid','senior','manager','director','executive','ceo'].indexOf(this.player.careerTier);
+    if (careerRank >= 4) {
+      cardPool.push({
+        name: 'Power Move',
+        desc: 'Call in professional favors. Devastating.',
+        cost: 2,
+        power: 24 + careerRank * 2,
+        effect: (b) => {
+          const dmg = 24 + careerRank * 2;
+          b.damageOpponent(dmg);
+        },
+        emoji: '💼'
+      });
+    }
+
+    // 10. TIKTOK / SOCIAL MEDIA CARDS
     if (this.player.hasInfluencerCard) {
       cardPool.push({
         name: 'Influencer Aura',

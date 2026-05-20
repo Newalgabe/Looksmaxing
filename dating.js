@@ -85,6 +85,43 @@ export class DatingSimulator {
               { text: "Politely decline to keep your self-worth", cashCost: 0, successProb: 0.0, outcome: "reject" }
             ]
           }
+        },
+        // NEW FEMALE PROFILES
+        {
+          name: 'Marcus',
+          age: 27,
+          bio: 'Rizz instructor. Looking for someone with actual conversational game. 🎯',
+          avatarColor: '#00f0ff',
+          avatarType: 'chad',
+          reqSMV: 4.5,
+          reqRizz: 40,
+          dialogues: {
+            match: "Hey, you seem interesting. Let's chat.",
+            reject: "Your conversation skills need work. Pass.",
+            success: "You've got real charm. Let's grab drinks.",
+            options: [
+              { text: "Use your best pick-up line (+10 Rizz)", cashCost: 0, successProb: 0.60, outcome: "success" },
+              { text: "Nervously talk about the weather", cashCost: 0, successProb: 0.15, outcome: "reject" }
+            ]
+          }
+        },
+        {
+          name: 'Derek',
+          age: 30,
+          bio: 'CEO of a tech startup. Looking for a power couple dynamic. 📈',
+          avatarColor: '#50fa7b',
+          avatarType: 'corporate',
+          reqSMV: 5.5,
+          reqRizz: 30,
+          dialogues: {
+            match: "Impressive profile. I appreciate ambition.",
+            reject: "I need someone with more drive.",
+            success: "Perfect. Let's build an empire together.",
+            options: [
+              { text: "Discuss your career achievements (-$50 coffee)", cashCost: 50, successProb: 0.80, outcome: "success" },
+              { text: "Talk about your looksmaxxing journey", cashCost: 0, successProb: 0.05, outcome: "reject" }
+            ]
+          }
         }
       ];
     } else {
@@ -152,7 +189,7 @@ export class DatingSimulator {
           bio: 'Looking for a young boy to spoil. I don\'t care about height or jawlines, just looking for some company and energy. 💰🛍️',
           avatarColor: '#ffb86c',
           avatarType: 'sugar',
-          reqSMV: 1.0, // Swipes right on anyone!
+          reqSMV: 1.0,
           dialogues: {
             match: "Hello there, handsome young man! I want to spoil you.",
             reject: "Oh, you're a bit too sassy for my budget.",
@@ -160,6 +197,43 @@ export class DatingSimulator {
             options: [
               { text: "Accept her sugar-mommy proposal (-50 Confidence, +$5,000 cash)", cashCost: -5000, successProb: 1.0, outcome: "success" },
               { text: "Respectfully decline to preserve your dignity", cashCost: 0, successProb: 0.0, outcome: "reject" }
+            ]
+          }
+        },
+        // NEW MALE PROFILES
+        {
+          name: 'Valentina',
+          age: 25,
+          bio: 'Rizz queen. Looking for a guy with actual game, not just good bone structure. 🎯',
+          avatarColor: '#00f0ff',
+          avatarType: 'goth',
+          reqSMV: 4.5,
+          reqRizz: 40,
+          dialogues: {
+            match: "Hey, you seem interesting. Let's see if you can keep up.",
+            reject: "Your rizz is lacking. Work on your charisma.",
+            success: "You've got real charm. Let's grab drinks.",
+            options: [
+              { text: "Show off your charisma (+10 Rizz)", cashCost: 0, successProb: 0.60, outcome: "success" },
+              { text: "Nervously talk about your investments", cashCost: 0, successProb: 0.15, outcome: "reject" }
+            ]
+          }
+        },
+        {
+          name: 'Priya',
+          age: 28,
+          bio: 'Corporate lawyer. Looking for someone ambitious with a good career. 📈',
+          avatarColor: '#50fa7b',
+          avatarType: 'corporate',
+          reqSMV: 5.5,
+          reqRizz: 35,
+          dialogues: {
+            match: "Impressive profile. I appreciate a man with direction.",
+            reject: "I need someone more established.",
+            success: "Perfect. Let's have dinner and discuss our futures.",
+            options: [
+              { text: "Discuss your career trajectory (-$100 dinner)", cashCost: 100, successProb: 0.80, outcome: "success" },
+              { text: "Flex your TikTok follower count", cashCost: 0, successProb: 0.10, outcome: "reject" }
             ]
           }
         }
@@ -172,27 +246,34 @@ export class DatingSimulator {
   // Calculate Match Probability
   calculateMatchPercent(profile) {
     let smvDiff = this.player.smv - profile.reqSMV;
-    let prob = 30 + smvDiff * 15; // 30% base + SMV scaling
+    let prob = 30 + smvDiff * 15;
 
     // Strict requirements modifiers
     if (profile.reqHeight && this.player.height < profile.reqHeight) {
       const diff = profile.reqHeight - this.player.height;
-      prob -= (diff * 20); // Massive height penalty
+      prob -= (diff * 20);
     }
 
     if (profile.reqTilt && this.player.tilt !== profile.reqTilt) {
-      prob -= 30; // Eyes penalty
+      prob -= 30;
     }
 
     if (profile.reqHairline && this.player.hairline > profile.reqHairline) {
-      prob -= 40; // Norwood baldness penalty
+      prob -= 40;
     }
 
     if (profile.reqSkin && this.player.skin < profile.reqSkin) {
       prob -= 20;
     }
 
-    // Clamp between 0% and 99%
+    if (profile.reqRizz && this.player.rizz < profile.reqRizz) {
+      prob -= 25;
+    }
+
+    // Rizz bonus (if you have high rizz, it helps)
+    if (this.player.rizz >= 60) prob += 10;
+    if (this.player.rizz >= 80) prob += 15;
+
     return Math.max(0, Math.min(99, Math.round(prob)));
   }
 

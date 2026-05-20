@@ -4,6 +4,11 @@
  * based on the character's physical and styling stats.
  */
 
+// Offscreen canvas for caching the static background grid
+let _gridCache = null;
+let _gridW = 0;
+let _gridH = 0;
+
 export function drawAvatar(canvas, stats, timeMs = 0) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -13,8 +18,16 @@ export function drawAvatar(canvas, stats, timeMs = 0) {
   // Clear canvas
   ctx.clearRect(0, 0, w, h);
 
-  // Draw background cyber grid
-  drawBackgroundGrid(ctx, w, h, stats.height);
+  // Draw background cyber grid (cached to offscreen canvas)
+  if (!_gridCache || _gridW !== w || _gridH !== h) {
+    _gridW = w; _gridH = h;
+    _gridCache = document.createElement('canvas');
+    _gridCache.width = w;
+    _gridCache.height = h;
+    const gctx = _gridCache.getContext('2d');
+    drawBackgroundGrid(gctx, w, h);
+  }
+  ctx.drawImage(_gridCache, 0, 0);
 
   // Normalize stats
   const gender = stats.gender || 'male';

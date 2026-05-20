@@ -4,7 +4,7 @@
  * canvas renderer, card battles, dating swiping, and year progression.
  */
 
-import { GameState } from './game.js';
+import { GameState, CAREER_TIERS, TALENTS, SUBSTANCES, ACHIEVEMENTS } from './game.js';
 import { drawAvatar } from './avatar.js';
 import { BattleSystem } from './battle.js';
 import { DatingSimulator } from './dating.js';
@@ -236,7 +236,7 @@ function startAnimationLoop() {
   animationFrameId = requestAnimationFrame(tick);
 }
 
-// --- Web Audio API Synth ---
+// --- Web Audio API Synthesizer ---
 let audioCtx = null;
 let soundEnabled = true;
 
@@ -244,124 +244,311 @@ let soundEnabled = true;
 let bgmInterval = null;
 let bgmNextNoteTime = 0;
 let bgmStepIndex = 0;
-let bgmBPM = 110;
+let bgmMode = 'genesis';
+let bgmModeCheckCounter = 0;
 
-// Chord progression: i - VI - VII - v (Am - F - G - Em)
+// Chord progressions (root frequencies for each chord)
+// Each mode has 4 chords cycling in a progression
 const BGM_PROGRESSIONS = {
-  genesis: [110, 110, 110, 110], // slow A minor drone/base
-  gameboard: [110, 87.31, 98.0, 82.41], // steady retro synthwave
-  battle: [110, 130.81, 98.0, 73.42] // fast/intense (A - C - G - D)
+  genesis: {
+    bpm: 85,
+    chords: [
+      { root: 110, type: 'min', name: 'Am' },
+      { root: 98, type: 'maj', name: 'F' },
+      { root: 130.81, type: 'min', name: 'Cm' },
+      { root: 82.41, type: 'maj', name: 'E' }
+    ],
+    bassPattern: 'root_fifth',
+    leadOctave: 3,
+    drumIntensity: 0.3
+  },
+  gameboard: {
+    bpm: 100,
+    chords: [
+      { root: 110, type: 'min', name: 'Am' },
+      { root: 87.31, type: 'maj', name: 'F' },
+      { root: 98.0, type: 'maj', name: 'G' },
+      { root: 82.41, type: 'min', name: 'Em' }
+    ],
+    bassPattern: 'octave_walk',
+    leadOctave: 4,
+    drumIntensity: 0.6
+  },
+  battle: {
+    bpm: 130,
+    chords: [
+      { root: 110, type: 'min', name: 'Am' },
+      { root: 130.81, type: 'maj', name: 'C' },
+      { root: 98.0, type: 'maj', name: 'G' },
+      { root: 73.42, type: 'min', name: 'Dm' }
+    ],
+    bassPattern: 'driving',
+    leadOctave: 5,
+    drumIntensity: 0.9
+  },
+  gameover: {
+    bpm: 75,
+    chords: [
+      { root: 110, type: 'min', name: 'Am' },
+      { root: 73.42, type: 'min', name: 'Dm' },
+      { root: 98.0, type: 'maj', name: 'G' },
+      { root: 65.41, type: 'maj', name: 'C' }
+    ],
+    bassPattern: 'root_fifth',
+    leadOctave: 3,
+    drumIntensity: 0.1
+  }
 };
+
+// A minor pentatonic scale multipliers (for lead melodies)
+const PENTATONIC_MINOR = [1.0, 1.2, 1.334, 1.5, 1.8, 2.0, 2.4, 2.668];
+
+// Melody patterns - call-response structures for each mode
+const MELODY_PATTERNS = {
+  genesis: { noteIndices: [0,2,4,3,2,0,3,1,0,2,4,5,3,1,2,0], gate: [1,0,1,0,1,1,0,1,0,1,0,1,1,1,0,0], density: 0.55 },
+  gameboard: { noteIndices: [0,2,4,5,4,2,0,1,3,5,6,5,4,2,1,0], gate: [1,0,1,1,0,1,0,1,1,0,1,1,0,1,1,0], density: 0.7 },
+  battle: { noteIndices: [4,5,6,5,4,2,0,1,5,6,7,6,5,4,2,0], gate: [1,1,1,0,1,1,0,1,1,1,1,0,1,1,1,1], density: 0.85 },
+  gameover: { noteIndices: [0,1,0,2,1,0,3,2,0,1,0,2,3,1,0,0], gate: [1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,0], density: 0.4 }
+};
+
+const HAT_PATTERN = [1, 0.6, 1, 0.8, 1, 0.5, 1, 0.7, 1, 0.6, 1, 0.9, 1, 0.5, 1, 0.7];
+
+// Cached noise buffers (created once to avoid createBuffer in hot path)
+let cachedNoise = null;
+
+function initNoiseBuffers() {
+  if (cachedNoise || !audioCtx) return;
+  const sr = audioCtx.sampleRate;
+  cachedNoise = {
+    snare: createNoiseBuffer(sr, 0.08),
+    hat: createNoiseBuffer(sr, 0.04),
+    rim: createNoiseBuffer(sr, 0.03)
+  };
+}
+
+function createNoiseBuffer(sr, dur) {
+  const len = Math.ceil(sr * dur);
+  const buf = audioCtx.createBuffer(1, len, sr);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function applyEnvelope(buf, type) {
+  const d = buf.getChannelData(0);
+  const len = d.length;
+  if (type === 'snare') {
+    for (let i = 0; i < len; i++) d[i] *= (1 - i / len);
+  } else if (type === 'hat') {
+    for (let i = 0; i < len; i++) d[i] *= Math.pow(1 - i / len, 3);
+  }
+}
+
+// Pre-allocated reusable arrays to avoid garbage in hot path
+const _chordFreqs = [0, 0, 0];
+
+function getBgmMode() {
+  return bgmMode; // updated by updateBgmMode() at a lower rate
+}
+
+function updateBgmMode() {
+  if (screenGenesis && screenGenesis.classList.contains('active')) { bgmMode = 'genesis'; return; }
+  if (screenGameOver && screenGameOver.classList.contains('active')) { bgmMode = 'gameover'; return; }
+  const arena = document.querySelector('.battle-arena');
+  bgmMode = arena ? 'battle' : 'gameboard';
+}
 
 function scheduleNextBGMStep(time, step) {
   if (!audioCtx || !soundEnabled) return;
 
-  // Determine progression based on active screen
-  let mode = 'gameboard';
-  if (screenGenesis && screenGenesis.classList.contains('active')) {
-    mode = 'genesis';
-  } else if (document.querySelector('.battle-arena')) {
-    mode = 'battle';
+  // Check mode only every 8 steps (~80-130ms) instead of every step
+  bgmModeCheckCounter++;
+  if (bgmModeCheckCounter >= 8) {
+    bgmModeCheckCounter = 0;
+    updateBgmMode();
   }
 
-  const rootFreqs = BGM_PROGRESSIONS[mode];
-  const chordIndex = Math.floor(step / 16) % rootFreqs.length;
-  const rootFreq = rootFreqs[chordIndex];
+  const prog = BGM_PROGRESSIONS[bgmMode];
+  const bpm = prog.bpm;
+  const stepDuration = 60 / bpm / 4;
+  const chordIdx = Math.floor(step / 16) % prog.chords.length;
+  const chord = prog.chords[chordIdx];
+  const rootFreq = chord.root;
+  const beat = step % 16;
 
-  // --- Bassline (eighth notes) ---
-  if (step % 2 === 0) {
-    try {
+  try {
+    // ===== 1. KICK DRUM (quarter notes) =====
+    if (beat % 4 === 0) {
       const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(300, time);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.type = 'sawtooth';
-      const octave = (step % 4 === 0) ? 1 : 2;
-      osc.frequency.setValueAtTime(rootFreq * octave * 0.5, time);
-
-      gain.gain.setValueAtTime(0.007, time);
-      gain.gain.exponentialRampToValueAtTime(0.0001, time + (60 / bgmBPM / 2) * 0.9);
-
-      osc.start(time);
-      osc.stop(time + (60 / bgmBPM / 2));
-    } catch (e) {
-      console.warn("BGM Bass Error:", e);
+      const g = audioCtx.createGain();
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(150, time);
+      f.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, time);
+      osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
+      osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime((beat === 0 ? 0.18 : 0.12) * prog.drumIntensity, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+      osc.start(time); osc.stop(time + 0.15);
     }
-  }
 
-  // --- Arpeggiator Lead Melody (16th notes with gate pattern) ---
-  const leadPattern = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0];
-  if (leadPattern[step % 16] === 1 && Math.random() < 0.75) {
-    try {
-      const scaleOffsets = [1.0, 1.2, 1.334, 1.5, 1.8, 2.0];
-      const offset = scaleOffsets[Math.floor(Math.random() * scaleOffsets.length)];
-      const noteFreq = rootFreq * offset * 2.0;
+    // ===== 2. SNARE / CLAP (beats 2 and 4) =====
+    if ((beat === 4 || beat === 12) && cachedNoise) {
+      const src = audioCtx.createBufferSource();
+      src.buffer = cachedNoise.snare;
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.setValueAtTime(800, time);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.08 * prog.drumIntensity, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.start(time); src.stop(time + 0.08);
 
+      const tone = audioCtx.createOscillator();
+      const tg = audioCtx.createGain();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(200, time);
+      tone.frequency.exponentialRampToValueAtTime(80, time + 0.06);
+      tone.connect(tg); tg.connect(audioCtx.destination);
+      tg.gain.setValueAtTime(0.04 * prog.drumIntensity, time);
+      tg.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+      tone.start(time); tone.stop(time + 0.06);
+    }
+
+    // ===== 3. HI-HAT (16th notes with pattern) =====
+    const hatVel = HAT_PATTERN[beat];
+    if (hatVel > 0 && prog.drumIntensity > 0.2 && cachedNoise) {
+      const src = audioCtx.createBufferSource();
+      src.buffer = cachedNoise.hat;
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.setValueAtTime(4000, time);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.025 * hatVel * prog.drumIntensity, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.start(time); src.stop(time + 0.04);
+    }
+
+    // ===== 4. BASS LINE =====
+    if (beat % 2 === 0) {
       const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const filter = audioCtx.createBiquadFilter();
+      const g = audioCtx.createGain();
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(400, time);
+      f.frequency.exponentialRampToValueAtTime(200, time + stepDuration * 0.8);
+      osc.type = 'sawtooth';
 
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(900, time);
-      filter.Q.setValueAtTime(1.5, time);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.type = Math.random() > 0.5 ? 'triangle' : 'square';
-      osc.frequency.setValueAtTime(noteFreq, time);
-
-      if (Math.random() < 0.25) {
-        osc.frequency.exponentialRampToValueAtTime(noteFreq * 1.33, time + 0.12);
+      let freq = rootFreq * 0.5;
+      if (prog.bassPattern === 'octave_walk') {
+        freq = (beat % 8 === 0) ? rootFreq * 0.5 : (beat % 8 === 4 ? rootFreq * 0.75 : rootFreq * 0.5);
+      } else if (prog.bassPattern === 'driving') {
+        freq = (beat % 8 === 0) ? rootFreq * 0.5 : (beat % 8 === 4 ? rootFreq * 1.0 : rootFreq * 0.5);
       }
 
-      gain.gain.setValueAtTime(0.0035, time);
-      gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
+      if (beat % 8 === 4 && prog.bassPattern !== 'root_fifth') {
+        osc.frequency.setValueAtTime(freq * 0.9, time);
+        osc.frequency.exponentialRampToValueAtTime(freq, time + 0.04);
+      } else {
+        osc.frequency.setValueAtTime(freq, time);
+      }
 
-      osc.start(time);
-      osc.stop(time + 0.18);
-    } catch (e) {
-      console.warn("BGM Lead Error:", e);
+      osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      const dur = stepDuration * 0.95;
+      g.gain.setValueAtTime(0.018 * (beat % 8 === 0 ? 1.3 : 0.9), time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+      osc.start(time); osc.stop(time + dur);
     }
-  }
+
+    // ===== 5. PAD / CHORDS (sustained, changes every measure) =====
+    if (beat === 0) {
+      const thirdMult = chord.type === 'min' ? 1.2 : 1.25;
+      _chordFreqs[0] = rootFreq * 0.25;
+      _chordFreqs[1] = rootFreq * thirdMult * 0.25;
+      _chordFreqs[2] = rootFreq * 1.5 * 0.25;
+      for (let i = 0; i < 3; i++) {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const f = audioCtx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.setValueAtTime(1200, time);
+        f.frequency.setValueAtTime(800, time + 0.5);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(_chordFreqs[i], time);
+        osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(0.006 * prog.drumIntensity, time + 0.2);
+        g.gain.setValueAtTime(0.006 * prog.drumIntensity, time + stepDuration * 14);
+        g.gain.linearRampToValueAtTime(0.001, time + stepDuration * 16);
+        osc.start(time); osc.stop(time + stepDuration * 16 + 0.1);
+      }
+    }
+
+    // ===== 6. LEAD MELODY (16th note arp with pentatonic scale) =====
+    const melody = MELODY_PATTERNS[bgmMode];
+    if (melody.gate[beat] === 1 && Math.random() < melody.density) {
+      const offset = PENTATONIC_MINOR[melody.noteIndices[beat] % PENTATONIC_MINOR.length];
+      const leadFreq = rootFreq * offset * (prog.leadOctave === 5 ? 4 : 2);
+
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.setValueAtTime(1200, time); f.Q.setValueAtTime(2, time);
+      osc.type = 'square'; osc.frequency.setValueAtTime(leadFreq, time);
+
+      if (beat > 0 && melody.gate[beat - 1] === 1) {
+        const prevFreq = rootFreq * PENTATONIC_MINOR[melody.noteIndices[beat - 1] % PENTATONIC_MINOR.length] * (prog.leadOctave === 5 ? 4 : 2);
+        if (prevFreq !== leadFreq) {
+          osc.frequency.setValueAtTime(prevFreq, time);
+          osc.frequency.exponentialRampToValueAtTime(leadFreq, time + 0.03);
+        }
+      }
+
+      osc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.005 * (beat === 0 || beat === 8 ? 1.3 : 0.8) * (prog.drumIntensity + 0.2), time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + stepDuration * 0.7);
+      osc.start(time); osc.stop(time + stepDuration * 0.7 + 0.01);
+    }
+
+    // ===== 7. RIMSHOT / ACCENT (occasional) =====
+    if ((beat === 2 || beat === 6 || beat === 10 || beat === 14) && prog.drumIntensity > 0.4 && cachedNoise && Math.random() < 0.3) {
+      const src = audioCtx.createBufferSource();
+      src.buffer = cachedNoise.rim;
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.setValueAtTime(2500, time); f.Q.setValueAtTime(20, time);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.015 * prog.drumIntensity, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.start(time); src.stop(time + 0.03);
+    }
+
+  } catch (e) {}
 }
 
 function startBGM() {
   if (bgmInterval || !soundEnabled) return;
-  
   initAudio();
   if (!audioCtx) return;
 
+  initNoiseBuffers();
+  updateBgmMode();
+  bgmModeCheckCounter = 0;
   bgmNextNoteTime = audioCtx.currentTime;
   bgmStepIndex = 0;
 
   bgmInterval = setInterval(() => {
     if (!soundEnabled || !audioCtx) return;
-
-    if (screenGenesis && screenGenesis.classList.contains('active')) {
-      bgmBPM = 85;
-    } else if (document.querySelector('.battle-arena')) {
-      bgmBPM = 135;
-    } else {
-      bgmBPM = 110;
-    }
-
-    const scheduleAheadTime = 0.15;
-    const stepDuration = 60 / bgmBPM / 4;
-
-    while (bgmNextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+    const bpm = BGM_PROGRESSIONS[bgmMode].bpm;
+    const stepDuration = 60 / bpm / 4;
+    while (bgmNextNoteTime < audioCtx.currentTime + 0.25) {
       scheduleNextBGMStep(bgmNextNoteTime, bgmStepIndex);
       bgmNextNoteTime += stepDuration;
       bgmStepIndex++;
     }
-  }, 45);
+  }, 50);
 }
 
 function stopBGM() {
@@ -373,136 +560,173 @@ function stopBGM() {
 
 function initAudio() {
   if (audioCtx) return;
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (AudioContext) {
-    audioCtx = new AudioContext();
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (Ctx) {
+    audioCtx = new Ctx();
+    initNoiseBuffers();
   }
-  if (audioCtx && soundEnabled) {
-    startBGM();
-  }
+  if (audioCtx && soundEnabled) startBGM();
 }
 
 function playSound(type) {
   if (!soundEnabled) return;
   initAudio();
   if (!audioCtx || audioCtx.state === 'suspended') {
-    // Try to resume if browser suspended it
     audioCtx.resume();
   }
   if (!audioCtx) return;
 
   const dest = audioCtx.destination;
+  const now = audioCtx.currentTime;
   
   if (type === 'click') {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(dest);
-    
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-    
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.08);
+    osc.frequency.setValueAtTime(800, now);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+    osc.start(now);
+    osc.stop(now + 0.05);
   } 
   else if (type === 'success') {
-    // Arpeggio
-    const now = audioCtx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    notes.forEach((freq, index) => {
+    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.06);
+      gain.gain.setValueAtTime(0.1, now + i * 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.2);
       osc.connect(gain);
       gain.connect(dest);
-      
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + index * 0.07);
-      gain.gain.setValueAtTime(0.08, now + index * 0.07);
-      gain.gain.exponentialRampToValueAtTime(0.005, now + index * 0.07 + 0.15);
-      
-      osc.start(now + index * 0.07);
-      osc.stop(now + index * 0.07 + 0.15);
+      osc.start(now + i * 0.06);
+      osc.stop(now + i * 0.06 + 0.2);
     });
+    // Add a little sparkle
+    const noise = audioCtx.createBufferSource();
+    const nBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
+    const nData = nBuf.getChannelData(0);
+    for (let i = 0; i < nData.length; i++) nData[i] = (Math.random() * 2 - 1) * (1 - i/nData.length);
+    noise.buffer = nBuf;
+    const nGain = audioCtx.createGain();
+    nGain.gain.setValueAtTime(0.03, now + 0.24);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    noise.connect(nGain);
+    nGain.connect(dest);
+    noise.start(now + 0.24);
+    noise.stop(now + 0.32);
   } 
   else if (type === 'error') {
-    // Buzz
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
     osc.connect(gain);
     gain.connect(dest);
-    
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.3);
+    osc.start(now);
+    osc.stop(now + 0.25);
   } 
   else if (type === 'swipe') {
-    // Noise whoosh
-    const bufferSize = audioCtx.sampleRate * 0.15;
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
+    for (let pass = 0; pass < 2; pass++) {
+      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.12, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      const filt = audioCtx.createBiquadFilter();
+      filt.type = 'bandpass';
+      filt.frequency.setValueAtTime(800 + pass * 600, now + pass * 0.03);
+      filt.frequency.exponentialRampToValueAtTime(200 + pass * 300, now + 0.12 + pass * 0.03);
+      filt.Q.setValueAtTime(5, now);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.06, now + pass * 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.12 + pass * 0.03);
+      src.connect(filt);
+      filt.connect(g);
+      g.connect(dest);
+      src.start(now + pass * 0.03);
+      src.stop(now + 0.12 + pass * 0.03);
     }
-    
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = buffer;
-    
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.Q.setValueAtTime(10, audioCtx.currentTime);
-    filter.frequency.setValueAtTime(1200, audioCtx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
-    
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-    
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(dest);
-    
-    noise.start();
-    noise.stop(audioCtx.currentTime + 0.15);
   }
   else if (type === 'hit') {
-    // Combat damage hit
+    // Punchier hit
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
     osc.connect(gain);
     gain.connect(dest);
+    osc.start(now);
+    osc.stop(now + 0.15);
     
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.2);
-    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-    
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.2);
+    // Add noise burst
+    const nBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+    const nD = nBuf.getChannelData(0);
+    for (let i = 0; i < nD.length; i++) nD[i] = (Math.random() * 2 - 1) * (1 - i/nD.length);
+    const nSrc = audioCtx.createBufferSource();
+    nSrc.buffer = nBuf;
+    const nG = audioCtx.createGain();
+    nG.gain.setValueAtTime(0.12, now);
+    nG.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    nSrc.connect(nG);
+    nG.connect(dest);
+    nSrc.start(now);
+    nSrc.stop(now + 0.06);
   }
   else if (type === 'level-up') {
-    // Retro scale
-    const now = audioCtx.currentTime;
-    const scale = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
-    scale.forEach((freq, index) => {
+    [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.04);
+      gain.gain.setValueAtTime(0.08, now + i * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.12);
       osc.connect(gain);
       gain.connect(dest);
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + index * 0.05);
-      gain.gain.setValueAtTime(0.06, now + index * 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.005, now + index * 0.05 + 0.1);
-      
-      osc.start(now + index * 0.05);
-      osc.stop(now + index * 0.05 + 0.1);
+      osc.start(now + i * 0.04);
+      osc.stop(now + i * 0.04 + 0.12);
     });
+  }
+  else if (type === 'achievement') {
+    // Grand fanfare
+    const fanfare = [523.25, 587.33, 659.25, 783.99, 659.25, 783.99, 1046.50];
+    fanfare.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.08);
+      gain.gain.setValueAtTime(0.07, now + i * 0.08);
+      gain.gain.setValueAtTime(0.07, now + i * 0.08 + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(now + i * 0.08);
+      osc.stop(now + i * 0.08 + 0.2);
+    });
+    // Cymbal crash
+    const cBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
+    const cD = cBuf.getChannelData(0);
+    for (let i = 0; i < cD.length; i++) cD[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/cD.length, 2);
+    const cSrc = audioCtx.createBufferSource();
+    cSrc.buffer = cBuf;
+    const cFilt = audioCtx.createBiquadFilter();
+    cFilt.type = 'highpass';
+    cFilt.frequency.setValueAtTime(3000, now);
+    const cG = audioCtx.createGain();
+    cG.gain.setValueAtTime(0.06, now);
+    cG.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    cSrc.connect(cFilt);
+    cFilt.connect(cG);
+    cG.connect(dest);
+    cSrc.start(now);
+    cSrc.stop(now + 0.3);
   }
 }
 
@@ -548,6 +772,12 @@ const barStyle = document.getElementById('bar-style');
 const txtConfidence = document.getElementById('txt-confidence');
 const barConfidence = document.getElementById('bar-confidence');
 
+// New stat references
+const txtRizz = document.getElementById('txt-rizz');
+const barRizz = document.getElementById('bar-rizz');
+const txtCareer = document.getElementById('txt-career');
+const txtTalentPoints = document.getElementById('txt-talent-points');
+
 // Actions / Surgeries
 const actWork = document.getElementById('act-work');
 const actGym = document.getElementById('act-gym');
@@ -556,7 +786,18 @@ const actStyling = document.getElementById('act-styling');
 const actSurgery = document.getElementById('act-surgery');
 const surgeryMenu = document.getElementById('surgery-menu');
 const btnCloseSurgery = document.getElementById('btn-close-surgery');
+const actPromotion = document.getElementById('act-promotion');
+const actSubstances = document.getElementById('act-substances');
+const actTalents = document.getElementById('act-talents');
+const actProcreate = document.getElementById('act-procreate');
+const actMirrorGame = document.getElementById('act-mirror-game');
 const btnEndYear = document.getElementById('btn-end-year');
+
+// Modals
+const substanceModal = document.getElementById('substance-modal');
+const talentModal = document.getElementById('talent-modal');
+const mirrorModal = document.getElementById('minigame-mirror-modal');
+const achievementToast = document.getElementById('achievement-toast');
 
 // Modals
 const eventModal = document.getElementById('event-modal');
@@ -726,6 +967,94 @@ function setupEventListeners() {
     surgeryMenu.classList.add('hidden');
   });
 
+  // NEW: Promotion
+  actPromotion.addEventListener('click', () => {
+    const res = game.seekPromotion();
+    if (res.error) {
+      playSound('error');
+      logToConsole(res.error, 'error');
+    } else {
+      playSound('level-up');
+      logToConsole(res.message, res.type);
+      updateDashboard();
+    }
+  });
+
+  // NEW: Substances
+  actSubstances.addEventListener('click', () => {
+    playSound('click');
+    renderSubstances();
+    substanceModal.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-close-substance').addEventListener('click', () => {
+    playSound('click');
+    substanceModal.classList.add('hidden');
+  });
+
+  // NEW: Talent Tree
+  actTalents.addEventListener('click', () => {
+    playSound('click');
+    renderTalents();
+    talentModal.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-close-talent').addEventListener('click', () => {
+    playSound('click');
+    talentModal.classList.add('hidden');
+  });
+
+  // NEW: Procreate
+  actProcreate.addEventListener('click', () => {
+    const res = game.procreate();
+    if (res.error) {
+      playSound('error');
+      logToConsole(res.error, 'error');
+    } else {
+      playSound('success');
+      logToConsole(res.message, res.type);
+      updateDashboard();
+    }
+  });
+
+  // NEW: Mirror Mini-game
+  actMirrorGame.addEventListener('click', () => {
+    playSound('click');
+    mirrorModal.classList.remove('hidden');
+    // Reset mirror game
+    if (mirrorInterval) clearInterval(mirrorInterval);
+    document.getElementById('btn-mirror-start').classList.remove('hidden');
+    document.getElementById('btn-mirror-blink').classList.add('hidden');
+    document.getElementById('mirror-status').textContent = 'Click START to begin';
+    document.getElementById('mirror-timer').textContent = '0.0s';
+    document.getElementById('mirror-result').classList.add('hidden');
+  });
+
+  // NEW: Save/Load
+  document.getElementById('btn-save-game').addEventListener('click', () => {
+    const slot = prompt('Save slot (1-3):', '1');
+    if (!slot || slot < 1 || slot > 3) return;
+    localStorage.setItem(`looksmax_save_${slot}`, JSON.stringify(game.serialize()));
+    logToConsole(`Game saved to slot ${slot}.`, 'success');
+    playSound('click');
+  });
+
+  document.getElementById('btn-load-game').addEventListener('click', () => {
+    const slot = prompt('Load slot (1-3):', '1');
+    if (!slot || slot < 1 || slot > 3) return;
+    const data = localStorage.getItem(`looksmax_save_${slot}`);
+    if (!data) {
+      logToConsole(`No save found in slot ${slot}.`, 'error');
+      return;
+    }
+    if (!confirm('Loading will overwrite current game. Continue?')) return;
+    const parsed = JSON.parse(data);
+    game = GameState.deserialize(parsed);
+    updateDashboard();
+    logToConsole(`Game loaded from slot ${slot}.`, 'success');
+    playSound('click');
+  });
+
   // TikTok Studio actions
   actTiktok.addEventListener('click', () => {
     openTiktokStudio();
@@ -748,6 +1077,75 @@ function setupEventListeners() {
       activeShopTab = btn.getAttribute('data-shop-tab');
       renderShop();
     });
+  });
+
+  // NEW: Mirror Mini-game
+  let mirrorStartTime = 0;
+  let mirrorInterval = null;
+  const mirrorTimerEl = document.getElementById('mirror-timer');
+  const mirrorStatusEl = document.getElementById('mirror-status');
+  const mirrorResultEl = document.getElementById('mirror-result');
+
+  document.getElementById('btn-mirror-start').addEventListener('click', () => {
+    playSound('click');
+    mirrorStartTime = performance.now();
+    document.getElementById('btn-mirror-start').classList.add('hidden');
+    document.getElementById('btn-mirror-blink').classList.remove('hidden');
+    mirrorStatusEl.textContent = 'STARING... Hold your blink!';
+    mirrorTimerEl.textContent = '0.0s';
+    mirrorResultEl.classList.add('hidden');
+    if (mirrorInterval) clearInterval(mirrorInterval);
+    mirrorInterval = setInterval(() => {
+      const elapsed = (performance.now() - mirrorStartTime) / 1000;
+      mirrorTimerEl.textContent = elapsed.toFixed(1) + 's';
+      if (elapsed > 30) {
+        clearInterval(mirrorInterval);
+        endMirrorGame(true);
+      }
+    }, 100);
+  });
+
+  document.getElementById('btn-mirror-blink').addEventListener('click', () => {
+    endMirrorGame(false);
+  });
+
+  function endMirrorGame(perfect) {
+    if (mirrorInterval) clearInterval(mirrorInterval);
+    const elapsed = (performance.now() - mirrorStartTime) / 1000;
+    document.getElementById('btn-mirror-start').classList.remove('hidden');
+    document.getElementById('btn-mirror-blink').classList.add('hidden');
+    mirrorStatusEl.textContent = 'DONE!';
+
+    let reward = '';
+    if (perfect || elapsed >= 30) {
+      reward = 'Perfect focus! +15 Confidence, +10 Rizz';
+      game.confidence = Math.min(100, game.confidence + 15);
+      game.rizz = Math.min(100, game.rizz + 10);
+      playSound('success');
+    } else if (elapsed >= 15) {
+      reward = 'Great focus! +10 Confidence, +5 Rizz';
+      game.confidence = Math.min(100, game.confidence + 10);
+      game.rizz = Math.min(100, game.rizz + 5);
+      playSound('success');
+    } else if (elapsed >= 8) {
+      reward = 'Decent! +5 Confidence';
+      game.confidence = Math.min(100, game.confidence + 5);
+      playSound('click');
+    } else {
+      reward = 'Weak focus. +2 Confidence';
+      game.confidence = Math.min(100, game.confidence + 2);
+      playSound('error');
+    }
+
+    document.getElementById('mirror-final-time').textContent = elapsed.toFixed(1) + 's';
+    document.getElementById('mirror-reward-text').textContent = reward;
+    mirrorResultEl.classList.remove('hidden');
+    updateDashboard();
+  }
+
+  document.getElementById('btn-close-mirror').addEventListener('click', () => {
+    playSound('click');
+    mirrorModal.classList.add('hidden');
   });
 
   // TikTok post option buttons
@@ -848,11 +1246,14 @@ function setupEventListeners() {
     playSound('click');
     renderShop();
     switchScreen('screen-genesis');
-    // Hide game board and final blocks
     btnRollGenetics.classList.remove('hidden');
     btnStartLife.classList.add('hidden');
     genesisStatsDisplay.classList.add('hidden');
     genesisLoader.classList.add('hidden');
+    // Reset game for fresh run
+    game = new GameState(unlockedPerks);
+    if (dating) dating.rollProfile();
+    battle.active = false;
   });
 }
 
@@ -875,14 +1276,7 @@ function triggerRollAnimation() {
 
   let rollTicks = 0;
   const rollInterval = setInterval(() => {
-    // Generate tick sounds
     playSound('click');
-    
-    // Scramble DNA stats text
-    const dummyGame = new GameState();
-    dummyGame.reset(null, activeGender);
-    renderGenesisPreview(dummyGame);
-    
     rollTicks++;
     if (rollTicks >= 12) {
       clearInterval(rollInterval);
@@ -941,13 +1335,20 @@ function renderGenesisPreview(player) {
 
 // --- Screen 2: Game Board Initialization & Update ---
 function startGame() {
-  logToConsole(`Starting Run for ${game.name}. Navigate yearly tasks before age 30.`, 'system');
+  logToConsole(`Starting Run for ${game.name}. Navigate yearly tasks from ages 18 to 50.`, 'system');
   dating = new DatingSimulator(game, logToConsole);
   battle = new BattleSystem(game, logToConsole);
-  
+
+  // Record initial stat timeline
+  game.recordStatTimeline();
+
+  // Check starting achievements
+  const newAchs = game.checkAchievements();
+  newAchs.forEach(ach => showAchievementToast(ach));
+
   // Default to year actions
   tabBtns[0].click();
-  
+
   updateDashboard();
 }
 
@@ -978,13 +1379,13 @@ function updateDashboard() {
   // Update Soft Meters
   // Skin
   const skinPct = game.skin;
-  barSkin.style.width = `${skinPct}%`;
+  barSkin.style.transform = `scaleX(${skinPct / 100})`;
   txtSkin.textContent = skinPct < 30 ? 'Cystic Acne' : skinPct < 60 ? 'Blotchy' : skinPct < 90 ? 'Clear' : 'Glowing';
   
   // Hairline Norwood / Ludwig
   // Bar represents full head = Norwood 1 (100%), Norwood 7 = bald (10%)
   const hairPct = Math.max(10, Math.round(((8 - game.hairline) / 7) * 100));
-  barHairline.style.width = `${hairPct}%`;
+  barHairline.style.transform = `scaleX(${hairPct / 100})`;
   if (game.gender === 'female') {
     lblHairline.textContent = "Hair Volume (Ludwig):";
     txtHairline.textContent = `Ludwig ${game.hairline <= 2 ? 1 : game.hairline <= 5 ? 2 : 3}`;
@@ -995,30 +1396,46 @@ function updateDashboard() {
 
   // Frame
   const framePct = game.frame;
-  barFrame.style.width = `${framePct}%`;
+  barFrame.style.transform = `scaleX(${framePct / 100})`;
   txtFrame.textContent = framePct < 30 ? 'Narrow' : framePct < 65 ? 'Average' : framePct < 85 ? 'Athletic' : 'Broad/Giga';
 
   // Style
   const stylePct = game.style;
-  barStyle.style.width = `${stylePct}%`;
+  barStyle.style.transform = `scaleX(${stylePct / 100})`;
   txtStyle.textContent = stylePct < 30 ? 'Homeless' : stylePct < 60 ? 'Basic' : stylePct < 80 ? 'Trendy' : 'Dapper';
 
   // Confidence
   const confPct = game.confidence;
-  barConfidence.style.width = `${confPct}%`;
+  barConfidence.style.transform = `scaleX(${confPct / 100})`;
   txtConfidence.textContent = `${confPct}%`;
 
+  // Rizz
+  const rizzPct = game.rizz;
+  barRizz.style.transform = `scaleX(${rizzPct / 100})`;
+  txtRizz.textContent = `${rizzPct}/100`;
+
+  // Career
+  const careerTier = CAREER_TIERS.find(t => t.id === game.careerTier);
+  txtCareer.textContent = careerTier ? careerTier.title : 'Unknown';
+  txtTalentPoints.textContent = game.talentPoints;
+
   // Enable/Disable Action buttons based on resources
-  actWork.disabled = game.ap < 2;
+  const careerInfo = CAREER_TIERS.find(t => t.id === game.careerTier);
+  actWork.disabled = (careerInfo && careerInfo.apCost > 0) ? game.ap < careerInfo.apCost : game.ap < 1;
   actGym.disabled = game.ap < 2 || game.cash < 100;
   actSkincare.disabled = game.ap < 1 || game.cash < 50;
   actStyling.disabled = game.ap < 1 || game.cash < 150;
   if (actTiktok) {
     actTiktok.disabled = game.ap < 2 || game.cash < 100;
   }
+  actPromotion.disabled = game.ap < 2 || game.careerTier === 'ceo';
+  actSubstances.disabled = game.cash < 50;
+  actTalents.disabled = game.talentPoints < 1;
+  actProcreate.disabled = !game.hasDatingPartner || game.hasProcreated || game.cash < 2000;
+  actMirrorGame.disabled = false; // always available
 
   // Avatar Canvas Ticker
-  avatarTicker.textContent = `STATUS: ONLINE // PSL: ${game.smv.toFixed(1)} // PARTNER: ${game.hasDatingPartner ? game.partnerName : 'SINGLE'}`;
+  avatarTicker.textContent = `STATUS: ONLINE // PSL: ${game.smv.toFixed(1)} // RIZZ: ${game.rizz} // PARTNER: ${game.hasDatingPartner ? game.partnerName : 'SINGLE'}`;
 
   // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }
@@ -1026,12 +1443,34 @@ function updateDashboard() {
 // --- Year Progression & Events ---
 function endYear() {
   playSound('level-up');
-  const event = game.advanceYear();
-  
+  const result = game.advanceYear();
+
   updateDashboard();
-  
-  // Show Random Event Modal
-  eventTitle.textContent = event.title;
+
+  // Check achievements
+  const newAchs = game.checkAchievements();
+  newAchs.forEach(ach => showAchievementToast(ach));
+
+  // Check for seasonal event first
+  if (result.seasonal) {
+    const seas = result.seasonal;
+    // Apply seasonal effect
+    logToConsole(`Seasonal Event: ${seas.icon} ${seas.name} - ${seas.desc}`, 'event');
+  }
+
+  // Show midlife crisis event
+  if (result.midlifeEvent) {
+    const me = result.midlifeEvent;
+    eventTitle.textContent = me.icon + ' ' + me.title;
+    eventDesc.textContent = me.desc;
+    eventImpact.textContent = `EFFECTS: ${me.impactText}`;
+    eventModal.classList.remove('hidden');
+    logToConsole(`Midlife Crisis: ${me.title}`, 'event');
+  }
+
+  // Show random event
+  const event = result.event;
+  eventTitle.textContent = event.icon + ' ' + event.title;
   eventDesc.textContent = event.desc;
   eventImpact.textContent = `EFFECTS: ${event.impactText}`;
   eventModal.classList.remove('hidden');
@@ -1043,20 +1482,19 @@ function checkGameOver() {
   if (game.isDead) {
     playSound('error');
     triggerGameOver("Fatality due to surgical botch.");
-  } else if (game.age >= 30) {
+  } else if (game.age >= 50) {
     playSound('success');
-    triggerGameOver("Social tier finalized at Age 30.");
+    triggerGameOver("Life journey completed at Age 50.");
   }
 }
 
 function triggerGameOver(reasonText) {
   switchScreen('screen-gameover');
   document.getElementById('txt-death-reason').textContent = reasonText;
+  document.getElementById('final-age-display').textContent = game.age;
 
-  // Render final avatar canvas (handled by loop now)
-
-  // Calculate Cope Tokens earned: base SMV + botched surgeries
-  const tokensEarned = Math.round(game.smv * 15 + game.surgeryBotchedCount * 10);
+  // Calculate Cope Tokens earned: base SMV + achievements + botched surgeries
+  const tokensEarned = Math.round(game.smv * 15 + game.surgeryBotchedCount * 10 + game.achievementsUnlocked.length * 5);
   copeTokens += tokensEarned;
   localStorage.setItem('looksmax_cope_tokens', copeTokens);
 
@@ -1068,37 +1506,39 @@ function triggerGameOver(reasonText) {
     gender: game.gender,
     smv: game.smv,
     cash: game.cash,
+    career: game.careerTier,
+    rizz: game.rizz,
     socialTier: game.socialTier,
     hasDatingPartner: game.hasDatingPartner,
     partnerName: game.partnerName,
     surgeryBotchedCount: game.surgeryBotchedCount,
+    opponentsDefeated: game.opponentsDefeated.length,
+    achievementsUnlocked: game.achievementsUnlocked.length,
+    substancesUsed: game.substancesUsed,
     reason: reasonText,
     date: new Date().toLocaleDateString(),
     avatarData: {
-      gender: game.gender,
-      height: game.height,
-      jaw: game.jaw,
-      tilt: game.tilt,
-      hairline: game.hairline,
-      skin: game.skin,
-      frame: game.frame,
-      style: game.style,
-      symmetry: game.symmetry,
-      botchedJaw: game.botchedJaw,
-      botchedHair: game.botchedHair,
+      gender: game.gender, height: game.height, jaw: game.jaw,
+      tilt: game.tilt, hairline: game.hairline, skin: game.skin,
+      frame: game.frame, style: game.style, symmetry: game.symmetry,
+      botchedJaw: game.botchedJaw, botchedHair: game.botchedHair,
       botchedCanthoplasty: game.botchedCanthoplasty
     }
   };
   pastRuns.unshift(runInfo);
   if (pastRuns.length > 10) pastRuns.pop();
   localStorage.setItem('looksmax_past_runs', JSON.stringify(pastRuns));
-  
+
+  // Update leaderboard
+  updateLeaderboard(runInfo);
+
   // Re-render shop
   renderShop();
 
   // Compile final biometrics list
   const ft = Math.floor(game.height / 12);
   const inVal = game.height % 12;
+  const careerObj = CAREER_TIERS.find(t => t.id === game.careerTier);
   const finalStatsList = document.getElementById('final-stats-list');
   finalStatsList.innerHTML = `
     <div class="stat-row-detail">
@@ -1122,6 +1562,14 @@ function triggerGameOver(reasonText) {
       <strong>Norwood ${game.hairline}</strong>
     </div>
     <div class="stat-row-detail">
+      <span>Rizz (Charisma):</span>
+      <strong class="text-yellow">${game.rizz}/100</strong>
+    </div>
+    <div class="stat-row-detail">
+      <span>Career:</span>
+      <strong class="text-cyan">${careerObj ? careerObj.title : 'Unknown'}</strong>
+    </div>
+    <div class="stat-row-detail">
       <span>Dating Status:</span>
       <strong>${game.hasDatingPartner ? `Dating ${game.partnerName}` : 'Incel Single'}</strong>
     </div>
@@ -1133,11 +1581,27 @@ function triggerGameOver(reasonText) {
       <span>Surgeries Botched:</span>
       <strong class="${game.surgeryBotchedCount > 0 ? 'text-pink' : ''}">${game.surgeryBotchedCount}</strong>
     </div>
+    <div class="stat-row-detail">
+      <span>Substances Used:</span>
+      <strong>${game.substancesUsed}</strong>
+    </div>
     <div class="stat-row-detail highlight-row" style="border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 5px;">
       <span>Cope Tokens Earned:</span>
       <strong class="text-yellow">+${tokensEarned} Tokens</strong>
     </div>
   `;
+
+  // Render analytics
+  renderAnalytics();
+
+  // Render leaderboard
+  renderLeaderboardList();
+
+  // Render lineage
+  renderLineage();
+
+  // Render achievements
+  renderAchievementsFinal();
 
   // Render mock forum comments
   const forumContainer = document.getElementById('forum-posts-container');
@@ -1786,6 +2250,191 @@ function renderBattleResolution(container) {
     renderSocialTab();
     checkGameOver();
   });
+}
+
+// === NEW: Substance Shop Render ===
+function renderSubstances() {
+  const container = document.getElementById('substance-list');
+  container.innerHTML = '';
+  SUBSTANCES.forEach(sub => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;';
+    const canAfford = game.cash >= sub.cost;
+    card.innerHTML = `
+      <div style="flex:1;">
+        <strong style="font-size:12px;">${sub.name}</strong>
+        <p style="font-size:10px;color:var(--text-muted);margin:2px 0;">${sub.desc}</p>
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--accent-yellow);">$${sub.cost} | Risk: ${Math.round(sub.risk*100)}% | Addiction: ${Math.round(sub.addictionRisk*100)}%</span>
+      </div>
+      <button class="surgery-buy-btn" ${canAfford ? '' : 'disabled'}>BUY</button>
+    `;
+    const btn = card.querySelector('button');
+    if (canAfford) {
+      btn.addEventListener('click', () => {
+        const res = game.takeSubstance(sub.id);
+        if (res.success === false) {
+          playSound('error');
+          logToConsole(res.message || res.error, 'error');
+          if (game.isDead) { substanceModal.classList.add('hidden'); checkGameOver(); return; }
+        } else {
+          playSound('success');
+          logToConsole(res.message, 'success');
+        }
+        updateDashboard();
+        renderSubstances();
+      });
+    }
+    container.appendChild(card);
+  });
+}
+
+// === NEW: Talent Tree Render ===
+function renderTalents() {
+  document.getElementById('talent-points-display').textContent = game.talentPoints;
+  const container = document.getElementById('talent-list');
+  container.innerHTML = '';
+  TALENTS.forEach(talent => {
+    const rank = game.talents[talent.id] || 0;
+    const maxed = rank >= talent.maxRank;
+    const card = document.createElement('div');
+    card.style.cssText = `background:var(--bg-tertiary);border:1px solid ${maxed ? 'var(--accent-green)' : 'var(--border-color)'};border-radius:var(--radius-md);padding:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;`;
+    const stars = '⭐'.repeat(rank) + '☆'.repeat(talent.maxRank - rank);
+    card.innerHTML = `
+      <div style="flex:1;">
+        <strong style="font-size:12px;">${talent.name} ${stars}</strong>
+        <p style="font-size:10px;color:var(--text-muted);margin:2px 0;">${talent.desc}</p>
+      </div>
+      <button class="surgery-buy-btn" style="${maxed ? 'border-color:var(--accent-green);color:var(--accent-green);' : ''}" ${game.talentPoints < 1 || maxed ? 'disabled' : ''}>
+        ${maxed ? 'MAXED' : 'LEARN (' + game.talentPoints + ' pts)'}
+      </button>
+    `;
+    const btn = card.querySelector('button');
+    if (game.talentPoints >= 1 && !maxed) {
+      btn.addEventListener('click', () => {
+        game.learnTalent(talent.id);
+        playSound('level-up');
+        updateDashboard();
+        renderTalents();
+      });
+    }
+    container.appendChild(card);
+  });
+}
+
+// === NEW: Achievement Toast ===
+function showAchievementToast(ach) {
+  document.getElementById('ach-icon').textContent = ach.icon;
+  document.getElementById('ach-title').textContent = 'ACHIEVEMENT UNLOCKED!';
+  document.getElementById('ach-name').textContent = ach.name;
+  document.getElementById('ach-desc').textContent = ach.desc;
+  achievementToast.classList.remove('hidden');
+  achievementToast.classList.add('show');
+  playSound('level-up');
+  setTimeout(() => {
+    achievementToast.classList.remove('show');
+    achievementToast.classList.add('hidden');
+  }, 4000);
+}
+
+// === NEW: Leaderboard ===
+function updateLeaderboard(runInfo) {
+  let leaderboard = JSON.parse(localStorage.getItem('looksmax_leaderboard') || '[]');
+  const score = Math.round(runInfo.smv * 100 + runInfo.cash / 100 + runInfo.rizz * 2);
+  leaderboard.push({ name: runInfo.name, smv: runInfo.smv, cash: runInfo.cash, rizz: runInfo.rizz, career: runInfo.career, date: runInfo.date, score });
+  leaderboard.sort((a, b) => b.score - a.score);
+  if (leaderboard.length > 10) leaderboard = leaderboard.slice(0, 10);
+  localStorage.setItem('looksmax_leaderboard', JSON.stringify(leaderboard));
+}
+
+function renderLeaderboardList() {
+  const container = document.getElementById('leaderboard-container');
+  const leaderboard = JSON.parse(localStorage.getItem('looksmax_leaderboard') || '[]');
+  container.innerHTML = '';
+  if (leaderboard.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);text-align:center;">No scores recorded yet.</div>';
+    return;
+  }
+  leaderboard.forEach((entry, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);';
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    row.innerHTML = `
+      <span>${medal} ${entry.name}</span>
+      <span style="color:var(--accent-cyan);">PSL ${entry.smv.toFixed(1)}</span>
+      <span style="color:var(--accent-yellow);">Score: ${entry.score}</span>
+    `;
+    container.appendChild(row);
+  });
+
+  document.getElementById('btn-clear-leaderboard').addEventListener('click', () => {
+    localStorage.removeItem('looksmax_leaderboard');
+    renderLeaderboardList();
+    playSound('click');
+  });
+}
+
+// === NEW: Analytics ===
+function renderAnalytics() {
+  const container = document.getElementById('analytics-container');
+  const timeline = game.statTimeline;
+  container.innerHTML = '<strong style="font-size:11px;color:var(--accent-cyan);margin-bottom:5px;display:block;">STAT PROGRESSION OVER TIME</strong>';
+  if (timeline.length === 0) {
+    container.innerHTML += '<div style="color:var(--text-muted);">No data recorded.</div>';
+    return;
+  }
+
+  // Simple text-based chart
+  timeline.forEach((point, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;padding:2px 0;font-size:9px;';
+    const bar = (val) => '█'.repeat(Math.round(val / 10)) + '░'.repeat(10 - Math.round(val / 10));
+    row.innerHTML = `
+      <span style="color:var(--text-muted);min-width:20px;">${point.age}</span>
+      <span style="color:var(--accent-cyan);">SMV ${point.smv.toFixed(1)}</span>
+      <span style="color:var(--accent-pink);">CONF ${point.confidence}</span>
+      <span style="color:var(--accent-yellow);">RIZZ ${point.rizz}</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// === NEW: Lineage ===
+function renderLineage() {
+  const container = document.getElementById('lineage-container');
+  if (!game.children || game.children.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);text-align:center;">No children. Your genetic line ends here.</div>';
+    return;
+  }
+  container.innerHTML = '<strong style="font-size:11px;color:var(--accent-green);margin-bottom:5px;display:block;">YOUR OFFSPRING</strong>';
+  game.children.forEach(child => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px;margin-bottom:5px;';
+    const ft = Math.floor(child.height / 12);
+    const inc = child.height % 12;
+    card.innerHTML = `
+      <strong style="font-size:11px;color:var(--accent-cyan);">${child.name}</strong>
+      <span style="font-size:9px;color:var(--text-muted);display:block;">
+        ${child.gender === 'male' ? '♂' : '♀'} ${ft}'${inc}" | Jaw: ${child.jaw} | Tilt: ${child.tilt} | Rizz: ${child.rizz}
+      </span>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// === NEW: Achievements Final ===
+function renderAchievementsFinal() {
+  const container = document.getElementById('achievements-container');
+  const unlocked = new Set(game.achievementsUnlocked);
+  let html = '';
+  ACHIEVEMENTS.forEach(ach => {
+    const isUnlocked = unlocked.has(ach.id);
+    html += `<div style="display:flex;gap:8px;padding:3px 0;font-size:10px;${isUnlocked ? '' : 'opacity:0.4;'}">
+      <span>${isUnlocked ? ach.icon : '🔒'}</span>
+      <span style="${isUnlocked ? 'color:var(--accent-cyan);' : 'color:var(--text-muted);'}">${ach.name}</span>
+      <span style="color:var(--text-muted);font-size:9px;">${ach.desc}</span>
+    </div>`;
+  });
+  container.innerHTML = html;
 }
 
 // Start Init

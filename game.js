@@ -2,6 +2,8 @@
  * game.js
  * Manages the core game state, genetics rolls, yearly action costs/benefits,
  * surgery logic ( Turkey vs. Beverly Hills ), random events, and SMV rating calculation.
+ * Extended with: Rizz stat, Career system, Talent tree, Substances, Extended life,
+ * Achievements, Event calendar, Lineage, and more.
  */
 
 // Genetic option tables
@@ -11,6 +13,65 @@ export const SYMMETRY_TYPES = ['Asymmetrical', 'Average', 'Symmetrical'];
 export const FIRST_NAMES = ['Chadwick', 'Hunter', 'Kyle', 'Cope', 'Morty', 'Eugene', 'Bartholomew', 'Daxx', 'Brayson', 'Maximilian'];
 export const FIRST_NAMES_FEMALE = ['Stacy', 'Becky', 'Chloe', 'Tiffany', 'Gertrude', 'Jessica', 'Brittany', 'Angelina', 'Kylie', 'Madison', 'Vindicta', 'Clara'];
 export const LAST_NAMES = ['Maxxer', 'Coperson', 'Slayer', 'Framelet', 'Incelius', 'Plugs', 'Chadson', 'Canthal', 'Norwood', 'Giga', 'Femcelius', 'Prettyprivilege'];
+
+// Career tiers
+export const CAREER_TIERS = [
+  { id: 'unemployed', title: 'Unemployed', pay: 0, apCost: 0, reqSMV: 0, reqRizz: 0 },
+  { id: 'entry', title: 'Entry Level', pay: 1000, apCost: 2, reqSMV: 0, reqRizz: 0 },
+  { id: 'junior', title: 'Junior Associate', pay: 1500, apCost: 2, reqSMV: 2.0, reqRizz: 10 },
+  { id: 'mid', title: 'Mid-Level Specialist', pay: 2200, apCost: 2, reqSMV: 3.0, reqRizz: 20 },
+  { id: 'senior', title: 'Senior Analyst', pay: 3000, apCost: 2, reqSMV: 4.0, reqRizz: 30 },
+  { id: 'manager', title: 'Department Manager', pay: 4000, apCost: 3, reqSMV: 5.0, reqRizz: 45 },
+  { id: 'director', title: 'Director', pay: 5500, apCost: 3, reqSMV: 6.0, reqRizz: 55 },
+  { id: 'executive', title: 'Executive VP', pay: 7500, apCost: 3, reqSMV: 7.0, reqRizz: 65 },
+  { id: 'ceo', title: 'CEO', pay: 10000, apCost: 4, reqSMV: 8.0, reqRizz: 75 }
+];
+
+// Talent tree
+export const TALENTS = [
+  { id: 'social_butterfly', name: 'Social Butterfly', desc: '+5 Rizz per rank', maxRank: 3, effect: (p, rank) => { p.rizz = Math.min(100, p.rizz + 5 * rank); } },
+  { id: 'gym_rat', name: 'Gym Rat', desc: '+15% Frame gains per rank', maxRank: 3, effect: null },
+  { id: 'skin_whisperer', name: 'Skin Whisperer', desc: '+15% Skin gains per rank', maxRank: 3, effect: null },
+  { id: 'fashion_icon', name: 'Fashion Icon', desc: '+20% Style gains per rank', maxRank: 3, effect: null },
+  { id: 'charisma', name: 'Charisma', desc: '+10% Confidence cap per rank', maxRank: 3, effect: null },
+  { id: 'surgeon_savvy', name: 'Surgeon Savvy', desc: '-10% Surgery risk per rank', maxRank: 3, effect: null }
+];
+
+// Substance definitions
+export const SUBSTANCES = [
+  { id: 'creatine', name: 'Creatine Monohydrate', cost: 50, risk: 0.02, addictionRisk: 0.01, desc: 'Safe gym supplement. +3 Frame, +2 Rizz (pump confidence).', effects: { frame: 3, rizz: 2 }, sideEffects: null },
+  { id: 'preworkout', name: 'Pre-Workout', cost: 80, risk: 0.05, addictionRisk: 0.1, desc: 'Caffeine blast. +5 Frame, -5 Confidence (crash later).', effects: { frame: 5 }, sideEffects: { confidence: -5 } },
+  { id: 'finasteride', name: 'Finasteride', cost: 200, risk: 0.08, addictionRisk: 0.05, desc: 'Hair loss prevention. -1 Hairline tier risk reduction.', effects: { hairlineProtect: true }, sideEffects: null },
+  { id: 'accutane', name: 'Accutane', cost: 500, risk: 0.15, addictionRisk: 0.02, desc: 'Powerful acne medication. +25 Skin, risk of depression.', effects: { skin: 25 }, sideEffects: { confidence: -15 } },
+  { id: 'steroids', name: 'Anabolic Steroids', cost: 1000, risk: 0.25, addictionRisk: 0.3, desc: 'Massive gains but severe health risks. +20 Frame, +10 Confidence, risk of death.', effects: { frame: 20, confidence: 10 }, sideEffects: null },
+  { id: 'ozempic', name: 'Ozempic', cost: 800, risk: 0.18, addictionRisk: 0.15, desc: 'Weight loss injection. +15 Style, -10 Frame (muscle loss), nausea.', effects: { style: 15 }, sideEffects: { frame: -10, confidence: -5 } }
+];
+
+// Achievement definitions
+export const ACHIEVEMENTS = [
+  { id: 'first_roll', name: 'Born', desc: 'Roll your genetics for the first time.', icon: '👶', check: (p) => true },
+  { id: 'millionaire', name: 'Cash King', desc: 'Accumulate $10,000 cash.', icon: '💰', check: (p) => p.cash >= 10000 },
+  { id: 'gigachad', name: 'GigaChad/GigaStacy', desc: 'Reach SMV 7.5+', icon: '👑', check: (p) => p.smv >= 7.5 },
+  { id: 'truecel', name: 'Truecel', desc: 'Finish with SMV under 2.5', icon: '😭', check: (p) => p.smv <= 2.5 },
+  { id: 'influencer', name: 'TikTok Famous', desc: 'Reach 10,000 followers.', icon: '📱', check: (p) => p.followers >= 10000 },
+  { id: 'surgery_survivor', name: 'Knife Magnet', desc: 'Survive 3+ botched surgeries.', icon: '💉', check: (p) => p.surgeryBotchedCount >= 3 },
+  { id: 'heartbreaker', name: 'Heartbreaker', desc: 'Date 3+ different partners across runs.', icon: '💔', check: (p) => false },
+  { id: 'mogger', name: 'Ultimate Mogger', desc: 'Defeat all opponents in battle.', icon: '🏆', check: (p) => p.opponentsDefeated.length >= 8 },
+  { id: 'ceo_grind', name: 'CEO Grindset', desc: 'Reach CEO career tier.', icon: '💼', check: (p) => p.careerTier === 'ceo' },
+  { id: 'surgeon_savvy_ach', name: 'Natural Beauty', desc: 'Complete a run with 0 surgeries.', icon: '🌿', check: (p) => p.surgeryBotchedCount === 0 },
+  { id: 'addict', name: 'Substance Abuser', desc: 'Take 5+ substances in one run.', icon: '💊', check: (p) => p.substancesUsed >= 5 },
+  { id: 'centenarian', name: 'Elder', desc: 'Reach age 50.', icon: '👴', check: (p) => p.age >= 50 },
+  { id: 'rizzler', name: 'Rizz God', desc: 'Reach 100 Rizz.', icon: '🔥', check: (p) => p.rizz >= 100 }
+];
+
+// Seasonal events
+export const SEASONAL_EVENTS = [
+  { id: 'new_year', name: 'New Year', desc: 'A fresh start! Everybody is at the gym.', icon: '🎉', age: 19, effect: (p) => { p.confidence = Math.min(100, p.confidence + 10); } },
+  { id: 'summer', name: 'Summer Beach Season', desc: 'Beach body season. Social pressure is high.', icon: '🏖️', age: 21, effect: (p) => { if (p.smv < 4) p.confidence = Math.max(0, p.confidence - 10); else p.style = Math.min(100, p.style + 5); } },
+  { id: 'halloween', name: 'Halloween', desc: 'Wear a mask and be whoever you want.', icon: '🎃', age: 23, effect: (p) => { p.confidence = Math.min(100, p.confidence + 5); } },
+  { id: 'christmas', name: 'Christmas', desc: 'Holiday cheer! Family gatherings.', icon: '🎄', age: 25, effect: (p) => { p.cash += 200; } },
+  { id: 'valentine', name: 'Valentine\'s Day', desc: 'Love is in the air... or not.', icon: '💝', age: 27, effect: (p) => { if (p.hasDatingPartner) p.confidence = Math.min(100, p.confidence + 15); else p.confidence = Math.max(0, p.confidence - 10); } }
+];
 
 export class GameState {
   constructor(activePerks = {}) {
@@ -28,32 +89,33 @@ export class GameState {
     this.age = 18;
     this.cash = (this.activePerks && this.activePerks.rich_uncle) ? 1500 : 500;
     this.ap = 10;
-    
+
     // Genetic Lottery Roll
-    this.height = this.rollHeight(); // in inches (60 to 78 for male, 56 to 72 for female)
+    this.height = this.rollHeight();
     this.jaw = this.randomElement(JAW_TYPES);
     this.tilt = this.randomElement(TILT_TYPES);
-    
+
     if (this.activePerks && this.activePerks.symmetrical_genes) {
       const symRoll = Math.random();
       this.symmetry = symRoll < 0.60 ? 'Symmetrical' : symRoll < 0.90 ? 'Average' : 'Asymmetrical';
     } else {
       this.symmetry = this.randomElement(SYMMETRY_TYPES);
     }
-    
+
     // Soft / Modifiable stats
-    this.hairline = this.rollHairline(); // 1 to 7 (Norwood/Ludwig scale representation)
-    this.skin = this.randomRange(15, 65); // 0-100
-    this.frame = this.randomRange(15, 65); // 0-100
-    this.style = this.randomRange(10, 50); // 0-100
-    this.confidence = this.randomRange(40, 85); // 0-100
+    this.hairline = this.rollHairline();
+    this.skin = this.randomRange(15, 65);
+    this.frame = this.randomRange(15, 65);
+    this.style = this.randomRange(10, 50);
+    this.confidence = this.randomRange(40, 85);
+    this.rizz = this.randomRange(20, 60); // NEW: Rizz stat (0-100)
 
     this.smv = 4.0;
     this.socialTier = 'NORMIE';
     this.log = [];
     this.isDead = false;
     this.surgeryBotchedCount = 0;
-    
+
     // Milestones & accomplishments
     this.hasDatingPartner = false;
     this.partnerName = "";
@@ -61,12 +123,35 @@ export class GameState {
     this.followers = 0;
     this.hasInfluencerCard = false;
     this.opponentsDefeated = [];
-    
-    // Botch tracking for rendering scars/visual debuffs
+
+    // Botch tracking
     this.botchedJaw = false;
     this.botchedHair = false;
     this.botchedCanthoplasty = false;
-    
+
+    // NEW: Career system
+    this.careerTier = 'unemployed';
+    this.promotionChances = 0;
+
+    // NEW: Talent tree
+    this.talentPoints = 0;
+    this.talents = {};
+
+    // NEW: Substance system
+    this.substancesUsed = 0;
+    this.activeSubstances = [];
+    this.addictionLevel = 0;
+
+    // NEW: Lineage
+    this.children = [];
+    this.hasProcreated = false;
+
+    // NEW: Achievements (tracked via localStorage, checked at milestones)
+    this.achievementsUnlocked = JSON.parse(localStorage.getItem('looksmax_achievements') || '[]');
+
+    // NEW: Stat timeline for analytics
+    this.statTimeline = [];
+
     this.updateSMV();
   }
 
@@ -114,24 +199,23 @@ export class GameState {
 
   /**
    * Calculates the dynamic Sexual Market Value (SMV) on a scale of 1.0 - 10.0
-   * based on bone structure, grooming, and styling modifiers.
    */
   updateSMV() {
-    let score = 5.5; // Baseline
+    let score = 5.5;
 
     // Height Modifier
     if (this.gender === 'female') {
-      if (this.height >= 69) score += 1.8; // 5'9"+ model height
-      else if (this.height >= 66) score += 0.8; // 5'6"-5'8" tall
-      else if (this.height >= 62) score += 0.0; // 5'2"-5'5" avg
-      else if (this.height >= 59) score -= 0.8; // 4'11"-5'1" short
-      else score -= 2.0; // <4'11"
+      if (this.height >= 69) score += 1.8;
+      else if (this.height >= 66) score += 0.8;
+      else if (this.height >= 62) score += 0.0;
+      else if (this.height >= 59) score -= 0.8;
+      else score -= 2.0;
     } else {
-      if (this.height >= 75) score += 2.5; // 6'3"+
-      else if (this.height >= 72) score += 1.5; // 6'0"-6'2"
-      else if (this.height >= 69) score += 0.0; // 5'9"-5'11"
-      else if (this.height >= 66) score -= 1.2; // 5'6"-5'8"
-      else score -= 2.5; // <5'6"
+      if (this.height >= 75) score += 2.5;
+      else if (this.height >= 72) score += 1.5;
+      else if (this.height >= 69) score += 0.0;
+      else if (this.height >= 66) score -= 1.2;
+      else score -= 2.5;
     }
 
     // Jaw Modifier
@@ -141,40 +225,48 @@ export class GameState {
     else if (this.jaw === 'Soft') score -= 1.0;
     else if (this.jaw === 'Receding') score -= 2.2;
 
-    // Canthal Tilt Modifier
+    // Canthal Tilt
     if (this.tilt === 'Positive') score += 1.2;
     else if (this.tilt === 'Negative') score -= 1.5;
 
-    // Symmetry Modifier
+    // Symmetry
     if (this.symmetry === 'Symmetrical') score += 1.0;
     else if (this.symmetry === 'Asymmetrical') score -= 1.2;
 
-    // Hairline Modifier (Norwood scale 1-7 or Ludwig scale 1-3 equivalent)
+    // Hairline
     if (this.hairline === 1) score += 1.2;
     else if (this.hairline === 2) score += 0.4;
     else if (this.hairline === 3) score -= 0.2;
     else if (this.hairline === 4) score -= 1.0;
-    else score -= 2.5; // Norwood 5-7 or Ludwig 3
+    else score -= 2.5;
 
-    // Skin Modifier (0-100)
+    // Skin
     if (this.skin >= 90) score += 1.0;
     else if (this.skin >= 65) score += 0.4;
-    else if (this.skin < 30) score -= 1.5; // cystic acne debuff
+    else if (this.skin < 30) score -= 1.5;
 
-    // Frame Modifier (0-100)
+    // Frame
     if (this.frame >= 80) score += 1.2;
     else if (this.frame >= 60) score += 0.5;
-    else if (this.frame < 30) score -= 1.2; // narrow framelet
+    else if (this.frame < 30) score -= 1.2;
 
-    // Style Modifier (0-100)
+    // Style
     if (this.style >= 80) score += 1.2;
     else if (this.style >= 60) score += 0.5;
-    else if (this.style < 30) score -= 1.0; // homeless/poor styling
+    else if (this.style < 30) score -= 1.0;
+
+    // Rizz (NEW: charisma modifier up to ±0.8)
+    if (this.rizz >= 80) score += 0.8;
+    else if (this.rizz >= 60) score += 0.4;
+    else if (this.rizz < 25) score -= 0.5;
 
     // Botched Surgeries Penalty
     score -= (this.surgeryBotchedCount * 1.5);
 
-    // Clamp score (adjusted to PSL 8 scale)
+    // Career prestige bonus
+    const careerMap = { unemployed: 0, entry: 0, junior: 0.1, mid: 0.2, senior: 0.3, manager: 0.4, director: 0.5, executive: 0.6, ceo: 0.8 };
+    score += careerMap[this.careerTier] || 0;
+
     let pslScore = parseFloat((score * 0.8).toFixed(1));
     this.smv = parseFloat(Math.max(1.0, Math.min(8.0, pslScore)).toFixed(1));
 
@@ -337,19 +429,6 @@ export class GameState {
     };
   }
 
-  doWork() {
-    if (this.ap < 2) return false;
-    this.ap -= 2;
-    this.cash += 1500;
-    // Working drains confidence slightly (grind fatigue)
-    this.confidence = Math.max(0, this.confidence - 5);
-    this.updateSMV();
-    return {
-      message: `You spent 2 AP grinding at a corporate desk job. Earned $1,500 cash, but mental fatigue set in (-5% Confidence).`,
-      type: 'action'
-    };
-  }
-
   doGym() {
     if (this.ap < 2 || this.cash < 100) return false;
     this.ap -= 2;
@@ -398,6 +477,208 @@ export class GameState {
       message: `You visited a premium stylist, got a fade, and purchased trendy streetwear (-$150 cash, -1 AP). Style stats up!`,
       type: 'success'
     };
+  }
+
+  // === CAREER SYSTEM ===
+  getCareerList() {
+    return CAREER_TIERS.map(t => {
+      const isCurrent = this.careerTier === t.id;
+      const idx = CAREER_TIERS.findIndex(c => c.id === this.careerTier);
+      const reqIdx = CAREER_TIERS.findIndex(c => c.id === t.id);
+      const canPromote = reqIdx === idx + 1 && this.smv >= t.reqSMV && this.rizz >= t.reqRizz;
+      return { ...t, isCurrent, canPromote };
+    });
+  }
+
+  doWork() {
+    const tier = CAREER_TIERS.find(t => t.id === this.careerTier);
+    if (!tier || tier.apCost === 0) {
+      // Unemployed - can still hustle
+      if (this.ap < 1) return false;
+      this.ap -= 1;
+      this.cash += 200;
+      this.confidence = Math.max(0, this.confidence - 3);
+      return { message: `You did odd jobs and side hustles. Earned $200 cash. (-1 AP)`, type: 'action' };
+    }
+    if (this.ap < tier.apCost) return false;
+    this.ap -= tier.apCost;
+    this.cash += tier.pay;
+    this.confidence = Math.max(0, this.confidence - 3);
+    this.updateSMV();
+    return {
+      message: `You worked as ${tier.title}. Earned $${tier.pay.toLocaleString()} cash. (-${tier.apCost} AP)`,
+      type: 'action'
+    };
+  }
+
+  seekPromotion() {
+    const idx = CAREER_TIERS.findIndex(t => t.id === this.careerTier);
+    if (idx >= CAREER_TIERS.length - 1) return { error: 'Already at the highest career tier (CEO)!' };
+    const next = CAREER_TIERS[idx + 1];
+    if (this.smv < next.reqSMV) return { error: `Need SMV ${next.reqSMV} to become ${next.title}. Current: ${this.smv}` };
+    if (this.rizz < next.reqRizz) return { error: `Need Rizz ${next.reqRizz} to become ${next.title}. Current: ${this.rizz}` };
+    if (this.ap < 2) return { error: 'Need 2 AP to network for a promotion.' };
+    this.ap -= 2;
+    const chance = (this.smv / next.reqSMV) * (this.rizz / Math.max(1, next.reqRizz)) * 0.5;
+    if (Math.random() < chance) {
+      this.careerTier = next.id;
+      this.confidence = Math.min(100, this.confidence + 20);
+      this.log.push(`PROMOTED to ${next.title}!`);
+      this.updateSMV();
+      return { success: true, message: `PROMOTED! You are now ${next.title}! (${next.pay >= 4000 ? `Salary: $${next.pay.toLocaleString()}/year` : ''})`, type: 'success', tier: next };
+    } else {
+      this.confidence = Math.max(0, this.confidence - 10);
+      return { error: `Failed to secure promotion to ${next.title}. Keep building your stats.` };
+    }
+  }
+
+  // === TALENT TREE ===
+  getTalentPoint() {
+    this.talentPoints++;
+  }
+
+  learnTalent(talentId) {
+    const talent = TALENTS.find(t => t.id === talentId);
+    if (!talent) return false;
+    if (this.talentPoints < 1) return false;
+    const currentRank = this.talents[talentId] || 0;
+    if (currentRank >= talent.maxRank) return false;
+    this.talentPoints--;
+    this.talents[talentId] = (this.talents[talentId] || 0) + 1;
+    if (talent.effect) talent.effect(this, this.talents[talentId]);
+    return true;
+  }
+
+  getTalentEffect(talentId) {
+    return this.talents[talentId] || 0;
+  }
+
+  // === SUBSTANCE SYSTEM ===
+  takeSubstance(substanceId) {
+    const sub = SUBSTANCES.find(s => s.id === substanceId);
+    if (!sub) return { error: 'Unknown substance.' };
+    if (this.cash < sub.cost) return { error: `Need $${sub.cost} for ${sub.name}.` };
+
+    this.cash -= sub.cost;
+    this.substancesUsed++;
+    this.activeSubstances.push(substanceId);
+
+    // Addiction check
+    if (Math.random() < sub.addictionRisk) {
+      this.addictionLevel = Math.min(10, this.addictionLevel + 1);
+    }
+
+    // Risk check
+    if (Math.random() < sub.risk) {
+      this.skin = Math.max(0, this.skin - 10);
+      this.confidence = Math.max(0, this.confidence - 20);
+      if (substanceId === 'steroids' && Math.random() < 0.1) {
+        this.isDead = true;
+        return { success: false, message: `FATAL: ${sub.name} caused cardiac arrest. You died.`, type: 'error' };
+      }
+      return { success: false, message: `BAD REACTION: ${sub.name} caused side effects! (-10 Skin, -20 Confidence)`, type: 'error', effects: sub.effects };
+    }
+
+    // Apply effects
+    if (sub.effects) {
+      if (sub.effects.frame) this.frame = Math.min(100, this.frame + sub.effects.frame);
+      if (sub.effects.rizz) this.rizz = Math.min(100, this.rizz + sub.effects.rizz);
+      if (sub.effects.skin) this.skin = Math.min(100, this.skin + sub.effects.skin);
+      if (sub.effects.style) this.style = Math.min(100, this.style + sub.effects.style);
+      if (sub.effects.confidence) this.confidence = Math.min(100, this.confidence + sub.effects.confidence);
+    }
+    if (sub.sideEffects) {
+      if (sub.sideEffects.confidence) this.confidence = Math.max(0, this.confidence + sub.sideEffects.confidence);
+      if (sub.sideEffects.frame) this.frame = Math.max(0, this.frame + sub.sideEffects.frame);
+    }
+
+    this.updateSMV();
+    return { success: true, message: `Took ${sub.name}. ${sub.desc}`, type: 'action' };
+  }
+
+  // === ACHIEVEMENTS ===
+  checkAchievements() {
+    const unlocked = new Set(this.achievementsUnlocked);
+    const newlyUnlocked = [];
+    ACHIEVEMENTS.forEach(ach => {
+      if (!unlocked.has(ach.id) && ach.check(this)) {
+        unlocked.add(ach.id);
+        newlyUnlocked.push(ach);
+      }
+    });
+    this.achievementsUnlocked = [...unlocked];
+    localStorage.setItem('looksmax_achievements', JSON.stringify(this.achievementsUnlocked));
+    return newlyUnlocked;
+  }
+
+  // === SEASONAL EVENTS ===
+  checkSeasonalEvent() {
+    return SEASONAL_EVENTS.find(e => e.age === this.age);
+  }
+
+  // === LINEAGE ===
+  procreate() {
+    if (!this.hasDatingPartner) return { error: 'Need a partner to procreate.' };
+    if (this.hasProcreated) return { error: 'Already have a child this run.' };
+    if (this.age < 20) return { error: 'Too young to start a family.' };
+    this.hasProcreated = true;
+    const child = {
+      name: this.generateRandomName(),
+      gender: Math.random() < 0.5 ? 'male' : 'female',
+      // Inherit weighted stats from parent
+      height: Math.round(this.height * 0.6 + this.randomRange(50, 80) * 0.4),
+      jaw: Math.random() < 0.5 ? this.jaw : this.randomElement(JAW_TYPES),
+      tilt: Math.random() < 0.5 ? this.tilt : this.randomElement(TILT_TYPES),
+      symmetry: Math.random() < 0.5 ? this.symmetry : this.randomElement(SYMMETRY_TYPES),
+      hairline: Math.round(this.hairline * 0.5 + this.randomRange(1, 7) * 0.5),
+      skin: Math.round(this.skin * 0.4 + this.randomRange(10, 90) * 0.6),
+      frame: Math.round(this.frame * 0.4 + this.randomRange(10, 90) * 0.6),
+      rizz: Math.round(this.rizz * 0.3 + this.randomRange(10, 90) * 0.7)
+    };
+    this.children.push(child);
+    this.cash = Math.max(0, this.cash - 2000); // Child costs
+    return { success: true, child, message: `You had a child: ${child.name}! They inherit some of your traits.`, type: 'success' };
+  }
+
+  // === STAT TIMELINE ===
+  recordStatTimeline() {
+    this.statTimeline.push({
+      age: this.age,
+      smv: this.smv,
+      confidence: this.confidence,
+      rizz: this.rizz,
+      cash: this.cash,
+      skin: this.skin,
+      frame: this.frame,
+      style: this.style
+    });
+  }
+
+  // === DEBUG / SERIALIZATION ===
+  serialize() {
+    return JSON.parse(JSON.stringify({
+      name: this.name, age: this.age, gender: this.gender, cash: this.cash, ap: this.ap,
+      height: this.height, jaw: this.jaw, tilt: this.tilt, symmetry: this.symmetry,
+      hairline: this.hairline, skin: this.skin, frame: this.frame, style: this.style,
+      confidence: this.confidence, rizz: this.rizz,
+      smv: this.smv, socialTier: this.socialTier,
+      isDead: this.isDead, surgeryBotchedCount: this.surgeryBotchedCount,
+      hasDatingPartner: this.hasDatingPartner, partnerName: this.partnerName,
+      datingScore: this.datingScore, followers: this.followers,
+      hasInfluencerCard: this.hasInfluencerCard, opponentsDefeated: this.opponentsDefeated,
+      botchedJaw: this.botchedJaw, botchedHair: this.botchedHair, botchedCanthoplasty: this.botchedCanthoplasty,
+      careerTier: this.careerTier, talentPoints: this.talentPoints, talents: this.talents,
+      substancesUsed: this.substancesUsed, activeSubstances: this.activeSubstances,
+      addictionLevel: this.addictionLevel, hasProcreated: this.hasProcreated,
+      children: this.children, statTimeline: this.statTimeline,
+      activePerks: this.activePerks
+    }));
+  }
+
+  static deserialize(data) {
+    const g = new GameState(data.activePerks || {});
+    Object.assign(g, data);
+    return g;
   }
 
   // SURGERY DETAILS
@@ -604,28 +885,87 @@ export class GameState {
   // YEAR CYCLE & RANDOM EVENTS
   advanceYear() {
     this.age += 1;
-    this.ap = 10; // reset action points
-    
-    // Inflation / minor passive expenses
+    this.ap = 10;
+
+    // Inflation / passive expenses
     this.cash = Math.max(0, this.cash - 100);
+
+    // Give a talent point each year
+    this.getTalentPoint();
 
     // Passive aging effects on hairline & skin
     if (this.age >= 25 && Math.random() < 0.20 && this.hairline < 7) {
       this.hairline++;
-      const hairMessage = this.gender === 'female'
-        ? `Aging signs: Your hair parted wider. Hair volume/hairline degraded by 1 Ludwig tier.`
-        : `Aging signs: Your temples receded slightly. Hairline degraded by 1 Norwood tier.`;
-      this.log.push({
-        message: hairMessage,
-        type: 'event'
-      });
+    }
+    // Skin degrades slightly after 35
+    if (this.age >= 35 && Math.random() < 0.15) {
+      this.skin = Math.max(0, this.skin - 3);
+    }
+    // Frame degrades after 45
+    if (this.age >= 45 && Math.random() < 0.10) {
+      this.frame = Math.max(0, this.frame - 3);
+    }
+    // Rizz improves with age (wisdom)
+    if (this.age >= 30 && Math.random() < 0.20) {
+      this.rizz = Math.min(100, this.rizz + 2);
     }
 
     this.updateSMV();
 
+    // Record stat timeline
+    this.recordStatTimeline();
+
+    // Check for seasonal event
+    const seasonal = this.checkSeasonalEvent();
+
+    // Midlife crisis events (age 35-50)
+    let midlifeEvent = null;
+    if (this.age >= 35 && this.age <= 50 && Math.random() < 0.12) {
+      midlifeEvent = this.triggerMidlifeEvent();
+    }
+
     // Trigger random event
     const event = this.triggerRandomEvent();
-    return event;
+
+    return { event, seasonal, midlifeEvent };
+  }
+
+  triggerMidlifeEvent() {
+    const isFemale = this.gender === 'female';
+    const events = [
+      {
+        title: "Midlife Crisis: Sports Car",
+        desc: "You feel the urge to buy a red convertible. Your bank account weeps.",
+        effect: (p) => { p.cash = Math.max(0, p.cash - 5000); p.confidence = Math.min(100, p.confidence + 15); },
+        impactText: "-$5,000 Cash, +15% Confidence (but at what cost?)",
+        icon: "🏎️"
+      },
+      {
+        title: "Midlife Crisis: Tattoo",
+        desc: isFemale ? "You get a massive back tattoo of a phoenix. Regret incoming." : "You get a full sleeve tattoo of a dragon. Your mom is disappointed.",
+        effect: (p) => { p.style = Math.min(100, p.style + 10); p.cash = Math.max(0, p.cash - 1000); },
+        impactText: "+10 Style, -$1,000 Cash",
+        icon: "💉"
+      },
+      {
+        title: "Philosophical Awakening",
+        desc: "You realize life is meaningless and stats are arbitrary. Inner peace achieved.",
+        effect: (p) => { p.confidence = Math.min(100, p.confidence + 20); p.rizz = Math.min(100, p.rizz + 10); },
+        impactText: "+20% Confidence, +10 Rizz",
+        icon: "🧘"
+      },
+      {
+        title: "Divorce Proceedings",
+        desc: isFemale ? "Your husband leaves you for a younger Stacy. The alimony is brutal." : "Your wife takes half your assets. The legal fees pile up.",
+        effect: (p) => { p.cash = Math.max(0, Math.round(p.cash * 0.5)); p.confidence = Math.max(0, p.confidence - 30); p.hasDatingPartner = false; },
+        impactText: "-50% Cash, -30% Confidence",
+        icon: "⚖️"
+      }
+    ];
+    const ev = this.randomElement(events);
+    ev.effect(this);
+    this.updateSMV();
+    return ev;
   }
 
   triggerRandomEvent() {
@@ -706,6 +1046,41 @@ export class GameState {
         effect: (p) => { p.skin = Math.max(0, p.skin - 15); },
         impactText: "-15 Skin Quality",
         icon: "🤒"
+      },
+      {
+        title: "Viral TikTok Moment",
+        desc: "A random video of you gets 100k views! Your follower count explodes.",
+        effect: (p) => { p.followers += 2000; p.cash += 500; p.confidence = Math.min(100, p.confidence + 10); },
+        impactText: "+2,000 Followers, +$500 Cash, +10% Confidence",
+        icon: "📱"
+      },
+      {
+        title: "Rizz Workshop",
+        desc: "You attend a confidence seminar and learn some killer pick-up lines.",
+        effect: (p) => { p.rizz = Math.min(100, p.rizz + 12); p.confidence = Math.min(100, p.confidence + 10); },
+        impactText: "+12 Rizz, +10% Confidence",
+        icon: "💬"
+      },
+      {
+        title: "Fashion Week Invite",
+        desc: "You get invited to a fashion show. Your style game levels up.",
+        effect: (p) => { p.style = Math.min(100, p.style + 15); p.rizz = Math.min(100, p.rizz + 5); },
+        impactText: "+15 Style, +5 Rizz",
+        icon: "👔"
+      },
+      {
+        title: "Gym Injury",
+        desc: "You overdo it at the gym and pull a muscle. Setback on your frame.",
+        effect: (p) => { p.frame = Math.max(0, p.frame - 10); p.cash = Math.max(0, p.cash - 200); },
+        impactText: "-10 Frame, -$200 Medical Bills",
+        icon: "🤕"
+      },
+      {
+        title: "Unexpected Bonus",
+        desc: "Your company gives you a surprise bonus for your hard work!",
+        effect: (p) => { p.cash += 3000; p.confidence = Math.min(100, p.confidence + 10); },
+        impactText: "+$3,000 Cash, +10% Confidence",
+        icon: "🎊"
       }
     ];
 

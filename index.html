@@ -185,6 +185,30 @@
               </div>
             </div>
 
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Rizz (Charisma):</span>
+                <span id="txt-rizz">50</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-fill bg-yellow" id="bar-rizz" style="width: 50%"></div>
+              </div>
+            </div>
+
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Career:</span>
+                <span id="txt-career" class="text-cyan" style="font-size:10px;">Unemployed</span>
+              </div>
+            </div>
+
+            <div class="meter-stat">
+              <div class="meter-label">
+                <span>Talent Points:</span>
+                <span id="txt-talent-points" class="text-yellow">0</span>
+              </div>
+            </div>
+
           </div>
         </aside>
 
@@ -265,12 +289,57 @@
                    </div>
                  </button>
 
+                 <button class="action-card" id="act-promotion">
+                  <div class="action-icon">📈</div>
+                  <div class="action-details">
+                    <h4>Seek Promotion</h4>
+                    <p class="desc">Network and climb the corporate ladder.</p>
+                    <span class="cost text-cyan">-$2 AP (Requires SMV & Rizz)</span>
+                  </div>
+                </button>
+
+                 <button class="action-card" id="act-substances">
+                  <div class="action-icon">💊</div>
+                  <div class="action-details">
+                    <h4>Substance Shop</h4>
+                    <p class="desc">Buy performance enhancers (risky).</p>
+                    <span class="cost text-pink">Variable cost & risk</span>
+                  </div>
+                </button>
+
+                 <button class="action-card" id="act-talents">
+                  <div class="action-icon">⭐</div>
+                  <div class="action-details">
+                    <h4>Talent Tree</h4>
+                    <p class="desc">Spend talent points on permanent perks.</p>
+                    <span class="cost text-yellow">1 Talent Point</span>
+                  </div>
+                </button>
+
                  <button class="action-card warning-card" id="act-surgery">
                   <div class="action-icon">💉</div>
                   <div class="action-details">
                     <h4>Risky Surgery</h4>
                     <p class="desc">Bone shattering / reshaping procedures. Extremely risky.</p>
                     <span class="cost text-pink">Costs variable (Large Cash Sum)</span>
+                  </div>
+                </button>
+
+                 <button class="action-card" id="act-procreate">
+                  <div class="action-icon">👶</div>
+                  <div class="action-details">
+                    <h4>Start a Family</h4>
+                    <p class="desc">Have a child to continue your lineage.</p>
+                    <span class="cost text-green">-$2,000 (Need partner)</span>
+                  </div>
+                </button>
+
+                 <button class="action-card" id="act-mirror-game">
+                  <div class="action-icon">🪞</div>
+                  <div class="action-details">
+                    <h4>Mirror Staring</h4>
+                    <p class="desc">Train mental fortitude. No AP cost.</p>
+                    <span class="cost text-cyan">Free action</span>
                   </div>
                 </button>
               </div>
@@ -315,7 +384,11 @@
       <footer class="console-panel">
         <div class="console-header">
           <span>RUN LOG CONSOLE // LOGSMAX_SYSTEM_V1.0</span>
-          <button class="clear-btn" id="btn-clear-logs">CLEAR</button>
+          <div style="display:flex;gap:5px;">
+            <button class="clear-btn" id="btn-save-game">💾 SAVE</button>
+            <button class="clear-btn" id="btn-load-game">📂 LOAD</button>
+            <button class="clear-btn" id="btn-clear-logs">CLEAR</button>
+          </div>
         </div>
         <div class="console-logs" id="console-logs-container">
           <div class="log-entry system">[SYSTEM] Character initialized at Age 18. Roll your dice to determine your genetics.</div>
@@ -327,7 +400,7 @@
     <section id="screen-gameover" class="game-screen">
       <div class="gameover-layout">
         <header class="gameover-header">
-          <h2 class="text-pink">RUN COMPLETED // AGE 30 REACHED</h2>
+          <h2 class="text-pink">RUN COMPLETED // AGE <span id="final-age-display">30</span> REACHED</h2>
           <p class="subtitle" id="txt-death-reason">You have finalized your genetic path. Here is how the community rates you.</p>
         </header>
 
@@ -365,6 +438,37 @@
           </div>
         </div>
 
+        <!-- Analytics & Leaderboard Row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-height:200px;overflow:hidden;">
+          <div class="panel" style="overflow:hidden;">
+            <div class="panel-header"><h3>📊 STAT PROGRESSION</h3></div>
+            <div class="panel-body" id="analytics-container" style="font-size:10px;font-family:var(--font-mono);overflow-y:auto;padding:8px;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          <div class="panel" style="overflow:hidden;">
+            <div class="panel-header">
+              <h3>🏆 LEADERBOARD</h3>
+              <button class="clear-btn" id="btn-clear-leaderboard" style="font-size:9px;">CLEAR</button>
+            </div>
+            <div class="panel-body" id="leaderboard-container" style="font-size:10px;font-family:var(--font-mono);overflow-y:auto;padding:8px;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          <div class="panel" style="overflow:hidden;">
+            <div class="panel-header"><h3>👨‍👩‍👧‍👦 LINEAGE</h3></div>
+            <div class="panel-body" id="lineage-container" style="font-size:10px;font-family:var(--font-mono);overflow-y:auto;padding:8px;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          <div class="panel" style="overflow:hidden;">
+            <div class="panel-header"><h3>🏅 ACHIEVEMENTS</h3></div>
+            <div class="panel-body" id="achievements-container" style="font-size:10px;font-family:var(--font-mono);overflow-y:auto;padding:8px;">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
         <div class="gameover-actions">
           <button class="btn primary-btn pulse-glow" id="btn-restart">RE-ROLL GENETICS (NEW RUN)</button>
         </div>
@@ -384,6 +488,73 @@
           <!-- -2 Skin, -10 Confidence -->
         </div>
         <button class="btn primary-btn" id="btn-close-event">DEAL WITH IT</button>
+      </div>
+    </div>
+
+    <!-- Substance Modal -->
+    <div class="modal-overlay hidden" id="substance-modal">
+      <div class="event-modal-content">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">💊</span>
+          <h3>SUBSTANCE SHOP</h3>
+        </div>
+        <p class="event-desc">Purchase performance-enhancing substances. Each has risks and side effects.</p>
+        <div id="substance-list" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;margin:10px 0;"></div>
+        <button class="btn secondary-btn" id="btn-close-substance" style="width:100%;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Talent Tree Modal -->
+    <div class="modal-overlay hidden" id="talent-modal">
+      <div class="event-modal-content">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">⭐</span>
+          <h3>TALENT TREE</h3>
+        </div>
+        <p class="event-desc">Spend talent points to unlock permanent perks. You earn 1 talent point per year.</p>
+        <div style="display:flex;gap:10px;align-items:center;margin:5px 0;">
+          <span class="neon-tag text-yellow">POINTS: <strong id="talent-points-display">0</strong></span>
+        </div>
+        <div id="talent-list" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;margin:10px 0;"></div>
+        <button class="btn secondary-btn" id="btn-close-talent" style="width:100%;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Achievement Notification -->
+    <div class="achievement-toast hidden" id="achievement-toast">
+      <div class="achievement-glow"></div>
+      <div class="achievement-content">
+        <span class="achievement-icon" id="ach-icon">🏆</span>
+        <div>
+          <span class="achievement-title" id="ach-title">ACHIEVEMENT UNLOCKED!</span>
+          <span class="achievement-name" id="ach-name">Achievement Name</span>
+          <span class="achievement-desc" id="ach-desc">Description</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini-game: Mirror Staring -->
+    <div class="modal-overlay hidden" id="minigame-mirror-modal">
+      <div class="event-modal-content" style="max-width:380px;text-align:center;">
+        <div class="event-glow-border"></div>
+        <div class="event-header" style="justify-content:center;">
+          <span class="event-icon">🪞</span>
+          <h3>MIRROR STARING CONTEST</h3>
+        </div>
+        <p class="event-desc" style="margin:10px 0;">Stare at yourself without blinking! Click when you feel the urge to blink. Last as long as you can.</p>
+        <div id="mirror-game-area" style="background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;margin:10px 0;">
+          <div id="mirror-timer" style="font-size:36px;font-family:var(--font-mono);color:var(--accent-cyan);">0.0s</div>
+          <div id="mirror-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;">Click "START" to begin</div>
+          <button class="btn primary-btn" id="btn-mirror-start" style="margin-top:12px;">START STARING</button>
+          <button class="btn warning-btn hidden" id="btn-mirror-blink" style="margin-top:8px;">I BLINKED!</button>
+        </div>
+        <div id="mirror-result" class="hidden" style="margin:10px 0;">
+          <span class="neon-tag text-cyan" id="mirror-final-time">0.0s</span>
+          <span style="display:block;margin-top:5px;font-size:11px;color:var(--text-muted);" id="mirror-reward-text"></span>
+        </div>
+        <button class="btn secondary-btn" id="btn-close-mirror" style="width:100%;margin-top:8px;">CLOSE</button>
       </div>
     </div>
 
