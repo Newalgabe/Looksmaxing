@@ -73,6 +73,15 @@ export const SEASONAL_EVENTS = [
   { id: 'valentine', name: 'Valentine\'s Day', desc: 'Love is in the air... or not.', icon: '💝', age: 27, effect: (p) => { if (p.hasDatingPartner) p.confidence = Math.min(100, p.confidence + 15); else p.confidence = Math.max(0, p.confidence - 10); } }
 ];
 
+function _checksum(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 export class GameState {
   constructor(activePerks = {}) {
     this.activePerks = activePerks;
@@ -153,6 +162,7 @@ export class GameState {
     this.statTimeline = [];
 
     this.updateSMV();
+    this._protectProperties();
   }
 
   generateRandomName() {
@@ -654,6 +664,71 @@ export class GameState {
     });
   }
 
+  // === ANTI-CHEAT / INTEGRITY ===
+  serializeSigned() {
+    const data = this.serialize();
+    data._c = _checksum(JSON.stringify(data));
+    return data;
+  }
+
+  static deserialize(data) {
+    const checksum = data._c;
+    delete data._c;
+    if (checksum && checksum !== _checksum(JSON.stringify(data))) {
+      console.warn('[ANTI-CHEAT] Save data integrity check FAILED — tampering detected');
+      return null;
+    }
+    const g = new GameState(data.activePerks || {});
+    Object.assign(g, data);
+    g._protectProperties();
+    return g;
+  }
+
+  _protectProperties() {
+    // Skip if already protected (non-configurable)
+    try {
+      const desc = Object.getOwnPropertyDescriptor(this, 'cash');
+      if (desc && !desc.configurable) return;
+    } catch (e) {}
+    const clamped = {
+      cash: [0, Infinity], ap: [0, 99], height: [48, 96],
+      confidence: [0, 100], skin: [0, 100], frame: [0, 100],
+      style: [0, 100], rizz: [0, 100], smv: [1, 8],
+      hairline: [1, 7], age: [18, 50], followers: [0, Infinity]
+    };
+    Object.entries(clamped).forEach(([prop, [min, max]]) => {
+      let value = this[prop];
+      try {
+        Object.defineProperty(this, prop, {
+          get() { return value; },
+          set(newVal) { value = Math.max(min, Math.min(max, newVal)); },
+          enumerable: true,
+          configurable: false
+        });
+      } catch (e) {}
+      this[prop] = value;
+    });
+  }
+
+  validateIntegrity() {
+    let flagged = false;
+    const oldSMV = this.smv;
+    this.updateSMV();
+    if (Math.abs(this.smv - oldSMV) > 1.0) {
+      console.warn('[ANTI-CHEAT] SMV tampering detected — recalculated');
+      this._tamperFlagged = true;
+      flagged = true;
+    }
+    const statsToCheck = ['confidence', 'skin', 'frame', 'style', 'rizz'];
+    statsToCheck.forEach(s => {
+      if (typeof this[s] !== 'number' || isNaN(this[s])) {
+        this[s] = 50;
+        flagged = true;
+      }
+    });
+    return !flagged;
+  }
+
   // === DEBUG / SERIALIZATION ===
   serialize() {
     return JSON.parse(JSON.stringify({
@@ -673,12 +748,6 @@ export class GameState {
       children: this.children, statTimeline: this.statTimeline,
       activePerks: this.activePerks
     }));
-  }
-
-  static deserialize(data) {
-    const g = new GameState(data.activePerks || {});
-    Object.assign(g, data);
-    return g;
   }
 
   // SURGERY DETAILS
@@ -886,6 +955,8 @@ export class GameState {
   advanceYear() {
     this.age += 1;
     this.ap = 10;
+
+    this.validateIntegrity();
 
     // Inflation / passive expenses
     this.cash = Math.max(0, this.cash - 100);

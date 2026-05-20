@@ -1030,11 +1030,11 @@ function setupEventListeners() {
     document.getElementById('mirror-result').classList.add('hidden');
   });
 
-  // NEW: Save/Load
+  // NEW: Save/Load (with anti-cheat checksum)
   document.getElementById('btn-save-game').addEventListener('click', () => {
     const slot = prompt('Save slot (1-3):', '1');
     if (!slot || slot < 1 || slot > 3) return;
-    localStorage.setItem(`looksmax_save_${slot}`, JSON.stringify(game.serialize()));
+    localStorage.setItem(`looksmax_save_${slot}`, JSON.stringify(game.serializeSigned()));
     logToConsole(`Game saved to slot ${slot}.`, 'success');
     playSound('click');
   });
@@ -1049,7 +1049,13 @@ function setupEventListeners() {
     }
     if (!confirm('Loading will overwrite current game. Continue?')) return;
     const parsed = JSON.parse(data);
-    game = GameState.deserialize(parsed);
+    const loaded = GameState.deserialize(parsed);
+    if (!loaded) {
+      logToConsole(`[ANTI-CHEAT] Save slot ${slot} was tampered with — load rejected.`, 'error');
+      playSound('error');
+      return;
+    }
+    game = loaded;
     updateDashboard();
     logToConsole(`Game loaded from slot ${slot}.`, 'success');
     playSound('click');
