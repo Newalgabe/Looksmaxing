@@ -65,7 +65,9 @@ export const ACHIEVEMENTS = [
   { id: 'surgeon_savvy_ach', name: 'Natural Beauty', desc: 'Complete a run with 0 surgeries.', icon: '🌿', check: (p) => p.surgeryBotchedCount === 0 },
   { id: 'addict', name: 'Substance Abuser', desc: 'Take 5+ substances in one run.', icon: '💊', check: (p) => p.substancesUsed >= 5 },
   { id: 'centenarian', name: 'Elder', desc: 'Reach age 50.', icon: '👴', check: (p) => p.age >= 50 },
-  { id: 'rizzler', name: 'Rizz God', desc: 'Reach 100 Rizz.', icon: '🔥', check: (p) => p.rizz >= 100 }
+  { id: 'rizzler', name: 'Rizz God', desc: 'Reach 100 Rizz.', icon: '🔥', check: (p) => p.rizz >= 100 },
+  { id: 'rival_slayer', name: 'Rival Slayer', desc: 'Beat your rival at every milestone.', icon: '🥊', check: (p) => p.rivalDefeatedCount >= 4 },
+  { id: 'challenge_complete', name: 'Challenge Mode', desc: 'Complete any challenge run.', icon: '🏅', check: (p) => p.completedChallenge }
 ];
 
 // Seasonal events
@@ -75,6 +77,48 @@ export const SEASONAL_EVENTS = [
   { id: 'halloween', name: 'Halloween', desc: 'Wear a mask and be whoever you want.', icon: '🎃', age: 23, effect: (p) => { p.confidence = Math.min(100, p.confidence + 5); } },
   { id: 'christmas', name: 'Christmas', desc: 'Holiday cheer! Family gatherings.', icon: '🎄', age: 25, effect: (p) => { p.cash += 200; } },
   { id: 'valentine', name: 'Valentine\'s Day', desc: 'Love is in the air... or not.', icon: '💝', age: 27, effect: (p) => { if (p.hasDatingPartner) p.confidence = Math.min(100, p.confidence + 15); else p.confidence = Math.max(0, p.confidence - 10); } }
+];
+
+// Challenge Seeds
+export const CHALLENGE_SEEDS = {
+  bald_begins: { name: 'Bald Begin', desc: 'Start at Norwood 7 with only $100', icon: '🦲', apply(p) { p.hairline = 7; p.cash = 100; } },
+  manlet: { name: 'Manlet', desc: 'Maximum height 5\'2" (62 inches)', icon: '📏', apply(p) { p.height = Math.min(62, p.height); } },
+  acne_hell: { name: 'Acne Hell', desc: 'Skin starts at 5/100', icon: '🤒', apply(p) { p.skin = 5; } },
+  broke_boi: { name: 'Broke Boi', desc: 'Start with $0', icon: '💸', apply(p) { p.cash = 0; } },
+  rizzless: { name: 'Rizzless', desc: 'Start with 0 Rizz', icon: '🤐', apply(p) { p.rizz = 0; } },
+  daily_challenge: { name: 'Daily Challenge', desc: 'Same seed for everyone today', icon: '📅', apply(p) { } }
+};
+
+// Rival progression milestones
+export const RIVAL_MILESTONES = [
+  { age: 22, reqSMV: 3.5, title: 'High School Bully', icon: '👊' },
+  { age: 27, reqSMV: 5.0, title: 'Office Rival', icon: '💼' },
+  { age: 33, reqSMV: 6.5, title: 'Social Media Competitor', icon: '📱' },
+  { age: 40, reqSMV: 7.5, title: 'GigaChad Nemesis', icon: '👑' }
+];
+
+// Codex entries
+export const CODEX_ENTRIES = [
+  { term: 'PSL', def: '"Pound-for-Pound Sexiness Level" — A community rating scale from 1.0 to 8.0 measuring overall facial and bodily attractiveness. Originated from the incel community.' },
+  { term: 'SMV', def: '"Sexual Market Value" — Your composite attractiveness score (1.0–8.0). Determined by height, jaw, tilt, symmetry, hairline, frame, skin, style, and rizz.' },
+  { term: 'Norwood Scale', def: 'A classification system for male pattern baldness. Norwood 1 (full head) to Norwood 7 (horseshoe bald). Used to describe hairline recession.' },
+  { term: 'Ludwig Scale', def: 'The female equivalent of the Norwood scale. Classifies female pattern hair loss into 3 grades.' },
+  { term: 'Canthal Tilt', def: 'The angle of your eye corners. Positive tilt (outer corner higher) is considered more attractive. Negative tilt is associated with tired/angry appearance.' },
+  { term: 'Jaw Definition', def: 'How sharp/defined your jawline is. Ranges: Chiseled > Sharp > Average > Soft > Receding. A strong jaw is one of the highest-SMV bone traits.' },
+  { term: 'Frame', def: 'Shoulder width and overall body build. Broad frames indicate high testosterone and are considered dominant. Measured 0–100.' },
+  { term: 'Rizz', def: 'Short for "charisma." Your ability to flirt, charm, and command social situations. Impacts dating, career promotions, and battle outcomes.' },
+  { term: 'Looksmaxxing', def: 'The practice of improving one\'s physical appearance through any means necessary: gym, skincare, surgery, styling, and substances.' },
+  { term: 'Soft Maxxes', def: 'Improvements that don\'t require surgery: skincare, gym, hair styling, fashion, makeup. Reversible and lower risk.' },
+  { term: 'Hard Maxxes', def: 'Surgical or medical interventions: jaw implants, hair transplants, limb lengthening, BBL. High risk, high reward.' },
+  { term: 'Cope', def: 'A coping mechanism for suboptimal genetics. Ranges from healthy (gymcelling) to unhealthy (ropefuel). Used ironically in the community.' },
+  { term: 'Ascend', def: 'To successfully improve your SMV to a tier where you receive positive social/romantic attention. Opposite of "roping."' },
+  { term: 'Mog', def: 'To dominate someone else in looks comparison. If you mog someone, you are visibly more attractive than them.' },
+  { term: 'Gymcel', def: 'Someone who spends excessive time at the gym to compensate for poor facial genetics. A healthy cope.' },
+  { term: 'Incel', def: '"Involuntarily Celibate" — Someone who desires romantic/sexual relationships but cannot obtain them. The game\'s spiritual origin.' },
+  { term: 'Stacy', def: 'A highly attractive woman (SMV 7+). The female equivalent of "Chad." Named after the archetype.' },
+  { term: 'Chad', def: 'A highly attractive man (SMV 7+). Genetically gifted with strong jaw, tall height, and perfect hairline.' },
+  { term: 'Cope Token', def: 'Metagame currency earned at the end of each run. Spend in the Cope Shop on permanent perks, themes, and memories.' },
+  { term: 'Talent Point', def: 'Earned each year (age 18–50). Spend in the Talent Tree on permanent per-run upgrades like Social Butterfly or Gym Rat.' }
 ];
 
 function _checksum(str) {
@@ -160,6 +204,15 @@ export class GameState {
     // NEW: Lineage
     this.children = [];
     this.hasProcreated = false;
+
+    // Rival system
+    this.rivalName = this.generateRandomName();
+    this.rivalDefeatedCount = 0;
+    this.rivalLastMilestone = 0;
+
+    // Challenge tracking
+    this.challengeId = null;
+    this.completedChallenge = false;
 
     // NEW: Achievements (tracked via localStorage, checked at milestones)
     this.achievementsUnlocked = JSON.parse(localStorage.getItem('looksmax_achievements') || '[]');
@@ -724,6 +777,43 @@ export class GameState {
     return { success: true, message: `Rehab complete! Addiction dropped by ${reduction} level(s) (now ${this.addictionLevel}/10).`, type: 'action', reduction };
   }
 
+  checkRivalMilestone() {
+    const mil = RIVAL_MILESTONES.find(m => m.age === this.age);
+    if (!mil) return null;
+    if (this.rivalLastMilestone >= RIVAL_MILESTONES.indexOf(mil) + 1) return null;
+    const rivalSMV = parseFloat((this.smv + 0.8 + Math.random() * 0.5).toFixed(1));
+    const playerWon = this.smv >= rivalSMV;
+    if (playerWon) {
+      this.rivalDefeatedCount++;
+      this.rivalLastMilestone = RIVAL_MILESTONES.indexOf(mil) + 1;
+      this.confidence = Math.min(100, this.confidence + 20);
+      this.log.push(`Defeated rival (${mil.title}) at age ${this.age}! SMV: ${this.smv} vs ${rivalSMV}`);
+    } else {
+      this.confidence = Math.max(0, this.confidence - 15);
+      this.log.push(`Lost to rival (${mil.title}) at age ${this.age}. Their SMV: ${rivalSMV}, Mine: ${this.smv}`);
+    }
+    this.updateSMV();
+    return {
+      milestone: mil,
+      rivalSMV,
+      playerWon,
+      rivalName: this.rivalName
+    };
+  }
+
+  applyChallenge(challengeId) {
+    this.challengeId = challengeId;
+    if (challengeId === 'daily_challenge') {
+      const today = new Date();
+      const seed = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+      let hash = 0;
+      for (let i = 0; i < seed.length; i++) { hash = ((hash << 5) - hash) + seed.charCodeAt(i); hash |= 0; }
+      this._dailySeed = Math.abs(hash);
+    }
+    const seedDef = CHALLENGE_SEEDS[challengeId];
+    if (seedDef && seedDef.apply) seedDef.apply(this);
+  }
+
   createChildRun(childIndex = 0) {
     if (this.children.length === 0 || !this.children[childIndex]) return null;
     const child = this.children[childIndex];
@@ -871,7 +961,10 @@ export class GameState {
       children: this.children, statTimeline: this.statTimeline,
       activePerks: this.activePerks,
       difficulty: this.difficulty,
-      _depressionYears: this._depressionYears
+      _depressionYears: this._depressionYears,
+      rivalName: this.rivalName, rivalDefeatedCount: this.rivalDefeatedCount,
+      rivalLastMilestone: this.rivalLastMilestone,
+      challengeId: this.challengeId, completedChallenge: this.completedChallenge
     }));
   }
 
@@ -1129,6 +1222,9 @@ export class GameState {
       this._depressionYears = 0;
     }
 
+    // Rival check-in at milestone ages
+    const rivalResult = this.checkRivalMilestone();
+
     this.updateSMV();
 
     // Record stat timeline
@@ -1146,7 +1242,7 @@ export class GameState {
     // Trigger random event
     const event = this.triggerRandomEvent();
 
-    return { event, seasonal, midlifeEvent };
+    return { event, seasonal, midlifeEvent, rivalResult };
   }
 
   triggerMidlifeEvent() {

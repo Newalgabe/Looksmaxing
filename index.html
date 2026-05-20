@@ -123,8 +123,22 @@
           </div>
         </div>
 
+        <div class="challenge-selection-container" style="margin-top:10px;">
+          <span class="cyber-label">CHALLENGE MODE:</span>
+          <div class="challenge-options" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
+            <button class="btn challenge-btn active" data-challenge="none">NONE</button>
+            <button class="btn challenge-btn" data-challenge="bald_begins" title="Norwood 7 + $100 start">🦲 BALD BEGIN</button>
+            <button class="btn challenge-btn" data-challenge="manlet" title="5ft2in max height">📏 MANLET</button>
+            <button class="btn challenge-btn" data-challenge="acne_hell" title="Skin starts at 5">🤒 ACNE HELL</button>
+            <button class="btn challenge-btn" data-challenge="broke_boi" title="Start with $0 cash">💸 BROKE BOI</button>
+            <button class="btn challenge-btn" data-challenge="rizzless" title="0 Rizz start">🤐 RIZZLESS</button>
+            <button class="btn challenge-btn" data-challenge="daily_challenge" title="Today's fixed seed">📅 DAILY</button>
+          </div>
+          <span class="challenge-badge" id="challenge-badge" style="display:none;font-size:10px;color:var(--accent-cyan);margin-top:4px;"></span>
+        </div>
+
         <div class="genesis-actions">
-          <button id="btn-roll-genetics" class="btn primary-btn pulse-glow">ROLL GENETICS</button>
+          <button id="btn-roll-genetics" class="btn primary-btn pulse-grow">ROLL GENETICS</button>
           <button id="btn-start-life" class="btn success-btn hidden">EMBARK ON LIFE (AGE 18)</button>
         </div>
       </div>
@@ -141,6 +155,7 @@
             <div style="display:flex;gap:6px;align-items:center;">
               <span class="neon-tag text-green" id="hud-social-tier">NORMIE</span>
               <span class="neon-tag text-yellow" id="hud-difficulty">NORMAL</span>
+              <button id="btn-codex" class="codex-btn" title="Looksmaxxing Glossary / Codex">📖</button>
             </div>
           </div>
           <div class="panel-body">
@@ -640,6 +655,31 @@
           <span style="display:block;margin-top:5px;font-size:11px;color:var(--text-muted);" id="mirror-reward-text"></span>
         </div>
         <button class="btn secondary-btn" id="btn-close-mirror" style="width:100%;margin-top:8px;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Codex / Glossary Modal -->
+    <div class="modal-overlay hidden" id="codex-modal">
+      <div class="event-modal-content" style="max-width:500px;">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">📖</span>
+          <h3>LOOKSMAXXING CODEX</h3>
+        </div>
+        <div class="codex-body" style="font-size:11px;max-height:400px;overflow-y:auto;margin:10px 0;font-family:var(--font-mono);">
+          <!-- populated via JS -->
+        </div>
+        <button class="btn secondary-btn" id="btn-close-codex" style="width:100%;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Cutscene Overlay (animated event cutscenes) -->
+    <div class="cutscene-overlay hidden" id="cutscene-overlay">
+      <div class="cutscene-content" id="cutscene-content">
+        <div class="cutscene-icon" id="cutscene-icon">💉</div>
+        <div class="cutscene-title" id="cutscene-title">SURGERY</div>
+        <div class="cutscene-subtitle" id="cutscene-subtitle">UNDER THE KNIFE</div>
+        <div class="cutscene-animation" id="cutscene-animation"></div>
       </div>
     </div>
 

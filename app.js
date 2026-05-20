@@ -4,7 +4,7 @@
  * canvas renderer, card battles, dating swiping, and year progression.
  */
 
-import { GameState, CAREER_TIERS, TALENTS, SUBSTANCES, ACHIEVEMENTS } from './game.js';
+import { GameState, CAREER_TIERS, TALENTS, SUBSTANCES, ACHIEVEMENTS, CODEX_ENTRIES, CHALLENGE_SEEDS, RIVAL_MILESTONES } from './game.js';
 import { drawAvatar } from './avatar.js';
 import { BattleSystem } from './battle.js';
 import { DatingSimulator } from './dating.js';
@@ -677,6 +677,26 @@ function setupEventListeners() {
     });
   });
 
+  // Challenge Mode Choice
+  const challengeBtns = document.querySelectorAll('.challenge-btn');
+  let chosenChallenge = 'none';
+  challengeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      challengeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      chosenChallenge = btn.getAttribute('data-challenge');
+      const badge = document.getElementById('challenge-badge');
+      if (chosenChallenge !== 'none') {
+        const seed = CHALLENGE_SEEDS[chosenChallenge];
+        badge.textContent = seed ? `${seed.icon} ${seed.name}: ${seed.desc}` : '';
+        badge.style.display = 'block';
+      } else {
+        badge.style.display = 'none';
+      }
+    });
+  });
+
   // Genesis Screen Rolls
   btnRollGenetics.addEventListener('click', () => {
     initAudio();
@@ -688,6 +708,8 @@ function setupEventListeners() {
     playSound('level-up');
     _endYearLock = false;
     if (btnEndYear) btnEndYear.disabled = false;
+    // Apply challenge if selected
+    if (chosenChallenge !== 'none') game.applyChallenge(chosenChallenge);
     switchScreen('screen-gameboard');
     startGame();
   });
@@ -782,6 +804,7 @@ tabBtns.forEach(btn => {
       logToConsole(res.error, 'error');
     } else {
       playSound('level-up');
+      showCutscene('promotion');
       logToConsole(res.message, res.type);
       updateDashboard();
     }
@@ -809,6 +832,17 @@ tabBtns.forEach(btn => {
   document.getElementById('btn-close-talent').addEventListener('click', () => {
     playSound('click');
     talentModal.classList.add('hidden');
+  });
+
+  // NEW: Codex / Glossary
+  document.getElementById('btn-codex').addEventListener('click', () => {
+    playSound('click');
+    renderCodex();
+    document.getElementById('codex-modal').classList.remove('hidden');
+  });
+  document.getElementById('btn-close-codex').addEventListener('click', () => {
+    playSound('click');
+    document.getElementById('codex-modal').classList.add('hidden');
   });
 
   // NEW: Procreate
@@ -1037,6 +1071,7 @@ tabBtns.forEach(btn => {
     }
 
     playSound('success');
+    showCutscene('viral');
 
     // Switch to result stage
     tiktokChooseStage.classList.add('hidden');
@@ -1237,7 +1272,8 @@ function updateDashboard() {
   hudSocialTier.textContent = game.socialTier;
   const hudDifficulty = document.getElementById('hud-difficulty');
   if (hudDifficulty) {
-    hudDifficulty.textContent = game.difficulty.toUpperCase();
+    const challengePart = game.challengeId && CHALLENGE_SEEDS[game.challengeId] ? ` ${CHALLENGE_SEEDS[game.challengeId].icon}` : '';
+    hudDifficulty.textContent = game.difficulty.toUpperCase() + challengePart;
     hudDifficulty.style.color = game.difficulty === 'hard' ? 'var(--accent-pink)' : 'var(--accent-yellow)';
   }
   
@@ -1375,6 +1411,20 @@ function endYear() {
     return; // wait for modal close before random event
   }
 
+  // Show rival result
+  if (result.rivalResult) {
+    const r = result.rivalResult;
+    const won = r.playerWon;
+    eventTitle.textContent = `${won ? '✅' : '❌'} RIVAL CHECK-IN: ${r.milestone.title}`;
+    eventDesc.innerHTML = `Your rival <strong>${r.rivalName}</strong> at age ${r.milestone.age}.
+      <br/><br/>Their SMV: <strong>${r.rivalSMV}</strong> | Your SMV: <strong>${game.smv}</strong>
+      <br/>${won ? 'You crushed them. Confidence boosted!' : 'They\'re pulling ahead. Stay focused.'}`;
+    eventImpact.textContent = won ? 'EFFECTS: +20% Confidence, Rival milestone passed!' : 'EFFECTS: -15% Confidence';
+    eventModal.classList.remove('hidden');
+    logToConsole(`Rival Check: ${r.rivalName} (SMV ${r.rivalSMV}) — ${won ? 'WON' : 'LOST'}`, won ? 'success' : 'error');
+    return;
+  }
+
   // Show random event
   if (result.event) {
     const event = result.event;
@@ -1408,6 +1458,7 @@ function checkGameOver() {
       triggerGameOver("Your journey was cut short.");
     }
   } else if (game.age >= 50) {
+    if (game.challengeId) game.completedChallenge = true;
     playSound('success');
     triggerGameOver("Life journey completed at Age 50.");
   }
@@ -1417,6 +1468,7 @@ function triggerGameOver(reasonText) {
   // Check achievements before game over screen
   const achs = game.checkAchievements();
   achs.forEach(ach => showAchievementToast(ach));
+  if (game.isDead) showCutscene('death');
   switchScreen('screen-gameover');
   document.getElementById('txt-death-reason').textContent = reasonText;
   document.getElementById('final-age-display').textContent = game.age;
@@ -1722,6 +1774,7 @@ function renderSurgeries() {
       const clinic = btn.getAttribute('data-clinic');
       
       surgeryMenu.classList.add('hidden');
+      showCutscene('surgery');
       const res = game.performSurgery(id, clinic);
       
       if (res.success) {
@@ -1964,6 +2017,7 @@ function renderBattleMenu(container) {
 
     if (!e.isLocked && !isDefeated) {
       card.addEventListener('click', () => {
+        showCutscene('battle');
         playSound('click');
         battle.startBattle(e.id);
         switchBGM();
@@ -2400,6 +2454,49 @@ function renderAchievementsFinal() {
     </div>`;
   });
   container.innerHTML = html;
+}
+
+// === NEW: Codex Render ===
+function renderCodex() {
+  const container = document.querySelector('.codex-body');
+  let html = '<dl>';
+  CODEX_ENTRIES.forEach(entry => {
+    html += `<dt>${entry.term}</dt><dd>${entry.def}</dd>`;
+  });
+  html += '</dl>';
+  container.innerHTML = html;
+}
+
+// === NEW: Cutscene Animation ===
+function showCutscene(type) {
+  const overlay = document.getElementById('cutscene-overlay');
+  const icon = document.getElementById('cutscene-icon');
+  const title = document.getElementById('cutscene-title');
+  const subtitle = document.getElementById('cutscene-subtitle');
+  const anim = document.getElementById('cutscene-animation');
+
+  const scenes = {
+    surgery: { icon: '💉', title: 'UNDER THE KNIFE', subtitle: 'Surgery in progress...' },
+    battle: { icon: '⚔️', title: 'COMBAT ENGAGED', subtitle: 'Battle mode activated' },
+    viral: { icon: '📱', title: 'GOING VIRAL', subtitle: 'Your feed is exploding' },
+    promotion: { icon: '📈', title: 'PROMOTION', subtitle: 'Climbing the ladder' },
+    dating: { icon: '💘', title: 'MATCH FOUND', subtitle: 'Swipe right on destiny' },
+    death: { icon: '💀', title: 'FATALITY', subtitle: 'Your journey ends' }
+  };
+
+  const scene = scenes[type] || scenes.surgery;
+  icon.textContent = scene.icon;
+  title.textContent = scene.title;
+  subtitle.textContent = scene.subtitle;
+  anim.innerHTML = '';
+
+  overlay.classList.remove('hidden');
+  overlay.classList.add('show');
+
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    setTimeout(() => overlay.classList.add('hidden'), 300);
+  }, 1500);
 }
 
 // Start Init
