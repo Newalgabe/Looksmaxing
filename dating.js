@@ -81,7 +81,7 @@ export class DatingSimulator {
             reject: "You're a bit too complicated for my schedule, dear.",
             success: "Perfect. Here is some allowance, let's fly out to Paris.",
             options: [
-              { text: "Accept his sugar-daddy proposal (-50 Confidence, +$5,000 cash)", cashCost: -5000, successProb: 1.0, outcome: "success" },
+              { text: "Accept his sugar-daddy proposal (-45 Confidence, +$5,000 cash)", cashCost: -5000, successProb: 1.0, outcome: "success" },
               { text: "Politely decline to keep your self-worth", cashCost: 0, successProb: 0.0, outcome: "reject" }
             ]
           }
@@ -195,7 +195,7 @@ export class DatingSimulator {
             reject: "Oh, you're a bit too sassy for my budget.",
             success: "Here's some shopping allowance, sweetie! Let's go to France.",
             options: [
-              { text: "Accept her sugar-mommy proposal (-50 Confidence, +$5,000 cash)", cashCost: -5000, successProb: 1.0, outcome: "success" },
+              { text: "Accept her sugar-mommy proposal (-45 Confidence, +$5,000 cash)", cashCost: -5000, successProb: 1.0, outcome: "success" },
               { text: "Respectfully decline to preserve your dignity", cashCost: 0, successProb: 0.0, outcome: "reject" }
             ]
           }

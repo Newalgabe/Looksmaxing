@@ -101,7 +101,7 @@ function generateThreadTitle(player) {
     return `Botched run. Turkey surgery ruined my jaw and symmetry. How to cope?`;
   }
 
-  return `Rate my 30-year-old build. ${heightStr} / ${hairLabel} / SMV ${player.smv} Normie.`;
+  return `Rate my ${player.age}-year-old build. ${heightStr} / ${hairLabel} / SMV ${player.smv} Normie.`;
 }
 
 function generateOpeningPost(player) {
@@ -117,7 +117,7 @@ function generateOpeningPost(player) {
     frameDesc = player.frame > 75 ? 'Broad Giga' : player.frame > 40 ? 'Average' : 'Narrow Framelet';
   }
   
-  let intro = `Just hit age 30. Started life with average genetics but tried to max out what I could. Here is my clinical stats breakdown:
+  let intro = `Just hit age ${player.age}. Started life with average genetics but tried to max out what I could. Here is my clinical stats breakdown:
   <br/><br/>
   <strong>Biometrics:</strong><br/>
   - Height: ${ft}'${inch}" (${Math.round(player.height * 2.54)} cm)<br/>

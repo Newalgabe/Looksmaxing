@@ -774,7 +774,9 @@ export class BattleSystem {
     const baseAttack = this.opponent.id === 'forum_admin' ? 30 :
                        this.opponent.id === 'brad_boss' ? 24 :
                        this.opponent.id === 'ceo_interviewer' ? 22 : 
+                       this.opponent.id === 'plastic_surgeon' ? 25 :
                        this.opponent.id === 'stacy_tinder' ? 18 : 
+                       this.opponent.id === 'tiktok_rat' ? 20 :
                        this.opponent.id === 'chad_gym_bro' ? 14 : 10;
     
     const damage = Math.floor(baseAttack * (0.8 + Math.random() * 0.4));

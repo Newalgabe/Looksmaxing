@@ -1261,7 +1261,7 @@ function updateDashboard() {
   actPromotion.disabled = game.ap < 2 || game.careerTier === 'ceo';
   actSubstances.disabled = game.cash < 50;
   actTalents.disabled = game.talentPoints < 1;
-  actProcreate.disabled = !game.hasDatingPartner || game.hasProcreated || game.cash < 2000;
+  actProcreate.disabled = !game.hasDatingPartner || game.hasProcreated || game.cash < 2000 || game.age < 20;
   actMirrorGame.disabled = false; // always available
 
   // Avatar Canvas Ticker
@@ -1351,6 +1351,9 @@ function checkGameOver() {
 }
 
 function triggerGameOver(reasonText) {
+  // Check achievements before game over screen
+  const achs = game.checkAchievements();
+  achs.forEach(ach => showAchievementToast(ach));
   switchScreen('screen-gameover');
   document.getElementById('txt-death-reason').textContent = reasonText;
   document.getElementById('final-age-display').textContent = game.age;
@@ -1444,7 +1447,7 @@ function triggerGameOver(reasonText) {
     </div>
     <div class="stat-row-detail">
       <span>Hairline:</span>
-      <strong>Norwood ${game.hairline}</strong>
+      <strong>${game.gender === 'female' ? 'Ludwig' : 'Norwood'} ${game.hairline}</strong>
     </div>
     <div class="stat-row-detail">
       <span>Rizz (Charisma):</span>
@@ -2218,7 +2221,7 @@ function showAchievementToast(ach) {
   document.getElementById('ach-desc').textContent = ach.desc;
   achievementToast.classList.remove('hidden');
   achievementToast.classList.add('show');
-  playSound('level-up');
+  playSound('achievement');
   setTimeout(() => {
     achievementToast.classList.remove('show');
     achievementToast.classList.add('hidden');
@@ -2255,11 +2258,15 @@ function renderLeaderboardList() {
     container.appendChild(row);
   });
 
-  document.getElementById('btn-clear-leaderboard').addEventListener('click', () => {
-    localStorage.removeItem('looksmax_leaderboard');
-    renderLeaderboardList();
-    playSound('click');
-  });
+  const clearBtn = document.getElementById('btn-clear-leaderboard');
+  if (clearBtn && !clearBtn.dataset.listenerAttached) {
+    clearBtn.dataset.listenerAttached = '1';
+    clearBtn.addEventListener('click', () => {
+      localStorage.removeItem('looksmax_leaderboard');
+      renderLeaderboardList();
+      playSound('click');
+    });
+  }
 }
 
 // === NEW: Analytics ===

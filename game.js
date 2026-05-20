@@ -29,7 +29,7 @@ export const CAREER_TIERS = [
 
 // Talent tree
 export const TALENTS = [
-  { id: 'social_butterfly', name: 'Social Butterfly', desc: '+5 Rizz per rank', maxRank: 3, effect: (p, rank) => { p.rizz = Math.min(100, p.rizz + 5 * rank); } },
+  { id: 'social_butterfly', name: 'Social Butterfly', desc: '+5 Rizz per rank', maxRank: 3, effect: (p, rank) => { p.rizz = Math.min(100, p.rizz + 5); } },
   { id: 'gym_rat', name: 'Gym Rat', desc: '+15% Frame gains per rank', maxRank: 3, effect: null },
   { id: 'skin_whisperer', name: 'Skin Whisperer', desc: '+15% Skin gains per rank', maxRank: 3, effect: null },
   { id: 'fashion_icon', name: 'Fashion Icon', desc: '+20% Style gains per rank', maxRank: 3, effect: null },
@@ -152,12 +152,6 @@ export class GameState {
     this.substancesUsed = 0;
     this.activeSubstances = [];
     this.addictionLevel = 0;
-
-    // NEW: Difficulty mode
-    this.difficulty = 'normal';
-
-    // Depression tracking
-    this._depressionYears = 0;
 
     // NEW: Lineage
     this.children = [];
@@ -807,7 +801,8 @@ export class GameState {
       addictionLevel: this.addictionLevel, hasProcreated: this.hasProcreated,
       children: this.children, statTimeline: this.statTimeline,
       activePerks: this.activePerks,
-      difficulty: this.difficulty
+      difficulty: this.difficulty,
+      _depressionYears: this._depressionYears
     }));
   }
 
@@ -1031,7 +1026,9 @@ export class GameState {
 
     // Passive aging effects on hairline & skin
     const hairlineChance = isHard ? 0.30 : 0.20;
-    if (this.age >= 25 && Math.random() < hairlineChance && this.hairline < 7) {
+    const hasFinasteride = this.activeSubstances && this.activeSubstances.includes('finasteride');
+    const finalHairlineChance = hasFinasteride ? hairlineChance * 0.5 : hairlineChance;
+    if (this.age >= 25 && Math.random() < finalHairlineChance && this.hairline < 7) {
       this.hairline++;
     }
     // Skin degrades slightly after 35
