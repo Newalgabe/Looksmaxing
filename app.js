@@ -264,7 +264,7 @@ function startAnimationLoop() {
 
 // --- Web Audio API (SFX only - BGM uses HTML5 Audio) ---
 let audioCtx = null;
-let soundEnabled = true;
+let soundEnabled = localStorage.getItem('looksmax_sound') !== 'off';
 
 // BGM State
 let bgmMode = 'genesis';
@@ -308,17 +308,11 @@ function switchBGM() {
 }
 
 function startBGM() {
-  if (bgmModeTimer) return;
   if (!soundEnabled) return;
   switchBGM();
-  bgmModeTimer = setInterval(switchBGM, 500);
 }
 
 function stopBGM() {
-  if (bgmModeTimer) {
-    clearInterval(bgmModeTimer);
-    bgmModeTimer = null;
-  }
   if (bgmAudio) {
     bgmAudio.pause();
     bgmAudio.currentTime = 0;
@@ -613,8 +607,14 @@ function setupTutorial() {
 
 function setupAudioControl() {
   const btn = document.getElementById('audio-toggle-btn');
+  // Apply saved sound state to UI
+  if (!soundEnabled) {
+    btn.classList.add('disabled');
+    btn.querySelector('span').textContent = 'SOUND OFF';
+  }
   btn.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
+    localStorage.setItem('looksmax_sound', soundEnabled ? 'on' : 'off');
     if (soundEnabled) {
       btn.classList.remove('disabled');
       btn.querySelector('span').textContent = 'SOUND ON';
@@ -687,15 +687,19 @@ function setupEventListeners() {
 
   btnStartLife.addEventListener('click', () => {
     playSound('level-up');
+    _endYearLock = false;
+    if (btnEndYear) btnEndYear.disabled = false;
     switchScreen('screen-gameboard');
     startGame();
   });
 
-  // Action Panel Toggles
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      playSound('click');
-      const targetTab = btn.getAttribute('data-tab');
+// Action Panel Toggles
+let _firstTabClick = true;
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    if (!_firstTabClick) playSound('click');
+    _firstTabClick = false;
+    const targetTab = btn.getAttribute('data-tab');
       
       tabBtns.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
@@ -1060,6 +1064,8 @@ function setupEventListeners() {
 
   document.getElementById('btn-restart').addEventListener('click', () => {
     playSound('click');
+    _endYearLock = false;
+    if (btnEndYear) btnEndYear.disabled = false;
     renderShop();
     switchScreen('screen-genesis');
     btnRollGenetics.classList.remove('hidden');
@@ -1077,6 +1083,7 @@ function switchScreen(screenId) {
   const screens = document.querySelectorAll('.game-screen');
   screens.forEach(s => s.classList.remove('active'));
   document.getElementById(screenId).classList.add('active');
+  switchBGM();
 }
 
 // --- Screen 1: Genetic Roll Animation ---
@@ -1887,6 +1894,7 @@ function renderBattleMenu(container) {
       card.addEventListener('click', () => {
         playSound('click');
         battle.startBattle(e.id);
+        switchBGM();
         renderSocialTab();
       });
     } else if (isDefeated) {
@@ -2127,6 +2135,7 @@ function renderBattleResolution(container) {
     playSound('click');
     battle.active = false;
     battle.isOver = false;
+    switchBGM();
     renderSocialTab();
     checkGameOver();
   });
