@@ -5,7 +5,7 @@
  */
 
 import { GameState, CAREER_TIERS, TALENTS, SUBSTANCES, ACHIEVEMENTS } from './game.js';
-import { drawAvatar3D } from './avatar3d.js';
+import { drawAvatar } from './avatar.js';
 import { BattleSystem } from './battle.js';
 import { DatingSimulator } from './dating.js';
 import { generateForumThread, getCopingReplies, generateForumResponse } from './forum.js';
@@ -239,7 +239,7 @@ function renderShop() {
             botchedHair: run.avatarData ? run.avatarData.botchedHair : false,
             botchedCanthoplasty: run.avatarData ? run.avatarData.botchedCanthoplasty : false
           };
-          drawAvatar3D(cvs, stats, 0);
+          drawAvatar(cvs, stats, 0);
         }
       }, 20);
     });
@@ -253,9 +253,9 @@ function startAnimationLoop() {
     if (screenGenesis.classList.contains('active')) {
       // Background loop idle, draw dummy avatar occasionally if desired
     } else if (screenGameBoard.classList.contains('active')) {
-      drawAvatar3D(mainCanvas, game, timestamp);
+      drawAvatar(mainCanvas, game, timestamp);
     } else if (screenGameOver.classList.contains('active')) {
-      drawAvatar3D(finalCanvas, game, timestamp);
+      drawAvatar(finalCanvas, game, timestamp);
     }
     animationFrameId = requestAnimationFrame(tick);
   }
