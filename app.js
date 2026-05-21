@@ -2650,18 +2650,18 @@ window.renderAchievementsModal = function() {
     const barWidth = isUnlocked ? 100 : Math.max(2, pct);
     const color = isUnlocked ? 'var(--accent-green)' : pct >= 75 ? 'var(--accent-cyan)' : 'var(--border-color)';
     const descText = ach.hidden && !isUnlocked ? ach.hidden : ach.desc;
-    html += `<div style="margin-bottom:6px;${isUnlocked ? '' : 'opacity:0.5;'}">
-      <div style="display:flex;gap:8px;align-items:center;font-size:10px;">
-        <span style="font-size:14px;">${isUnlocked ? ach.icon : '🔒'}</span>
+    html += `<div style="margin-bottom:4px;${isUnlocked ? '' : 'opacity:0.5;'}">
+      <div style="display:flex;gap:6px;align-items:center;font-size:10px;">
+        <span style="font-size:13px;">${isUnlocked ? ach.icon : '🔒'}</span>
         <span style="flex:1;${isUnlocked ? 'color:var(--accent-cyan);font-weight:700;' : 'color:var(--text-muted);'}">${ach.name}</span>
         <span style="color:var(--text-muted);font-size:9px;">${isUnlocked ? '✓' : pct + '%'}</span>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;padding-left:22px;">
-        <div style="flex:1;height:5px;background:var(--bg-primary);border-radius:3px;overflow:hidden;">
-          <div style="width:${barWidth}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
+      <div style="display:flex;gap:4px;align-items:center;padding-left:21px;">
+        <div style="flex:1;height:4px;background:var(--bg-primary);border-radius:2px;overflow:hidden;">
+          <div style="width:${barWidth}%;height:100%;background:${color};border-radius:2px;transition:width 0.3s;"></div>
         </div>
-        <span style="font-size:9px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;" title="${ach.desc}">${descText}</span>
       </div>
+      <div style="padding-left:21px;font-size:8px;color:var(--text-muted);opacity:0.65;" title="${ach.desc}">${descText}</div>
     </div>`;
   });
   body.innerHTML = html;
