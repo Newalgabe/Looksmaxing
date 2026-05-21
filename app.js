@@ -1443,6 +1443,9 @@ function updateDashboard() {
     }
   }
 
+  // In-game achievement tracker
+  renderAchievementTracker();
+
   // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }
 
@@ -2623,16 +2626,64 @@ function renderLineage() {
 }
 
 // === NEW: Achievements Final ===
+// Toggle for in-game achievement tracker
+window.toggleAchievements = function() {
+  const body = document.getElementById('ach-tracker-body');
+  const arrow = document.getElementById('ach-tracker-arrow');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+};
+
+function renderAchievementTracker() {
+  const container = document.getElementById('ach-tracker-body');
+  if (!container) return;
+  const unlocked = new Set(game.achievementsUnlocked);
+  let html = '';
+  ACHIEVEMENTS.forEach(ach => {
+    const isUnlocked = unlocked.has(ach.id);
+    if (isUnlocked) return; // only show locked with progress
+    const pct = ach.progress(game);
+    if (pct <= 0) return; // skip ones with no progress yet
+    const barWidth = Math.max(2, pct);
+    const color = pct >= 75 ? 'var(--accent-cyan)' : 'var(--border-color)';
+    html += `<div style="margin-bottom:3px;" title="${ach.desc}">
+      <div style="display:flex;gap:4px;align-items:center;">
+        <span>${ach.icon}</span>
+        <span style="flex:1;color:var(--text-muted);">${ach.name}</span>
+        <span style="color:var(--text-muted);">${pct}%</span>
+      </div>
+      <div style="height:4px;background:var(--bg-primary);border-radius:2px;overflow:hidden;margin-left:18px;">
+        <div style="width:${barWidth}%;height:100%;background:${color};border-radius:2px;"></div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html || '<div style="color:var(--text-muted);text-align:center;">No progress yet. Keep grinding.</div>';
+}
+
 function renderAchievementsFinal() {
   const container = document.getElementById('achievements-container');
   const unlocked = new Set(game.achievementsUnlocked);
   let html = '';
   ACHIEVEMENTS.forEach(ach => {
     const isUnlocked = unlocked.has(ach.id);
-    html += `<div style="display:flex;gap:8px;padding:3px 0;font-size:10px;${isUnlocked ? '' : 'opacity:0.4;'}">
-      <span>${isUnlocked ? ach.icon : '🔒'}</span>
-      <span style="${isUnlocked ? 'color:var(--accent-cyan);' : 'color:var(--text-muted);'}">${ach.name}</span>
-      <span style="color:var(--text-muted);font-size:9px;">${ach.desc}</span>
+    const pct = ach.progress(game);
+    const barWidth = isUnlocked ? 100 : Math.max(2, pct);
+    const color = isUnlocked ? 'var(--accent-green)' : pct >= 75 ? 'var(--accent-cyan)' : 'var(--border-color)';
+    html += `<div style="margin-bottom:6px;${isUnlocked ? '' : 'opacity:0.5;'}"
+      title="${isUnlocked ? '' : `Progress: ${pct}%`}">
+      <div style="display:flex;gap:8px;align-items:center;font-size:10px;">
+        <span>${isUnlocked ? ach.icon : '🔒'}</span>
+        <span style="flex:1;${isUnlocked ? 'color:var(--accent-cyan);' : 'color:var(--text-muted);'}">${ach.name}</span>
+        <span style="color:var(--text-muted);font-size:9px;">${isUnlocked ? '' : pct + '%'}</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;padding-left:22px;">
+        <div style="flex:1;height:5px;background:var(--bg-primary);border-radius:3px;overflow:hidden;">
+          <div style="width:${barWidth}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+        <span style="font-size:8px;color:var(--text-muted);white-space:nowrap;">${ach.desc}</span>
+      </div>
     </div>`;
   });
   container.innerHTML = html;
