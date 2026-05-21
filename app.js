@@ -43,6 +43,19 @@ let activeTheme = localStorage.getItem('looksmax_active_theme') || 'default';
 let activeShopTab = 'perks';
 let chosenGender = 'male';
 let _endYearLock = false;
+let _adCooldown = false;
+
+// --- Fake Ads ---
+const ADS = [
+  { icon: '💉', brand: 'Buffalo Peptides™', tagline: 'Double your frame gains. No scam.', desc: 'Our proprietary blend of 7 peptides will skyrocket your frame in weeks. Used by 9/10 looksmaxxers. (Results not guaranteed.)' },
+  { icon: '📚', brand: "Clav's Course", tagline: 'Looksmax Academy — 100% subliminal results.', desc: 'The only course endorsed by real GigaChads. 12 hours of video content. "It changed my life" — definitely real student.' },
+  { icon: '🦴', brand: 'Bone Smasher 9000™', tagline: 'Reshape your jaw from home. Free ebook.', desc: 'Gentle percussive therapy for your mandible. 4.8 stars on Trustpilot. (Trustpilot may be fake.)' },
+  { icon: '🧊', brand: 'Ice Mew Pro Tape™', tagline: 'Results in 72 hours. (Maybe.)', desc: 'Advanced polymer tape for optimal tongue posture. Wear while sleeping. "I think I see a difference" — every reviewer.' },
+  { icon: '🦷', brand: 'Turkey Tooth Tours™', tagline: 'Buy one jaw, get one free. Limited time.', desc: 'All-inclusive surgery vacation package. 5-star clinic. 3-star hospital. 1-star aftercare. You get what you pay for!' },
+  { icon: '💪', brand: 'Mass Monster Gainz™', tagline: 'Free shipping on orders over $399.', desc: 'The most potent pre-workout on the market. 500mg caffeine. 300mg DMHA. Your heart will adapt. Probably.' },
+  { icon: '🦵', brand: 'Limb Lengthening Inc.™', tagline: 'Add 3 inches. 0% interest financing.', desc: 'External fixation frame included. 6-month recovery. Walk taller. We accept all major insurance (not really).' },
+  { icon: '🧪', brand: 'Sarms R Us™', tagline: 'Definitely not steroids. Trust us.', desc: 'Research chemicals for "research purposes". No liver damage reported. (Reports not required by law.)' }
+];
 
 // Apply active theme immediately on startup
 document.body.setAttribute('data-theme', activeTheme);
@@ -876,6 +889,32 @@ tabBtns.forEach(btn => {
     if (e.target === e.currentTarget) closeAchievementsModal();
   });
 
+  // Ad Modal
+  document.getElementById('btn-skip-ad').addEventListener('click', () => {
+    playSound('click');
+    closeAdModal();
+  });
+  document.getElementById('btn-claim-offer').addEventListener('click', () => {
+    playSound('click');
+    logToConsole("You clicked 'Claim Offer'. Nothing happens. You feel slightly dumber.", 'system');
+    closeAdModal();
+  });
+  document.getElementById('ad-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeAdModal();
+  });
+  document.getElementById('ad-banner').addEventListener('click', () => {
+    if (game.adFree) return;
+    playSound('click');
+    if (game.cash >= 200) {
+      game.adFree = true;
+      game.cash -= 200;
+      logToConsole("You purchased an ad-free subscription. Ads removed for this run. ($200/year renewal)", 'success');
+      updateDashboard();
+    } else {
+      logToConsole(`Need $200 for the ad-free subscription. You have $${game.cash}.`, 'error');
+    }
+  });
+
   // NEW: Procreate
   actProcreate.addEventListener('click', () => {
     const res = game.procreate();
@@ -1455,6 +1494,14 @@ function updateDashboard() {
       synergyList.innerHTML = '';
     }
   }
+
+  // Random ad popup (10% chance after any action, cooldown 30s)
+  if (!game.adFree && !_adCooldown && !_endYearLock && Math.random() < 0.10) {
+    showAdModal();
+  }
+
+  // Render ad banner
+  renderAdBanner();
 
   // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }
@@ -2677,6 +2724,40 @@ function openAchievementsModal() {
 function closeAchievementsModal() {
   document.getElementById('achievements-modal').classList.add('hidden');
   if (window._resumeGame) window._resumeGame();
+}
+
+// === Fake Ad System ===
+function renderAdBanner() {
+  const banner = document.getElementById('ad-banner');
+  const content = document.getElementById('ad-banner-content');
+  const sub = document.getElementById('ad-banner-sub');
+  const text = document.getElementById('ad-banner-text');
+  if (!banner || !content || !sub || !text) return;
+  if (game.adFree) {
+    content.style.display = 'none';
+    sub.style.display = 'block';
+    return;
+  }
+  content.style.display = 'block';
+  sub.style.display = 'none';
+  const ad = ADS[Math.floor(Math.random() * ADS.length)];
+  text.innerHTML = `<span style="color:#d4a574;">${ad.icon} ${ad.brand}</span> — <span style="color:#a08060;">${ad.tagline}</span>`;
+}
+
+function showAdModal() {
+  if (_adCooldown || game.adFree) return;
+  _adCooldown = true;
+  const ad = ADS[Math.floor(Math.random() * ADS.length)];
+  document.getElementById('ad-modal-icon').textContent = ad.icon;
+  document.getElementById('ad-modal-title').textContent = ad.brand;
+  document.getElementById('ad-modal-desc').textContent = ad.desc;
+  document.getElementById('ad-modal-impact').textContent = `"${ad.tagline}"`;
+  document.getElementById('ad-modal').classList.remove('hidden');
+}
+
+function closeAdModal() {
+  document.getElementById('ad-modal').classList.add('hidden');
+  setTimeout(() => { _adCooldown = false; }, 30000);
 }
 
 function renderAchievementsFinal() {

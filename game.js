@@ -230,6 +230,9 @@ export class GameState {
     this.challengeId = null;
     this.completedChallenge = false;
 
+    // Ad-free subscription
+    this.adFree = false;
+
     // NEW: Achievements (tracked via localStorage, checked at milestones)
     this.achievementsUnlocked = JSON.parse(localStorage.getItem('looksmax_achievements') || '[]');
 
@@ -1057,7 +1060,8 @@ export class GameState {
       rivalLastMilestone: this.rivalLastMilestone,
       challengeId: this.challengeId, completedChallenge: this.completedChallenge,
       hasGymMembership: this.hasGymMembership,
-      freak: this.freak
+      freak: this.freak,
+      adFree: this.adFree
     }));
   }
 
@@ -1275,6 +1279,16 @@ export class GameState {
 
     // Inflation / passive expenses
     this.cash = Math.max(0, this.cash - (isHard ? 200 : 100));
+
+    // Ad-free subscription recurring fee
+    if (this.adFree) {
+      if (this.cash >= 200) {
+        this.cash -= 200;
+      } else {
+        this.adFree = false;
+        this.log.push('Your ad-free subscription has lapsed.');
+      }
+    }
 
     // Give a talent point each year
     this.getTalentPoint();

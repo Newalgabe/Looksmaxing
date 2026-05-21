@@ -303,6 +303,17 @@
             <div id="synergy-list" style="font-size:10px;font-family:var(--font-mono);margin-top:4px;">
             </div>
 
+            <!-- Ad Banner -->
+            <div id="ad-banner" style="margin-top:8px;padding:6px 8px;background:#1a1510;border:1px solid #3a2a1a;border-radius:4px;font-size:9px;font-family:var(--font-mono);cursor:pointer;">
+              <div id="ad-banner-content">
+                <span style="color:#886644;font-size:7px;text-transform:uppercase;">Sponsored</span>
+                <div id="ad-banner-text" style="color:#d4a574;margin-top:2px;"></div>
+              </div>
+              <div id="ad-banner-sub" style="display:none;">
+                <span style="color:#50fa7b;">ADS REMOVED ✓</span>
+              </div>
+            </div>
+
           </div>
         </aside>
 
@@ -722,6 +733,23 @@
           <!-- populated via JS -->
         </div>
         <button class="btn secondary-btn" id="btn-close-achievements" style="width:100%;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Ad Modal -->
+    <div class="modal-overlay hidden" id="ad-modal">
+      <div class="event-modal-content" style="max-width:420px;">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon" id="ad-modal-icon">💉</span>
+          <h3 id="ad-modal-title">Sponsored</h3>
+        </div>
+        <p id="ad-modal-desc" class="event-desc" style="font-size:11px;"></p>
+        <div id="ad-modal-impact" class="event-impact" style="font-size:9px;color:var(--text-muted);"></div>
+        <div style="display:flex;gap:8px;margin-top:5px;">
+          <button class="btn secondary-btn" id="btn-skip-ad" style="flex:1;">SKIP</button>
+          <button class="btn primary-btn" id="btn-claim-offer" style="flex:1;">CLAIM OFFER</button>
+        </div>
       </div>
     </div>
 
