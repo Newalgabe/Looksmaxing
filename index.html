@@ -167,7 +167,10 @@
             <div style="display:flex;gap:6px;align-items:center;">
               <span class="neon-tag text-green" id="hud-social-tier">NORMIE</span>
               <span class="neon-tag text-yellow" id="hud-difficulty">NORMAL</span>
-              <button id="btn-codex" class="codex-btn" title="Looksmaxxing Glossary / Codex">📖</button>
+              <div style="display:flex;gap:4px;">
+                <button id="btn-codex" class="codex-btn" title="Looksmaxxing Glossary / Codex">📖</button>
+                <button id="btn-achievements" class="codex-btn" title="Achievements">🏆</button>
+              </div>
             </div>
           </div>
           <div class="panel-body">
@@ -298,10 +301,6 @@
 
             <div class="stat-group-title" id="synergy-header" style="display:none;">ACTIVE SYNERGIES</div>
             <div id="synergy-list" style="font-size:10px;font-family:var(--font-mono);margin-top:4px;">
-            </div>
-
-            <div class="stat-group-title" style="margin-top:8px;cursor:pointer;" id="ach-tracker-header" onclick="toggleAchievements()">📈 ACHIEVEMENT PROGRESS <span id="ach-tracker-arrow" style="font-size:8px;">▶</span></div>
-            <div id="ach-tracker-body" style="display:none;font-size:9px;font-family:var(--font-mono);max-height:180px;overflow-y:auto;">
             </div>
 
           </div>
@@ -708,6 +707,21 @@
           <!-- populated via JS -->
         </div>
         <button class="btn secondary-btn" id="btn-close-codex" style="width:100%;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Achievements Modal -->
+    <div class="modal-overlay hidden" id="achievements-modal">
+      <div class="event-modal-content" style="max-width:520px;">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">🏆</span>
+          <h3>ACHIEVEMENTS <span style="font-size:11px;font-weight:400;color:var(--text-muted);">(<span id="ach-modal-count">0</span>/24 unlocked)</span></h3>
+        </div>
+        <div id="ach-modal-body" style="font-size:10px;max-height:400px;overflow-y:auto;margin:10px 0;font-family:var(--font-mono);">
+          <!-- populated via JS -->
+        </div>
+        <button class="btn secondary-btn" id="btn-close-achievements" style="width:100%;">CLOSE</button>
       </div>
     </div>
 

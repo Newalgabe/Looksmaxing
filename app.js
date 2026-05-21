@@ -863,6 +863,19 @@ tabBtns.forEach(btn => {
     document.getElementById('codex-modal').classList.add('hidden');
   });
 
+  // Achievements Modal
+  document.getElementById('btn-achievements').addEventListener('click', () => {
+    playSound('click');
+    openAchievementsModal();
+  });
+  document.getElementById('btn-close-achievements').addEventListener('click', () => {
+    playSound('click');
+    closeAchievementsModal();
+  });
+  document.getElementById('achievements-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeAchievementsModal();
+  });
+
   // NEW: Procreate
   actProcreate.addEventListener('click', () => {
     const res = game.procreate();
@@ -1442,9 +1455,6 @@ function updateDashboard() {
       synergyList.innerHTML = '';
     }
   }
-
-  // In-game achievement tracker
-  renderAchievementTracker();
 
   // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }
@@ -2625,41 +2635,48 @@ function renderLineage() {
   });
 }
 
-// === NEW: Achievements Final ===
-// Toggle for in-game achievement tracker
-window.toggleAchievements = function() {
-  const body = document.getElementById('ach-tracker-body');
-  const arrow = document.getElementById('ach-tracker-arrow');
+// === NEW: Achievements Modal ===
+window.renderAchievementsModal = function() {
+  const body = document.getElementById('ach-modal-body');
+  const countEl = document.getElementById('ach-modal-count');
   if (!body) return;
-  const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : 'block';
-  if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
-};
-
-function renderAchievementTracker() {
-  const container = document.getElementById('ach-tracker-body');
-  if (!container) return;
   const unlocked = new Set(game.achievementsUnlocked);
+  let unlockedCount = 0;
   let html = '';
   ACHIEVEMENTS.forEach(ach => {
     const isUnlocked = unlocked.has(ach.id);
-    if (isUnlocked) return; // only show locked with progress
+    if (isUnlocked) unlockedCount++;
     const pct = ach.progress(game);
-    if (pct <= 0) return; // skip ones with no progress yet
-    const barWidth = Math.max(2, pct);
-    const color = pct >= 75 ? 'var(--accent-cyan)' : 'var(--border-color)';
-    html += `<div style="margin-bottom:3px;" title="${ach.desc}">
-      <div style="display:flex;gap:4px;align-items:center;">
-        <span>${ach.icon}</span>
-        <span style="flex:1;color:var(--text-muted);">${ach.name}</span>
-        <span style="color:var(--text-muted);">${pct}%</span>
+    const barWidth = isUnlocked ? 100 : Math.max(2, pct);
+    const color = isUnlocked ? 'var(--accent-green)' : pct >= 75 ? 'var(--accent-cyan)' : 'var(--border-color)';
+    const descText = ach.hidden && !isUnlocked ? ach.hidden : ach.desc;
+    html += `<div style="margin-bottom:6px;${isUnlocked ? '' : 'opacity:0.5;'}">
+      <div style="display:flex;gap:8px;align-items:center;font-size:10px;">
+        <span style="font-size:14px;">${isUnlocked ? ach.icon : '🔒'}</span>
+        <span style="flex:1;${isUnlocked ? 'color:var(--accent-cyan);font-weight:700;' : 'color:var(--text-muted);'}">${ach.name}</span>
+        <span style="color:var(--text-muted);font-size:9px;">${isUnlocked ? '✓' : pct + '%'}</span>
       </div>
-      <div style="height:4px;background:var(--bg-primary);border-radius:2px;overflow:hidden;margin-left:18px;">
-        <div style="width:${barWidth}%;height:100%;background:${color};border-radius:2px;"></div>
+      <div style="display:flex;gap:6px;align-items:center;padding-left:22px;">
+        <div style="flex:1;height:5px;background:var(--bg-primary);border-radius:3px;overflow:hidden;">
+          <div style="width:${barWidth}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+        <span style="font-size:8px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;" title="${ach.desc}">${descText}</span>
       </div>
     </div>`;
   });
-  container.innerHTML = html || '<div style="color:var(--text-muted);text-align:center;">No progress yet. Keep grinding.</div>';
+  body.innerHTML = html;
+  if (countEl) countEl.textContent = unlockedCount;
+};
+
+function openAchievementsModal() {
+  window.renderAchievementsModal();
+  document.getElementById('achievements-modal').classList.remove('hidden');
+  if (window._pauseGame) window._pauseGame();
+}
+
+function closeAchievementsModal() {
+  document.getElementById('achievements-modal').classList.add('hidden');
+  if (window._resumeGame) window._resumeGame();
 }
 
 function renderAchievementsFinal() {
