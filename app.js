@@ -1362,6 +1362,8 @@ function updateDashboard() {
   txtCareer.textContent = careerTier ? careerTier.title : 'Unknown';
   txtTalentPoints.textContent = game.talentPoints;
 
+
+
   // Addiction display
   const addictionRow = document.getElementById('hud-addiction-row');
   const txtAddiction = document.getElementById('txt-addiction');

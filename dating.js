@@ -349,8 +349,14 @@ export class DatingSimulator {
       
       // Sugar partner rewards or dating upgrades
       if (this.currentProfile.name === 'Gertrude' || this.currentProfile.name === 'Richard') {
-        this.player.confidence = Math.max(0, this.player.confidence - 45); // lost pride
-        this.logCallback(`You traded your youthful essence for ${this.currentProfile.name}'s fortune (-45% Confidence, +$5,000 cash).`, "success");
+        if (this.player.freak >= 70) {
+          this.player.confidence = Math.min(100, this.player.confidence + 30);
+          this.activeChat.chatLog.push({ sender: 'player', text: "Honestly? This arrangement kinda works for me." });
+          this.logCallback(`You have an unexpected talent for this arrangement. You feel empowered, not ashamed (+30% Confidence, +$5,000 cash).`, "success");
+        } else {
+          this.player.confidence = Math.max(0, this.player.confidence - 45);
+          this.logCallback(`You traded your youthful essence for ${this.currentProfile.name}'s fortune (-45% Confidence, +$5,000 cash).`, "success");
+        }
       } else {
         this.player.confidence = Math.min(100, this.player.confidence + 20);
         this.player.datingScore += 25;

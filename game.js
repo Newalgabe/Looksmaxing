@@ -161,6 +161,7 @@ export class GameState {
     this.height = this.rollHeight();
     this.jaw = this.randomElement(JAW_TYPES);
     this.tilt = this.randomElement(TILT_TYPES);
+    this.freak = this.rollFreak(); // hidden freak stat: affects sugar interactions
 
     if (this.activePerks && this.activePerks.symmetrical_genes) {
       const symRoll = Math.random();
@@ -279,6 +280,17 @@ export class GameState {
     if (roll < 0.90) return 3; // Receding
     if (roll < 0.96) return 4;
     return this.randomRange(5, 7); // Bald genetics
+  }
+
+  rollFreak() {
+    // Hidden freak stat (0-100). Skewed low — only ~8% of rolls get 70+.
+    // High freak converts the sugar mommy/daddy confidence penalty into a boost.
+    const roll = Math.random();
+    if (roll < 0.40) return this.randomRange(0, 15);   // vanilla
+    if (roll < 0.70) return this.randomRange(16, 35);  // low
+    if (roll < 0.88) return this.randomRange(36, 55);  // medium
+    if (roll < 0.96) return this.randomRange(56, 75);  // high
+    return this.randomRange(76, 100);                    // extreme freak
   }
 
   /**
@@ -964,7 +976,8 @@ export class GameState {
       style: [0, 100], rizz: [0, 100],
       hairline: [1, 7], age: [18, 50], followers: [0, 10000000],
       talentPoints: [0, 99], surgeryBotchedCount: [0, 20],
-      addictionLevel: [0, 100], promotionChances: [0, 100]
+      addictionLevel: [0, 100], promotionChances: [0, 100],
+      freak: [0, 100]
     };
     Object.entries(clamped).forEach(([prop, [min, max]]) => {
       let value = this[prop];
@@ -1043,7 +1056,8 @@ export class GameState {
       rivalName: this.rivalName, rivalDefeatedCount: this.rivalDefeatedCount,
       rivalLastMilestone: this.rivalLastMilestone,
       challengeId: this.challengeId, completedChallenge: this.completedChallenge,
-      hasGymMembership: this.hasGymMembership
+      hasGymMembership: this.hasGymMembership,
+      freak: this.freak
     }));
   }
 
