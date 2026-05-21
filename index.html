@@ -54,6 +54,18 @@
           <div class="tutorial-step-number">5</div>
           <p><strong>REINCARNATION</strong> — Die or reach Age 50 to earn <strong>Cope Tokens</strong>. Spend them in the Shop on permanent perks for future runs.</p>
         </div>
+        <div class="tutorial-step" id="tutorial-step-5">
+          <div class="tutorial-step-number">6</div>
+          <p><strong>CARD BATTLES</strong> — In the Encounters tab, fight social opponents using cards unlocked by your stats. Play cards to reduce opponent Skepticism before your Confidence runs out. Chain cards for <strong>COMBO</strong> effects (e.g., Jawline Flash after Nice Personality = 2x damage!).</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-6">
+          <div class="tutorial-step-number">7</div>
+          <p><strong>DATING & SYNERGIES</strong> — Swipe on profiles in Dating Apps. Match chance depends on SMV, height, tilt, and skin. <strong>Stat Synergies</strong> (e.g., Chiseled Jaw + Broad Frame = Chad Frame) unlock passive bonuses when you level up multiple stats together.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-7">
+          <div class="tutorial-step-number">8</div>
+          <p><strong>GYM MEMBERSHIP</strong> — Buy a gym membership ($500) from the Year Actions for cheaper gym sessions and +1-3 passive Frame gain each year. Combine with the Gym Rat talent for even faster gains.</p>
+        </div>
       </div>
       <button id="btn-close-tutorial" class="btn tutorial-btn">GOT IT, LET'S GO</button>
     </div>
@@ -284,6 +296,10 @@
               </div>
             </div>
 
+            <div class="stat-group-title" id="synergy-header" style="display:none;">ACTIVE SYNERGIES</div>
+            <div id="synergy-list" style="font-size:10px;font-family:var(--font-mono);margin-top:4px;">
+            </div>
+
           </div>
         </aside>
 
@@ -334,6 +350,15 @@
                     <h4>Gym Maxxing</h4>
                     <p class="desc">Lift weights to build your frame & improve symmetry.</p>
                     <span class="cost text-magenta">-$100 cash / -$2 AP</span>
+                  </div>
+                </button>
+
+                <button class="action-card" id="act-gym-membership">
+                  <div class="action-icon">🏪</div>
+                  <div class="action-details">
+                    <h4>Gym Membership</h4>
+                    <p class="desc">Passive frame gains each year + cheaper gym sessions.</p>
+                    <span class="cost text-yellow">-$500 cash one-time</span>
                   </div>
                 </button>
 

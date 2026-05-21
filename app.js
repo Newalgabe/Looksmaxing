@@ -757,10 +757,27 @@ tabBtns.forEach(btn => {
       logToConsole(res.message, res.type);
       updateDashboard();
     } else {
+      const gymCost = game.hasGymMembership ? 50 : 100;
       playSound('error');
-      logToConsole("Insufficient AP (2 needed) or Cash ($100 needed)!", "error");
+      logToConsole(`Insufficient AP (2 needed) or Cash ($${gymCost} needed)!`, "error");
     }
   });
+
+  // NEW: Gym Membership
+  const actGymMembership = document.getElementById('act-gym-membership');
+  if (actGymMembership) {
+    actGymMembership.addEventListener('click', () => {
+      const res = game.buyGymMembership();
+      if (res.error) {
+        playSound('error');
+        logToConsole(res.error, 'error');
+      } else {
+        playSound('success');
+        logToConsole(res.message, res.type);
+        updateDashboard();
+      }
+    });
+  }
 
   actSkincare.addEventListener('click', () => {
     const res = game.doSkincare();
@@ -1365,7 +1382,8 @@ function updateDashboard() {
   // Enable/Disable Action buttons based on resources
   const careerInfo = CAREER_TIERS.find(t => t.id === game.careerTier);
   actWork.disabled = (careerInfo && careerInfo.apCost > 0) ? game.ap < careerInfo.apCost : game.ap < 1;
-  actGym.disabled = game.ap < 2 || game.cash < 100;
+  const gymCost = game.hasGymMembership ? 50 : 100;
+  actGym.disabled = game.ap < 2 || game.cash < gymCost;
   actSkincare.disabled = game.ap < 1 || game.cash < 50;
   actStyling.disabled = game.ap < 1 || game.cash < 150;
   if (actTiktok) {
@@ -1383,6 +1401,45 @@ function updateDashboard() {
 
   // Avatar Canvas Ticker
   avatarTicker.textContent = `STATUS: ONLINE // PSL: ${game.smv.toFixed(1)} // RIZZ: ${game.rizz} // PARTNER: ${game.hasDatingPartner ? game.partnerName : 'SINGLE'}`;
+
+  // Gym membership display
+  const gymMemberBtn = document.getElementById('act-gym-membership');
+  if (gymMemberBtn) {
+    if (game.hasGymMembership) {
+      gymMemberBtn.classList.add('owned');
+      gymMemberBtn.querySelector('h4').textContent = 'Gym Membership (Active)';
+      gymMemberBtn.querySelector('p').textContent = 'Passive +1-3 Frame/year. Gym costs $50.';
+      gymMemberBtn.querySelector('.cost').textContent = '✓ ACTIVE';
+      gymMemberBtn.disabled = true;
+    } else {
+      gymMemberBtn.classList.remove('owned');
+      gymMemberBtn.querySelector('h4').textContent = 'Gym Membership';
+      gymMemberBtn.querySelector('p').textContent = 'Passive frame gains each year + cheaper gym sessions.';
+      gymMemberBtn.querySelector('.cost').textContent = '-$500 cash one-time';
+      gymMemberBtn.disabled = game.cash < 500;
+    }
+  }
+  // Update gym card cost label dynamically
+  const gymCardCost = actGym.querySelector('.cost');
+  if (gymCardCost) {
+    gymCardCost.textContent = game.hasGymMembership ? '-$50 cash / -$2 AP (member)' : '-$100 cash / -$2 AP';
+  }
+
+  // Stat synergies display
+  const synergies = game.calculateSynergies();
+  const synergyHeader = document.getElementById('synergy-header');
+  const synergyList = document.getElementById('synergy-list');
+  if (synergyHeader && synergyList) {
+    if (synergies.length > 0) {
+      synergyHeader.style.display = 'block';
+      synergyList.innerHTML = synergies.map(s =>
+        `<div style="padding:2px 0;color:var(--accent-cyan);"><span>${s.icon}</span> <strong>${s.name}:</strong> ${s.desc}</div>`
+      ).join('');
+    } else {
+      synergyHeader.style.display = 'none';
+      synergyList.innerHTML = '';
+    }
+  }
 
   // Redraw Canvas Avatar (handled by continuous requestAnimationFrame loop)
 }

@@ -60,7 +60,7 @@ export const ACHIEVEMENTS = [
   { id: 'influencer', name: 'TikTok Famous', desc: 'Reach 10,000 followers.', icon: '📱', check: (p) => p.followers >= 10000 },
   { id: 'surgery_survivor', name: 'Knife Magnet', desc: 'Survive 3+ botched surgeries.', icon: '💉', check: (p) => p.surgeryBotchedCount >= 3 },
   { id: 'heartbreaker', name: 'Heartbreaker', desc: 'Secure a dating partner in a run.', icon: '💔', check: (p) => p.hasDatingPartner },
-  { id: 'mogger', name: 'Ultimate Mogger', desc: 'Defeat all opponents in battle.', icon: '🏆', check: (p) => p.opponentsDefeated.length >= 8 },
+  { id: 'mogger', name: 'Ultimate Mogger', desc: 'Defeat all opponents in battle.', icon: '🏆', check: (p) => p.opponentsDefeated.length >= 12 },
   { id: 'ceo_grind', name: 'CEO Grindset', desc: 'Reach CEO career tier.', icon: '💼', check: (p) => p.careerTier === 'ceo' },
   { id: 'surgeon_savvy_ach', name: 'Natural Beauty', desc: 'Complete a run with 0 surgeries.', icon: '🌿', check: (p) => p.surgeryBotchedCount === 0 },
   { id: 'addict', name: 'Substance Abuser', desc: 'Take 5+ substances in one run.', icon: '💊', check: (p) => p.substancesUsed >= 5 },
@@ -218,6 +218,12 @@ export class GameState {
     this.rivalName = this.generateRandomName();
     this.rivalDefeatedCount = 0;
     this.rivalLastMilestone = 0;
+
+    // Gym membership
+    this.hasGymMembership = false;
+
+    // Stat synergies (computed dynamically)
+    this.activeSynergies = [];
 
     // Challenge tracking
     this.challengeId = null;
@@ -511,11 +517,13 @@ export class GameState {
 
   doGym() {
     this._validateState();
-    if (this.ap < 2 || this.cash < 100) return false;
+    const gymCost = this.hasGymMembership ? 50 : 100;
+    if (this.ap < 2 || this.cash < gymCost) return false;
     this.ap -= 2;
-    this.cash -= 100;
+    this.cash -= gymCost;
     
     let frameGain = this.randomRange(6, 12);
+    if (this.hasGymMembership) frameGain = Math.round(frameGain * 1.25);
     if (this.activePerks && this.activePerks.high_metabolism) {
       frameGain = Math.round(frameGain * 1.2);
     }
@@ -529,8 +537,9 @@ export class GameState {
       this.symmetry = 'Average';
     }
     this.updateSMV();
+    const memberTag = this.hasGymMembership ? ' (membership discount applied!)' : '';
     return {
-      message: `You gym-maxxed! Pumped iron at the local gym. Built your frame and gained self-confidence.`,
+      message: `You gym-maxxed! Pumped iron at the local gym. Built your frame and gained self-confidence.${memberTag}`,
       type: 'success'
     };
   }
@@ -875,6 +884,40 @@ export class GameState {
     return g;
   }
 
+  // === GYM MEMBERSHIP ===
+  buyGymMembership() {
+    if (this.hasGymMembership) return { error: 'You already have a gym membership!' };
+    const cost = 500;
+    if (this.cash < cost) return { error: `Need $${cost} for a yearly gym membership.` };
+    this.cash -= cost;
+    this.hasGymMembership = true;
+    this.log.push('Purchased a gym membership! +2 passive Frame per year, cheaper gym sessions.');
+    this.updateSMV();
+    return { success: true, message: `You purchased a gym membership! Gym actions now cost $50 (was $100) and you gain +2 Frame passively each year.`, type: 'success' };
+  }
+
+  // === STAT SYNERGIES ===
+  calculateSynergies() {
+    const active = [];
+    if ((this.jaw === 'Chiseled' || this.jaw === 'Sharp') && this.frame >= 70) {
+      active.push({ name: 'Chad Frame', desc: 'Chiseled jaw + Broad frame: +5% Confidence per year', icon: '💪' });
+    }
+    if (this.skin >= 70 && this.style >= 70) {
+      active.push({ name: 'Fresh Maxx', desc: 'Clear skin + Drip style: +10% Dating success', icon: '✨' });
+    }
+    if (this.rizz >= 70 && this.confidence >= 70) {
+      active.push({ name: 'Social Dominance', desc: 'High charisma + Confidence: +15% Battle damage', icon: '👑' });
+    }
+    if (this.height >= 72 && this.frame >= 75) {
+      active.push({ name: 'Titan Build', desc: 'Tall + Broad: Intimidating presence in battles', icon: '🏛️' });
+    }
+    if (this.skin >= 80 && this.rizz >= 60 && this.style >= 60) {
+      active.push({ name: 'High Value', desc: 'Complete package: +0.3 SMV', icon: '💎' });
+    }
+    this.activeSynergies = active;
+    return active;
+  }
+
   // === STAT TIMELINE ===
   recordStatTimeline() {
     this.statTimeline.push({
@@ -999,7 +1042,8 @@ export class GameState {
       _depressionYears: this._depressionYears,
       rivalName: this.rivalName, rivalDefeatedCount: this.rivalDefeatedCount,
       rivalLastMilestone: this.rivalLastMilestone,
-      challengeId: this.challengeId, completedChallenge: this.completedChallenge
+      challengeId: this.challengeId, completedChallenge: this.completedChallenge,
+      hasGymMembership: this.hasGymMembership
     }));
   }
 
@@ -1238,6 +1282,11 @@ export class GameState {
     if (this.age >= 45 && Math.random() < frameChance) {
       this.frame = Math.max(0, this.frame - (isHard ? 5 : 3));
     }
+    // Gym membership passive frame gain
+    if (this.hasGymMembership && this.age >= 18) {
+      const passiveGain = this.randomRange(1, 3);
+      this.frame = Math.min(100, this.frame + passiveGain);
+    }
     // Rizz improves with age (wisdom)
     if (this.age >= 30 && Math.random() < 0.20) {
       this.rizz = Math.min(100, this.rizz + 2);
@@ -1278,6 +1327,9 @@ export class GameState {
 
     // Rival check-in at milestone ages
     const rivalResult = this.checkRivalMilestone();
+
+    // Apply stat synergies
+    this.calculateSynergies();
 
     this.updateSMV();
 

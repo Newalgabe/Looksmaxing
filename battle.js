@@ -246,6 +246,50 @@ export class BattleSystem {
             confidence: 20,
             log: "You beat the TikTok algorithm! Your content is now trending! (+$800, +20% Confidence)"
           }
+        },
+        {
+          id: 'social_media_manager',
+          name: 'Karen (Instagram Moderator)',
+          title: 'The Comment Section Tyrant',
+          avatar: '📱',
+          skepticism: 70,
+          difficulty: 'Easy',
+          reqSMV: 3.5,
+          dialogs: {
+            start: "Your engagement rate is abysmal. I'm deleting your comments.",
+            hit: "Decent cheekbones. The algorithm might favor you.",
+            attack: "Your content is mid. Reported for spam and harassment.",
+            defeat: "Fine, I'll unban your account and feature you on the explore page.",
+            victory: "Blocked and reported. Stay offline forever."
+          },
+          rewards: {
+            cash: 600,
+            confidence: 15,
+            followers: 500,
+            log: "You dominated the comment section! +$600, +500 Followers, +15% Confidence!"
+          }
+        },
+        {
+          id: 'ex_partner',
+          name: 'Your Ex (Jason)',
+          title: 'The One Who Got Away',
+          avatar: '💔',
+          skepticism: 120,
+          difficulty: 'Hard',
+          reqSMV: 5.5,
+          dialogs: {
+            start: "You look the same as when we broke up. Have you even changed at all?",
+            hit: "Wait... you actually look different. Did you glow up?",
+            attack: "Still coping with the same thin hair and bad style I see.",
+            defeat: "Okay, you've changed. I was wrong. Maybe we can talk?",
+            victory: "Same old story. That's why I walked away."
+          },
+          rewards: {
+            cash: 0,
+            confidence: 50,
+            datingScore: 30,
+            log: "You proved your ex wrong! Massive confidence boost! (+50% Confidence, +30 Dating Score)"
+          }
         }
       ];
     } else {
@@ -469,20 +513,63 @@ export class BattleSystem {
             confidence: 20,
             log: "You beat the TikTok algorithm! Your content is now trending! (+$800, +20% Confidence)"
           }
+        },
+        {
+          id: 'social_media_manager',
+          name: 'SMM Kyle (Instagram Moderator)',
+          title: 'The Comment Section Tyrant',
+          avatar: '📱',
+          skepticism: 70,
+          difficulty: 'Easy',
+          reqSMV: 3.5,
+          dialogs: {
+            start: "Your engagement rate is abysmal. I'm deleting your comments.",
+            hit: "Decent bone structure. The algorithm might favor you.",
+            attack: "Your content is mid. Reported for spam and harassment.",
+            defeat: "Fine, I'll unban your account and feature you on the explore page.",
+            victory: "Blocked and reported. Stay offline forever."
+          },
+          rewards: {
+            cash: 600,
+            confidence: 15,
+            followers: 500,
+            log: "You dominated the comment section! +$600, +500 Followers, +15% Confidence!"
+          }
+        },
+        {
+          id: 'ex_partner',
+          name: 'Your Ex (Alexis)',
+          title: 'The One Who Got Away',
+          avatar: '💔',
+          skepticism: 120,
+          difficulty: 'Hard',
+          reqSMV: 5.5,
+          dialogs: {
+            start: "You look the same as when we broke up. Have you even changed at all?",
+            hit: "Wait... you actually look different. Did you glow up?",
+            attack: "Still coping with the same receding hairline and bad style I see.",
+            defeat: "Okay, you've changed. I was wrong. Maybe we can talk?",
+            victory: "Same old story. That's why I walked away."
+          },
+          rewards: {
+            cash: 0,
+            confidence: 50,
+            datingScore: 30,
+            log: "You proved your ex wrong! Massive confidence boost! (+50% Confidence, +30 Dating Score)"
+          }
         }
       ];
     }
   }
 
-  // Get available encounters based on player stats
+  // Get available encounters based on player stats, sorted by required SMV
   getEncounters() {
-    return this.opponents.map(o => {
-      const isLocked = this.player.smv < o.reqSMV;
-      return {
-        ...o,
-        isLocked
-      };
-    });
+    return this.opponents
+      .map(o => {
+        const isLocked = this.player.smv < o.reqSMV;
+        return { ...o, isLocked };
+      })
+      .sort((a, b) => a.reqSMV - b.reqSMV);
   }
 
   // Initialize a battle
@@ -707,6 +794,47 @@ export class BattleSystem {
       });
     }
 
+    // 11. SYMMETRY-BASED CARDS
+    if (this.player.symmetry === 'Symmetrical') {
+      cardPool.push({
+        name: 'Symmetry Flex',
+        desc: 'Perfectly balanced features disorient the opponent.',
+        cost: 2,
+        power: 28,
+        effect: (b) => {
+          let dmg = 28;
+          if (b.lastCardPlayed === 'Frame Flex') {
+            dmg *= 2;
+            b.logCallback("⚖️ COMBO: 'Perfect Storm' triggered! Double damage!", "success");
+          }
+          b.damageOpponent(dmg);
+        },
+        emoji: '⚖️'
+      });
+    }
+
+    // 12. EARLY CAREER CARD
+    const careerIdx = ['unemployed','entry','junior','mid','senior','manager','director','executive','ceo'].indexOf(this.player.careerTier);
+    if (careerIdx >= 2) {
+      cardPool.push({
+        name: 'Career Dominance',
+        desc: 'Use your professional success as leverage.',
+        cost: 2,
+        power: 20 + careerIdx * 2,
+        effect: (b) => {
+          const dmg = 20 + careerIdx * 2;
+          let heal = 5;
+          if (b.lastCardPlayed === 'Wallet Flash') {
+            heal += 10;
+            b.logCallback("💎 COMBO: 'High Roller' triggered! Extra heal!", "success");
+          }
+          b.damageOpponent(dmg);
+          b.healPlayer(heal);
+        },
+        emoji: '📊'
+      });
+    }
+
     // Fill deck and shuffle
     this.deck = [...cardPool];
     this.shuffle(this.deck);
@@ -777,7 +905,9 @@ export class BattleSystem {
                        this.opponent.id === 'plastic_surgeon' ? 25 :
                        this.opponent.id === 'stacy_tinder' ? 18 : 
                        this.opponent.id === 'tiktok_rat' ? 20 :
-                       this.opponent.id === 'chad_gym_bro' ? 14 : 10;
+                       this.opponent.id === 'chad_gym_bro' ? 14 :
+                       this.opponent.id === 'ex_partner' ? 20 :
+                       this.opponent.id === 'social_media_manager' ? 12 : 10;
     
     const damage = Math.floor(baseAttack * (0.8 + Math.random() * 0.4));
     this.playerConfidence = Math.max(0, this.playerConfidence - damage);

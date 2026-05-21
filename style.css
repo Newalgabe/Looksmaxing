@@ -900,6 +900,16 @@ body {
   box-shadow: 0 4px 15px rgba(255, 85, 187, 0.08);
 }
 
+.action-card.owned {
+  border-color: var(--accent-green);
+  opacity: 0.85;
+  cursor: default;
+}
+.action-card.owned:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 /* Surgery Overlay Menu */
 .surgery-overlay {
   position: absolute;
