@@ -2392,28 +2392,133 @@ function renderLeaderboardList() {
   }
 }
 
-// === NEW: Analytics ===
+// === NEW: Analytics (Canvas Line Chart) ===
 function renderAnalytics() {
   const container = document.getElementById('analytics-container');
   const timeline = game.statTimeline;
-  container.innerHTML = '<strong style="font-size:11px;color:var(--accent-cyan);margin-bottom:5px;display:block;">STAT PROGRESSION OVER TIME</strong>';
-  if (timeline.length === 0) {
-    container.innerHTML += '<div style="color:var(--text-muted);">No data recorded.</div>';
+  if (timeline.length < 2) {
+    container.innerHTML = '<strong style="font-size:11px;color:var(--accent-cyan);margin-bottom:5px;display:block;">STAT PROGRESSION</strong><div style="color:var(--text-muted);font-size:10px;padding:8px;">Need at least 2 data points to chart. Advance some years.</div>';
     return;
   }
 
-  // Simple text-based chart
-  timeline.forEach((point, i) => {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:8px;padding:2px 0;font-size:9px;';
-    const bar = (val) => '█'.repeat(Math.round(val / 10)) + '░'.repeat(10 - Math.round(val / 10));
-    row.innerHTML = `
-      <span style="color:var(--text-muted);min-width:20px;">${point.age}</span>
-      <span style="color:var(--accent-cyan);">SMV ${point.smv.toFixed(1)}</span>
-      <span style="color:var(--accent-pink);">CONF ${point.confidence}</span>
-      <span style="color:var(--accent-yellow);">RIZZ ${point.rizz}</span>
-    `;
-    container.appendChild(row);
+  // Use an existing canvas or create one
+  let canvas = container.querySelector('canvas.analytics-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.className = 'analytics-canvas';
+    container.innerHTML = '';
+    container.appendChild(canvas);
+  }
+
+  const rect = container.getBoundingClientRect();
+  const w = canvas.width = Math.max(260, rect.width - 10) * 2;
+  const h = canvas.height = 240;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(1, 1);
+  canvas.style.width = (w / 2) + 'px';
+  canvas.style.height = (h / 2) + 'px';
+
+  const pad = { top: 20, bottom: 28, left: 40, right: 16 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  // Data series
+  const smvVals = timeline.map(p => p.smv * 12.5); // scale SMV 0-8 to 0-100
+  const confVals = timeline.map(p => p.confidence);
+  const rizzVals = timeline.map(p => p.rizz);
+  const ages = timeline.map(p => p.age);
+  const minAge = ages[0], maxAge = ages[ages.length - 1];
+  const ageRange = maxAge - minAge || 1;
+
+  const x = (i) => pad.left + (i / (timeline.length - 1)) * plotW;
+  const y = (val) => pad.top + plotH - (val / 100) * plotH;
+
+  // Clear
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(110, 122, 150, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#6e7a96';
+  ctx.textAlign = 'right';
+  for (let g = 0; g <= 100; g += 20) {
+    const gy = y(g);
+    ctx.beginPath(); ctx.moveTo(pad.left, gy); ctx.lineTo(w - pad.right, gy); ctx.stroke();
+    ctx.fillText(g + (g === 100 ? '%' : ''), pad.left - 4, gy + 3);
+  }
+  // SMV scale annotations on right
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(0, 240, 255, 0.3)';
+  for (let s = 0; s <= 8; s += 2) {
+    ctx.fillText('SMV ' + s, w - pad.right + 4, y(s * 12.5) + 3);
+  }
+
+  // X-axis labels (show every few ages to avoid crowding)
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#6e7a96';
+  const step = Math.max(1, Math.floor(timeline.length / 8));
+  ages.forEach((age, i) => {
+    if (i % step === 0 || i === ages.length - 1) {
+      ctx.fillText(age, x(i), h - pad.bottom + 16);
+    }
+  });
+  ctx.fillText('Age', x(Math.floor(timeline.length / 2)), h - 2);
+
+  // Helper: draw a polyline
+  function drawLine(data, color, label) {
+    ctx.beginPath();
+    data.forEach((val, i) => {
+      const px = x(i), py = y(val);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Dots
+    data.forEach((val, i) => {
+      ctx.beginPath();
+      ctx.arc(x(i), y(val), 3, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    // Value labels at each point
+    ctx.font = '8px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    data.forEach((val, i) => {
+      if (i % step === 0 || i === data.length - 1) {
+        ctx.fillStyle = color;
+        const display = label === 'SMV' ? (val / 12.5).toFixed(1) : String(Math.round(val));
+        ctx.fillText(display, x(i), y(val) - 6);
+      }
+    });
+  }
+
+  drawLine(smvVals, '#00f0ff', 'SMV');
+  drawLine(confVals, '#ff55bb', 'CONF');
+  drawLine(rizzVals, '#ffea00', 'RIZZ');
+
+  // Legend
+  const legendY = 10;
+  const legendItems = [
+    { label: 'SMV', color: '#00f0ff' },
+    { label: 'Confidence', color: '#ff55bb' },
+    { label: 'Rizz', color: '#ffea00' }
+  ];
+  let lx = pad.left;
+  legendItems.forEach(item => {
+    ctx.fillStyle = item.color;
+    ctx.fillRect(lx, legendY, 10, 10);
+    ctx.fillStyle = '#f0f3f8';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.label, lx + 14, legendY + 9);
+    lx += ctx.measureText(item.label).width + 30;
   });
 }
 
