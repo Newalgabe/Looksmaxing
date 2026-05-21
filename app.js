@@ -2660,7 +2660,7 @@ window.renderAchievementsModal = function() {
         <div style="flex:1;height:5px;background:var(--bg-primary);border-radius:3px;overflow:hidden;">
           <div style="width:${barWidth}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
         </div>
-        <span style="font-size:8px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;" title="${ach.desc}">${descText}</span>
+        <span style="font-size:9px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;" title="${ach.desc}">${descText}</span>
       </div>
     </div>`;
   });
