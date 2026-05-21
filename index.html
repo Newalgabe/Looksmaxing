@@ -304,15 +304,7 @@
             </div>
 
             <!-- Ad Banner -->
-            <div id="ad-banner" style="margin-top:8px;padding:6px 8px;background:#1a1510;border:1px solid #3a2a1a;border-radius:4px;font-size:9px;font-family:var(--font-mono);cursor:pointer;">
-              <div id="ad-banner-content">
-                <span style="color:#886644;font-size:7px;text-transform:uppercase;">Sponsored</span>
-                <div id="ad-banner-text" style="color:#d4a574;margin-top:2px;"></div>
-              </div>
-              <div id="ad-banner-sub" style="display:none;">
-                <span style="color:#50fa7b;">ADS REMOVED ✓</span>
-              </div>
-            </div>
+            <div id="ad-banner" style="margin-top:8px;background:linear-gradient(135deg,#1a0a00,#2d1500);border:1px solid #ff6b35;border-radius:4px;font-size:9px;font-family:var(--font-mono);cursor:pointer;"></div>
 
           </div>
         </aside>
@@ -736,19 +728,35 @@
       </div>
     </div>
 
-    <!-- Ad Modal -->
-    <div class="modal-overlay hidden" id="ad-modal">
-      <div class="event-modal-content" style="max-width:420px;">
-        <div class="event-glow-border"></div>
-        <div class="event-header">
-          <span class="event-icon" id="ad-modal-icon">💉</span>
-          <h3 id="ad-modal-title">Sponsored</h3>
+    <!-- Ad Popup -->
+    <div class="modal-overlay hidden" id="ad-modal" style="z-index:300;">
+      <div id="ad-popup-content" style="background:linear-gradient(135deg,#1a0a00 0%,#2d1500 100%);border:2px solid #ff6b35;border-radius:12px;width:100%;max-width:380px;padding:0;position:relative;box-shadow:0 0 40px rgba(255,107,53,0.3),0 15px 40px rgba(0,0,0,0.7);font-family:var(--font-mono);overflow:hidden;">
+        <!-- Top urgency bar -->
+        <div style="background:linear-gradient(90deg,#ff4444,#ff6b35);padding:4px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#fff;font-size:8px;font-weight:700;" id="ad-urgent-text">🔥 Limited time offer!</span>
+          <span style="color:#fff;font-size:8px;" id="ad-countdown">⏱ Offer ends soon</span>
         </div>
-        <p id="ad-modal-desc" class="event-desc" style="font-size:11px;"></p>
-        <div id="ad-modal-impact" class="event-impact" style="font-size:9px;color:var(--text-muted);"></div>
-        <div style="display:flex;gap:8px;margin-top:5px;">
-          <button class="btn secondary-btn" id="btn-skip-ad" style="flex:1;">SKIP</button>
-          <button class="btn primary-btn" id="btn-claim-offer" style="flex:1;">CLAIM OFFER</button>
+        <!-- Close X button -->
+        <button id="ad-close-x" style="position:absolute;top:28px;right:8px;background:none;border:none;color:#666;font-size:16px;cursor:pointer;z-index:10;line-height:1;">✕</button>
+        <!-- Body -->
+        <div style="padding:16px 20px 12px;text-align:center;">
+          <span style="font-size:36px;display:block;margin-bottom:6px;" id="ad-popup-icon">💉</span>
+          <div style="font-size:13px;font-weight:700;color:#ff6b35;" id="ad-popup-brand">Buffalo Peptides™</div>
+          <div style="font-size:9px;color:#aaa;margin:4px 0;" id="ad-popup-tagline">Double your frame gains. No scam.</div>
+          <!-- Discount badge -->
+          <div style="display:inline-block;background:#ffcc00;color:#000;font-size:16px;font-weight:900;padding:3px 12px;border-radius:6px;margin:6px 0;" id="ad-popup-discount">-73%</div>
+          <div style="font-size:9px;color:#999;margin:6px 0;line-height:1.4;" id="ad-popup-desc">Description text here.</div>
+          <!-- Testimonial -->
+          <div style="background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:6px 10px;margin:8px 0;text-align:left;">
+            <div style="color:#ffcc00;font-size:9px;" id="ad-popup-rating">★★★★★</div>
+            <div style="color:#bbb;font-size:8px;margin-top:2px;font-style:italic;" id="ad-popup-testimonial">"Testimonial text here."</div>
+          </div>
+          <!-- Buttons -->
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn" id="btn-skip-ad" style="flex:1;background:#2a2a2a;color:#888;border:1px solid #444;font-size:10px;padding:8px 0;">No Thanks</button>
+            <button class="btn" id="btn-claim-offer" style="flex:1;background:linear-gradient(90deg,#ff6b35,#ff4444);color:#fff;border:none;font-size:10px;font-weight:700;padding:8px 0;">CLAIM NOW</button>
+          </div>
+          <div style="font-size:7px;color:#555;margin-top:6px;">By clicking you agree to our Terms & Privacy. Results may vary.</div>
         </div>
       </div>
     </div>

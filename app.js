@@ -47,14 +47,14 @@ let _adCooldown = false;
 
 // --- Fake Ads ---
 const ADS = [
-  { icon: '💉', brand: 'Buffalo Peptides™', tagline: 'Double your frame gains. No scam.', desc: 'Our proprietary blend of 7 peptides will skyrocket your frame in weeks. Used by 9/10 looksmaxxers. (Results not guaranteed.)' },
-  { icon: '📚', brand: "Clav's Course", tagline: 'Looksmax Academy — 100% subliminal results.', desc: 'The only course endorsed by real GigaChads. 12 hours of video content. "It changed my life" — definitely real student.' },
-  { icon: '🦴', brand: 'Bone Smasher 9000™', tagline: 'Reshape your jaw from home. Free ebook.', desc: 'Gentle percussive therapy for your mandible. 4.8 stars on Trustpilot. (Trustpilot may be fake.)' },
-  { icon: '🧊', brand: 'Ice Mew Pro Tape™', tagline: 'Results in 72 hours. (Maybe.)', desc: 'Advanced polymer tape for optimal tongue posture. Wear while sleeping. "I think I see a difference" — every reviewer.' },
-  { icon: '🦷', brand: 'Turkey Tooth Tours™', tagline: 'Buy one jaw, get one free. Limited time.', desc: 'All-inclusive surgery vacation package. 5-star clinic. 3-star hospital. 1-star aftercare. You get what you pay for!' },
-  { icon: '💪', brand: 'Mass Monster Gainz™', tagline: 'Free shipping on orders over $399.', desc: 'The most potent pre-workout on the market. 500mg caffeine. 300mg DMHA. Your heart will adapt. Probably.' },
-  { icon: '🦵', brand: 'Limb Lengthening Inc.™', tagline: 'Add 3 inches. 0% interest financing.', desc: 'External fixation frame included. 6-month recovery. Walk taller. We accept all major insurance (not really).' },
-  { icon: '🧪', brand: 'Sarms R Us™', tagline: 'Definitely not steroids. Trust us.', desc: 'Research chemicals for "research purposes". No liver damage reported. (Reports not required by law.)' }
+  { icon: '💉', brand: 'Buffalo Peptides™', tagline: 'Double your frame gains. No scam.', discount: '-73%', rating: '4.8', urgent: 'Sale ends tonight!', testimonial: '"Gained 2 inches on my frame in 3 weeks!" — Jake R.', desc: 'Our proprietary blend of 7 peptides will skyrocket your frame in weeks. Used by 9/10 looksmaxxers. (Results not guaranteed.)' },
+  { icon: '📚', brand: "Clav's Course", tagline: 'Looksmax Academy — 100% subliminal results.', discount: '-87%', rating: '4.9', urgent: 'Only 12 spots left!', testimonial: '"It changed my life. I see results in the mirror now." — definitely real student.', desc: 'The only course endorsed by real GigaChads. 12 hours of video content. Normally $997.' },
+  { icon: '🦴', brand: 'Bone Smasher 9000™', tagline: 'Reshape your jaw from home. Free ebook.', discount: '-52%', rating: '4.8', urgent: '2 left in stock!', testimonial: '"My jawline is actually visible now. Highly recommend." — @chiseled_king', desc: 'Gentle percussive therapy for your mandible. 4.8 stars on Trustpilot.' },
+  { icon: '🧊', brand: 'Ice Mew Pro Tape™', tagline: 'Results in 72 hours. (Maybe.)', discount: '-41%', rating: '4.2', urgent: 'Spring sale — ends soon!', testimonial: '"I think I see a difference. My mom noticed." — every reviewer.', desc: 'Advanced polymer tape for optimal tongue posture. Wear while sleeping.' },
+  { icon: '🦷', brand: 'Turkey Tooth Tours™', tagline: 'Buy one jaw, get one free.', discount: '-66%', rating: '4.6', urgent: 'Limited time offer!', testimonial: '"Best decision I ever made. 10/10 would do again." — after anesthesia.', desc: 'All-inclusive surgery vacation package. 5-star clinic. Flights not included.' },
+  { icon: '💪', brand: 'Mass Monster Gainz™', tagline: 'Free shipping over $399.', discount: '-38%', rating: '4.7', urgent: 'Today only!', testimonial: '"I can feel my heart working harder. That means it\'s working!" — loyal customer', desc: 'The most potent pre-workout on the market. 500mg caffeine, 300mg DMHA.' },
+  { icon: '🦵', brand: 'Limb Lengthening Inc.™', tagline: 'Add 3 inches. 0% financing.', discount: '-59%', rating: '4.3', urgent: 'Don\'t wait!', testimonial: '"I\'m 6\'2" now. People treat me differently." — verified buyer', desc: 'External fixation frame included. 6-month recovery. Walk taller.' },
+  { icon: '🧪', brand: 'Sarms R Us™', tagline: 'Definitely not steroids. Trust us.', discount: '-81%', rating: '4.9', urgent: 'Almost gone!', testimonial: '"My liver enzymes are elevated but my gains are insane." — research subject', desc: 'Research chemicals for "research purposes". No liver damage reported. (Reports not required by law.)' }
 ];
 
 // Apply active theme immediately on startup
@@ -890,6 +890,10 @@ tabBtns.forEach(btn => {
   });
 
   // Ad Modal
+  document.getElementById('ad-close-x').addEventListener('click', () => {
+    playSound('click');
+    closeAdModal();
+  });
   document.getElementById('btn-skip-ad').addEventListener('click', () => {
     playSound('click');
     closeAdModal();
@@ -2729,29 +2733,46 @@ function closeAchievementsModal() {
 // === Fake Ad System ===
 function renderAdBanner() {
   const banner = document.getElementById('ad-banner');
-  const content = document.getElementById('ad-banner-content');
-  const sub = document.getElementById('ad-banner-sub');
-  const text = document.getElementById('ad-banner-text');
-  if (!banner || !content || !sub || !text) return;
+  if (!banner) return;
   if (game.adFree) {
-    content.style.display = 'none';
-    sub.style.display = 'block';
+    banner.innerHTML = '<div style="padding:4px 8px;font-size:9px;color:#50fa7b;text-align:center;">📵 AD-FREE SUBSCRIPTION ACTIVE ✓</div>';
     return;
   }
-  content.style.display = 'block';
-  sub.style.display = 'none';
   const ad = ADS[Math.floor(Math.random() * ADS.length)];
-  text.innerHTML = `<span style="color:#d4a574;">${ad.icon} ${ad.brand}</span> — <span style="color:#a08060;">${ad.tagline}</span>`;
+  banner.innerHTML = `<div style="position:relative;padding:6px 8px;cursor:pointer;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="font-size:16px;">${ad.icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="background:#ff4444;color:#fff;font-size:7px;font-weight:700;padding:1px 3px;border-radius:2px;">AD</span>
+          <span style="color:#ff6b35;font-size:9px;font-weight:700;">${ad.brand}</span>
+          <span style="background:#ffcc00;color:#000;font-size:7px;font-weight:700;padding:1px 3px;border-radius:2px;">${ad.discount}</span>
+        </div>
+        <div style="color:#bbb;font-size:8px;margin-top:1px;">${ad.tagline}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:3px;margin-top:3px;">
+      <span style="color:#ffcc00;font-size:8px;">${'★'.repeat(Math.floor(parseFloat(ad.rating)))}${parseFloat(ad.rating) % 1 >= 0.5 ? '½' : ''}</span>
+      <span style="color:#888;font-size:7px;">${ad.rating}</span>
+      <span style="color:#ff6b35;font-size:7px;font-weight:700;margin-left:auto;">› CLAIM OFFER</span>
+    </div>
+  </div>`;
 }
 
 function showAdModal() {
   if (_adCooldown || game.adFree) return;
   _adCooldown = true;
   const ad = ADS[Math.floor(Math.random() * ADS.length)];
-  document.getElementById('ad-modal-icon').textContent = ad.icon;
-  document.getElementById('ad-modal-title').textContent = ad.brand;
-  document.getElementById('ad-modal-desc').textContent = ad.desc;
-  document.getElementById('ad-modal-impact').textContent = `"${ad.tagline}"`;
+  document.getElementById('ad-popup-icon').textContent = ad.icon;
+  document.getElementById('ad-popup-brand').textContent = ad.brand;
+  document.getElementById('ad-popup-tagline').textContent = ad.tagline;
+  document.getElementById('ad-popup-discount').textContent = ad.discount;
+  document.getElementById('ad-popup-desc').textContent = ad.desc;
+  const starCount = Math.floor(parseFloat(ad.rating));
+  const stars = '★'.repeat(starCount) + (parseFloat(ad.rating) % 1 >= 0.5 ? '½' : '');
+  document.getElementById('ad-popup-rating').textContent = stars + ' ' + ad.rating;
+  document.getElementById('ad-popup-testimonial').textContent = ad.testimonial;
+  document.getElementById('ad-urgent-text').textContent = '🔥 ' + ad.urgent;
   document.getElementById('ad-modal').classList.remove('hidden');
 }
 
