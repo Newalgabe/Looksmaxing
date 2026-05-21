@@ -1134,7 +1134,7 @@ export class GameState {
       {
         id: 'hair_transplant',
         name: 'FUE Hair Transplant',
-        cost: isCheaperHair ? 3000 : 6000,
+        cost: 6000,
         desc: 'Harvests grafts from back of head to restore the hairline.',
         risk: 0.08,
         effect: 'Soft Max: Hairline permanently restored to Norwood 1'
