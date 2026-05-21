@@ -67,7 +67,16 @@ export const ACHIEVEMENTS = [
   { id: 'centenarian', name: 'Elder', desc: 'Reach age 50.', icon: '👴', check: (p) => p.age >= 50 },
   { id: 'rizzler', name: 'Rizz God', desc: 'Reach 100 Rizz.', icon: '🔥', check: (p) => p.rizz >= 100 },
   { id: 'rival_slayer', name: 'Rival Slayer', desc: 'Beat your rival at every milestone.', icon: '🥊', check: (p) => p.rivalDefeatedCount >= 4 },
-  { id: 'challenge_complete', name: 'Challenge Mode', desc: 'Complete any challenge run.', icon: '🏅', check: (p) => p.completedChallenge }
+  { id: 'challenge_complete', name: 'Challenge Mode', desc: 'Complete any challenge run.', icon: '🏅', check: (p) => p.completedChallenge },
+  { id: 'style_max', name: 'Style Icon', desc: 'Reach 100 Style.', icon: '👔', check: (p) => p.style >= 100 },
+  { id: 'frame_max', name: 'Giga Frame', desc: 'Reach 100 Frame.', icon: '💪', check: (p) => p.frame >= 100 },
+  { id: 'skin_max', name: 'Porcelain Skin', desc: 'Reach 100 Skin.', icon: '✨', check: (p) => p.skin >= 100 },
+  { id: 'max_confidence', name: 'Unshakeable', desc: 'Reach 100 Confidence.', icon: '🧠', check: (p) => p.confidence >= 100 },
+  { id: 'high_roller', name: 'High Roller', desc: 'Accumulate $20,000 cash.', icon: '💎', check: (p) => p.cash >= 20000 },
+  { id: 'death_surgery', name: 'Table Fare', desc: 'Die on the operating table.', icon: '🩸', check: (p) => p.isDead && p.surgeryBotchedCount > 0 },
+  { id: 'death_overdose', name: 'Overdose', desc: 'Die from substance overdose.', icon: '☠️', check: (p) => p.isDead && p.log.some(l => l.includes('FATAL')) },
+  { id: 'substance_max', name: 'Poly-Drug User', desc: 'Take 15+ substances in one run.', icon: '💊', check: (p) => p.substancesUsed >= 15 },
+  { id: 'baby_maker', name: 'Legacy', desc: 'Have a child.', icon: '👶', check: (p) => p.hasProcreated }
 ];
 
 // Seasonal events
@@ -559,6 +568,32 @@ export class GameState {
       message: `You visited a premium stylist, got a fade, and purchased trendy streetwear (-$150 cash, -1 AP). Style stats up!`,
       type: 'success'
     };
+  }
+
+  doSocialize() {
+    this._validateState();
+    if (this.ap < 1 || this.cash < 50) return { error: 'Need 1 AP and $50 to go out.' };
+    this.ap -= 1;
+    this.cash -= 50;
+    const rizzGain = this.randomRange(2, 5);
+    const confGain = this.randomRange(3, 8);
+    this.rizz = Math.min(100, this.rizz + rizzGain);
+    this.confidence = Math.min(100, this.confidence + this._charismaConfidenceBonus(confGain));
+    const randEvent = Math.random();
+    if (randEvent < 0.10) {
+      this.cash -= 80;
+      this.log.push('Your night out got expensive. Someone spilled drinks on your outfit.');
+      this.updateSMV();
+      return { success: true, message: `You went out but a fight broke out. Lost $80. (+${rizzGain} Rizz, +${confGain} Confidence)`, type: 'action' };
+    } else if (randEvent < 0.25) {
+      const extraRizz = this.randomRange(1, 3);
+      this.rizz = Math.min(100, this.rizz + extraRizz);
+      this.log.push('You met interesting people and had deep conversations.');
+      this.updateSMV();
+      return { success: true, message: `Great night! You met a cool crowd. (+${rizzGain + extraRizz} Rizz, +${confGain} Confidence)`, type: 'success' };
+    }
+    this.updateSMV();
+    return { success: true, message: `You went out and socialized. (+${rizzGain} Rizz, +${confGain} Confidence)`, type: 'action' };
   }
 
   // === CAREER SYSTEM ===
@@ -1206,6 +1241,25 @@ export class GameState {
     // Rizz improves with age (wisdom)
     if (this.age >= 30 && Math.random() < 0.20) {
       this.rizz = Math.min(100, this.rizz + 2);
+    }
+    // Style decays after 35 (fashion trends change, grooming slackens)
+    if (this.age >= 35 && Math.random() < 0.15) {
+      this.style = Math.max(0, this.style - this.randomRange(2, 4));
+    }
+    // General confidence erosion from life stress
+    if (this.age >= 25 && Math.random() < 0.10) {
+      this.confidence = Math.max(0, this.confidence - this.randomRange(2, 3));
+    }
+
+    // Relationship maintenance: partner costs 1 AP per year
+    if (this.hasDatingPartner) {
+      if (this.ap >= 1) {
+        this.ap -= 1;
+      } else if (Math.random() < 0.25) {
+        this.hasDatingPartner = false;
+        this.confidence = Math.max(0, this.confidence - 25);
+        this.log.push('Your relationship fell apart from neglect.');
+      }
     }
 
     // Depression tracking: if confidence at 0 for 3+ consecutive years → suicide

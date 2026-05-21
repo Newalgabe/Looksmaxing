@@ -548,6 +548,7 @@ const actSubstances = document.getElementById('act-substances');
 const actTalents = document.getElementById('act-talents');
 const actProcreate = document.getElementById('act-procreate');
 const actRehab = document.getElementById('act-rehab');
+const actSocialize = document.getElementById('act-socialize');
 const actMirrorGame = document.getElementById('act-mirror-game');
 const btnEndYear = document.getElementById('btn-end-year');
 
@@ -892,6 +893,19 @@ tabBtns.forEach(btn => {
     } else {
       playSound('success');
       logToConsole(res.message, 'action');
+      updateDashboard();
+    }
+  });
+
+  // NEW: Socialize
+  actSocialize.addEventListener('click', () => {
+    const res = game.doSocialize();
+    if (res.error) {
+      playSound('error');
+      logToConsole(res.error, 'error');
+    } else {
+      playSound(res.type === 'success' ? 'level-up' : 'click');
+      logToConsole(res.message, res.type);
       updateDashboard();
     }
   });
@@ -1361,6 +1375,10 @@ function updateDashboard() {
   actSubstances.disabled = game.cash < 50;
   actTalents.disabled = game.talentPoints < 1;
   actProcreate.disabled = !game.hasDatingPartner || game.hasProcreated || game.cash < 2000 || game.age < 20;
+  if (actSocialize) {
+    actSocialize.style.display = '';
+    actSocialize.disabled = game.ap < 1 || game.cash < 50;
+  }
   actMirrorGame.disabled = false; // always available
 
   // Avatar Canvas Ticker
