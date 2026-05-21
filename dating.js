@@ -532,6 +532,7 @@ export class DatingSimulator {
         this.activeChat.chatLog.push({ sender: 'partner', text: this.currentProfile.dialogues.success });
         // Sugar partner logic
         if (this.currentProfile.name === 'Gertrude' || this.currentProfile.name === 'Richard') {
+          this.player.cash += 5000;
           if (this.player.freak >= 70) {
             this.player.confidence = Math.min(100, this.player.confidence + 30);
             this.activeChat.chatLog.push({ sender: 'player', text: "Honestly? This arrangement kinda works for me." });
