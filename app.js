@@ -70,7 +70,7 @@ const METAGAME_PERKS = [
   {
     id: 'good_donor_area',
     name: 'Good Donor Area',
-    desc: '50% cheaper hair transplants ($3,000 instead of $6,000).',
+    desc: 'Reduces FUE Hair Transplant botch rate by 50%.',
     cost: 150
   },
   {
@@ -84,6 +84,18 @@ const METAGAME_PERKS = [
     name: 'Symmetrical Genes',
     desc: '60% chance to roll Symmetrical structure at birth.',
     cost: 250
+  },
+  {
+    id: 'trust_fund',
+    name: 'Trust Fund',
+    desc: 'Start every life with +$10,000 cash.',
+    cost: 400
+  },
+  {
+    id: 'alpha_mentality',
+    name: 'Alpha Mentality',
+    desc: 'Start with 2 free Talent Tree points at age 18.',
+    cost: 300
   }
 ];
 

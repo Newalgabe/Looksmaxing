@@ -176,7 +176,16 @@ export class GameState {
     this.frame = this.randomRange(15, 65);
     this.style = this.randomRange(10, 50);
     this.confidence = this.randomRange(40, 85);
-    this.rizz = this.randomRange(20, 60); // NEW: Rizz stat (0-100)
+    this.rizz = this.randomRange(20, 60);
+
+    // New Perk: Trust Fund — start with extra cash
+    if (this.activePerks && this.activePerks.trust_fund) {
+      this.cash += 10000;
+    }
+
+    // New Perk: Alpha Mentality — free talent points
+    this.talentPoints = (this.activePerks && this.activePerks.alpha_mentality) ? 2 : 0;
+    this.talents = {};
 
     this.smv = 4.0;
     this.socialTier = 'NORMIE';
@@ -202,11 +211,7 @@ export class GameState {
     this.careerTier = 'unemployed';
     this.promotionChances = 0;
 
-    // NEW: Talent tree
-    this.talentPoints = 0;
-    this.talents = {};
-
-    // NEW: Substance system
+    // Substance system (talent tree init happens above with perk check)
     this.substancesUsed = 0;
     this.activeSubstances = [];
     this.addictionLevel = 0;
@@ -877,6 +882,7 @@ export class GameState {
     if (this.children.length === 0 || !this.children[childIndex]) return null;
     const child = this.children[childIndex];
     const g = new GameState();
+    g.activePerks = JSON.parse(JSON.stringify(this.activePerks || {}));
     g.name = child.name;
     g.gender = child.gender;
     g.age = 18;
@@ -889,12 +895,17 @@ export class GameState {
     g.frame = Math.min(100, Math.max(0, child.frame));
     g.rizz = Math.min(100, Math.max(0, child.rizz));
     g.cash = Math.max(500, Math.round(this.cash * 0.3));
+    // Trust Fund perk: child inherits the family wealth boost too
+    if (g.activePerks && g.activePerks.trust_fund) g.cash += 10000;
     g.confidence = 50;
     g.style = this.randomRange(10, 50);
     g.log = [`Born as ${child.name}, child of ${this.name}. The lineage continues.`];
     g.achievementsUnlocked = JSON.parse(JSON.stringify(this.achievementsUnlocked));
     g.difficulty = this.difficulty;
     g.hasInfluencerCard = false;
+    // Alpha Mentality perk: heir starts with talent points
+    g.talentPoints = (g.activePerks && g.activePerks.alpha_mentality) ? 2 : 0;
+    g.talents = {};
     g.updateSMV();
     return g;
   }
@@ -1067,7 +1078,6 @@ export class GameState {
 
   // SURGERY DETAILS
   getSurgeriesList() {
-    const isCheaperHair = this.activePerks && this.activePerks.good_donor_area;
     if (this.gender === 'female') {
       return [
         {
@@ -1089,7 +1099,7 @@ export class GameState {
         {
           id: 'hair_transplant',
           name: 'Hairline Lowering Surgery',
-          cost: isCheaperHair ? 3000 : 6000,
+          cost: 6000,
           desc: 'Excises a small strip of forehead skin to pull the scalp forward and reduce forehead height.',
           risk: 0.08,
           effect: 'Soft Max: Hairline permanently restored to Ludwig 1'
@@ -1164,7 +1174,11 @@ export class GameState {
 
     const finalCost = surgery.cost * costMult;
     const surgeonRank = this.getTalentEffect('surgeon_savvy');
-    const finalRisk = surgery.risk * riskMult * (1 - 0.10 * surgeonRank);
+    let finalRisk = surgery.risk * riskMult * (1 - 0.10 * surgeonRank);
+    // Good Donor Area perk: 50% botch rate reduction on hair transplants
+    if (surgeryId === 'hair_transplant' && this.activePerks && this.activePerks.good_donor_area) {
+      finalRisk *= 0.5;
+    }
 
     if (this.cash < finalCost) {
       return {
