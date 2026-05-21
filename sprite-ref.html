@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprite Reference Grid</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; color: #c0c0d0; font-family: monospace; padding: 20px; }
+h1 { color: #00f0ff; font-size: 18px; margin-bottom: 5px; }
+h2 { color: #ff79c6; font-size: 14px; margin: 20px 0 10px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+h3 { color: #ffcc00; font-size: 12px; margin: 10px 0 5px; }
+.grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.cell { background: #12141a; border: 1px solid #2a2a3a; border-radius: 6px; padding: 6px; text-align: center; }
+.cell canvas { display: block; border-radius: 4px; }
+.cell-label { font-size: 9px; color: #888; margin-top: 3px; max-width: 140px; }
+.total { color: #50fa7b; font-size: 12px; margin: 15px 0; padding: 8px; background: #1a1a2a; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>SPRITE REFERENCE — Genetic Lottery Avatar</h1>
+<p style="font-size:10px;color:#666;margin-bottom:15px;">Each cell is one unique visual state. Use screenshots for the artist.</p>
+
+<div id="grids"></div>
+<div class="total" id="total-count"></div>
+
+<script type="module">
+import { drawAvatar } from './avatar.js';
+
+const CONTAINER = document.getElementById('grids');
+const CANVAS_W = 140;
+const CANVAS_H = 200;
+const BASE_STATS = {
+  gender: 'male', height: 68, jaw: 'Average', tilt: 'Neutral',
+  hairline: 2, skin: 50, frame: 50, style: 40,
+  symmetry: 'Average', confidence: 50, rizz: 50,
+  botchedJaw: false, botchedCanthoplasty: false, botchedHair: false,
+  name: 'REF', smv: 5.0, class: 'NORMIE'
+};
+
+function makeCanvas() {
+  const c = document.createElement('canvas');
+  c.width = CANVAS_W; c.height = CANVAS_H;
+  return c;
+}
+
+function addRow(label, variants, statsFn) {
+  const h = document.createElement('h3');
+  h.textContent = label;
+  CONTAINER.appendChild(h);
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  variants.forEach((v, i) => {
+    const s = statsFn(v, i);
+    const timeMs = s._timeMs || 0;
+    delete s._timeMs;
+    const stats = { ...BASE_STATS, ...s };
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const canvas = makeCanvas();
+    drawAvatar(canvas, stats, timeMs);
+    cell.appendChild(canvas);
+    const lbl = document.createElement('div');
+    lbl.className = 'cell-label';
+    lbl.textContent = v;
+    cell.appendChild(lbl);
+    grid.appendChild(cell);
+  });
+  CONTAINER.appendChild(grid);
+}
+
+// --- GENDER ---
+addRow('GENDER', ['Male', 'Female'], (v) => ({ gender: v }));
+
+// --- JAW SHAPES ---
+addRow('JAW SHAPES (Male)', ['Receding', 'Soft', 'Average', 'Sharp', 'Chiseled'], (v) => ({ jaw: v, gender: 'male' }));
+addRow('JAW SHAPES (Female)', ['Receding', 'Soft', 'Average', 'Sharp', 'Chiseled'], (v) => ({ jaw: v, gender: 'female' }));
+
+// --- BOTCHED JAW ---
+addRow('BOTCHED JAW', ['Normal Jaw', 'Botched Jaw'], (v, i) => ({ botchedJaw: i === 1 }));
+
+// --- CANTHAL TILT ---
+addRow('CANTHAL TILT', ['Negative', 'Neutral', 'Positive'], (v) => ({ tilt: v }));
+
+// --- SYMMETRY ---
+addRow('FACIAL SYMMETRY', ['Asymmetrical', 'Average', 'Symmetrical'], (v) => ({ symmetry: v }));
+
+// --- HAIR — MALE (Norwood) ---
+addRow('HAIR (Male Norwood)',
+  ['NW 1 (Full)', 'NW 2 (Slight rec.)', 'NW 3 (Deep rec.)', 'NW 4 (Crown+rec.)', 'NW 5 (Large bald)', 'NW 6 (Horseshoe)', 'NW 7 (Bald)'],
+  (v, i) => ({ hairline: i + 1, gender: 'male' }));
+
+// --- HAIR — FEMALE (Ludwig) ---
+addRow('HAIR (Female Ludwig)',
+  ['L1 (Full)', 'L2 (Thinning)', 'L3 (Severe)'],
+  (v, i) => ({ hairline: i === 0 ? 1 : i === 1 ? 4 : 7, gender: 'female' }));
+
+// --- BOTCHED HAIR ---
+addRow('BOTCHED HAIR TRANSPLANT', ['Normal Hair', 'Botched Transplants'], (v, i) => ({ botchedHair: i === 1, gender: 'male', hairline: 2 }));
+
+// --- BACK HAIR (FEMALE) ---
+addRow('BACK HAIR (Female)', ['Present (L1-L2)', 'Absent (L3)'], (v, i) => ({ hairline: i === 0 ? 1 : 7, gender: 'female' }));
+
+// --- FRAME / BUILD ---
+addRow('FRAME / BUILD', ['Slim (frame=10)', 'Average (frame=50)', 'Muscular (frame=100)'], (v, i) => ({ frame: [10, 50, 100][i] }));
+
+// --- SKIN TEXTURE ---
+addRow('SKIN TEXTURE', ['Cystic Acne (<30)', 'Blotchy (30-59)', 'Clear (60-89)', 'Glowing (90+)'], (v, i) => ({ skin: [15, 45, 75, 95][i] }));
+
+// --- OUTFITS ---
+addRow('OUTFITS', ['Ripped (<30)', 'Streetwear (30-59)', 'Techwear (60-79)', 'Luxury Suit (80+)'], (v, i) => ({ style: [15, 45, 70, 90][i] }));
+
+// --- EYE STATES ---
+addRow('EYE STATE', ['Open (normal)', 'Blinking (closed)', 'Botched Canthoplasty'], (v, i) => {
+  if (i === 1) return { _timeMs: 80 }; // time=80ms triggers blink
+  if (i === 2) return { botchedCanthoplasty: true };
+  return {};
+});
+
+// --- IRIS COLORS ---
+addRow('IRIS COLORS', ['Steel Blue', 'Olive Green', 'Warm Hazel', 'Slate Blue', 'Neon Cyan'], (v, i) => ({ name: ['D','E','F','G'][i] || 'D', style: i === 4 ? 95 : 50 }));
+
+// --- EYEBROWS (Confidence based) ---
+addRow('EYEBROWS (Male)', ['Worried (<35)', 'Neutral (35-75)', 'Assertive (>75)'], (v, i) => ({ confidence: [15, 50, 90][i], gender: 'male' }));
+addRow('EYEBROWS (Female)', ['Worried (<35)', 'Neutral (35-75)', 'Assertive (>75)'], (v, i) => ({ confidence: [15, 50, 90][i], gender: 'female' }));
+
+// --- MOUTH ---
+addRow('MOUTH (Male)', ['Frown (<30)', 'Calm/Straight (30-80)', 'Smug Smirk (>80)'], (v, i) => ({ confidence: [15, 55, 95][i], gender: 'male' }));
+addRow('MOUTH (Female)', ['Frown (<30)', 'Calm/Straight (30-80)', 'Smug Smirk (>80)'], (v, i) => ({ confidence: [15, 55, 95][i], gender: 'female' }));
+
+// --- LIPSTICK (Female only) ---
+addRow('LIPSTICK (Female)', ['Natural (style<50)', 'Pink (50-74)', 'Magenta (75+)'], (v, i) => ({ gender: 'female', style: [30, 62, 85][i], confidence: 55 }));
+
+// --- ACCESSORIES ---
+addRow('ACCESSORIES', ['None (<50)', 'Glasses (50+)', 'Earrings + Chain (75+, Female)', 'Headphones (90+)'], (v, i) => {
+  const s = [30, 65, 85, 95][i];
+  return { style: s, gender: i === 2 ? 'female' : 'male' };
+});
+
+// --- EYELASHES ---
+addRow('EYELASHES', ['Male (none)', 'Female (lashes)'], (v, i) => ({ gender: i === 0 ? 'male' : 'female' }));
+
+// --- TOTAL COUNT ---
+const total = document.getElementById('total-count');
+total.textContent = 'Total unique visual states shown above. Sprite count estimate: ~69 individual sprites / overlays.';
+</script>
+</body>
+</html>
