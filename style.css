@@ -2506,6 +2506,142 @@ body[data-theme="turkey-neon"] {
   color: #fff;
 }
 
+/* ==================== LIVESTREAM MODAL ==================== */
+.livestream-content {
+  max-width: 480px !important;
+}
+.livestream-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+.live-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #ff0044;
+  font-weight: 700;
+  animation: pulse 1s ease-in-out infinite;
+}
+.live-viewer-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.livestream-video {
+  background: #0a0a0a;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.livestream-video-inner {
+  text-align: center;
+}
+.livestream-cam-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-magenta);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.livestream-chat-box {
+  background: #050505;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  height: 140px;
+  padding: 8px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.livestream-chat-feed {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.livestream-chat-placeholder {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: italic;
+  text-align: center;
+  padding-top: 50px;
+}
+.livestream-chat-row {
+  font-size: 11px;
+  padding: 3px 6px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  line-height: 1.4;
+  animation: fadeIn 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.livestream-chat-row.chat-gift {
+  border-left: 2px solid var(--accent-green);
+}
+.livestream-chat-row.chat-roast {
+  border-left: 2px solid var(--accent-pink);
+}
+.live-chat-user {
+  color: var(--accent-cyan);
+  font-weight: 700;
+  font-size: 10px;
+}
+.live-chat-text {
+  color: #ddd;
+  font-size: 11px;
+}
+.live-chat-gift {
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+}
+.live-chat-roast {
+  color: var(--accent-pink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+}
+.livestream-result-msg {
+  background: rgba(255,255,255,0.06);
+  border: 1px dashed var(--border-color);
+  margin-top: 4px;
+  padding: 6px;
+}
+.livestream-round-info {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.livestream-choice-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.livestream-choice-prompt {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
 /* ==================== ACHIEVEMENT TOAST ==================== */
 .achievement-toast {
   position: fixed;

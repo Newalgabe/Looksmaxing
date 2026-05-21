@@ -601,6 +601,20 @@ const tiktokChooseStage = document.getElementById('tiktok-choose-stage');
 const tiktokResultStage = document.getElementById('tiktok-result-stage');
 const tiktokCommentsContainer = document.getElementById('tiktok-comments-container');
 
+// Livestream
+const actLivestream = document.getElementById('act-livestream');
+const livestreamModal = document.getElementById('livestream-modal');
+const livestreamStage = document.getElementById('livestream-stage');
+const livestreamResult = document.getElementById('livestream-result');
+const livestreamChat = document.getElementById('livestream-chat');
+const livestreamChoiceBtns = document.getElementById('livestream-choice-btns');
+const liveRoundNum = document.getElementById('live-round-num');
+const liveViewers = document.getElementById('live-viewers');
+const liveCamText = document.getElementById('livestream-cam-text');
+const btnLiveRide = document.getElementById('btn-live-ride');
+const btnLiveBan = document.getElementById('btn-live-ban');
+const btnLiveClose = document.getElementById('btn-live-close');
+
 // Navigation Tabs
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -1054,6 +1068,40 @@ tabBtns.forEach(btn => {
     tiktokModal.classList.add('hidden');
   });
 
+  // === LIVESTREAM ===
+  let _liveRoundsData = [];
+  let _liveRoundIdx = 0;
+  let _liveTotalCash = 0;
+  let _liveTotalFollowers = 0;
+  let _liveTotalDamage = 0;
+  let _liveTimer = null;
+  let _liveChatUsers = [
+    'lookmaxxer_x', 'glow_up_king', 'stacy_slayer', 'cope_dealer',
+    'psl_god_99', 'skincare_fanatic', 'femcel_girl', 'chad_inspector',
+    'bone_maxxer', 'tiktok_algo', 'symmetry_rat', 'jaw_inspector'
+  ];
+
+  actLivestream.addEventListener('click', () => {
+    startLivestream();
+  });
+
+  btnLiveRide.addEventListener('click', () => {
+    playSound('click');
+    handleLivestreamChoice('ride');
+  });
+
+  btnLiveBan.addEventListener('click', () => {
+    playSound('click');
+    handleLivestreamChoice('ban');
+  });
+
+  btnLiveClose.addEventListener('click', () => {
+    playSound('click');
+    if (_liveTimer) { clearTimeout(_liveTimer); _liveTimer = null; }
+    livestreamModal.classList.add('hidden');
+    updateDashboard();
+  });
+
   // Theme Shop Tabs Click
   document.querySelectorAll('.shop-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1209,6 +1257,136 @@ tabBtns.forEach(btn => {
       delay += 800; // stagger comments scrolling in
     });
 
+    updateDashboard();
+  }
+
+  // ===== LIVESTREAM FUNCTIONS =====
+  function startLivestream() {
+    const setup = game.goLive();
+    if (setup.error) {
+      playSound('error');
+      logToConsole(setup.error, 'error');
+      return;
+    }
+
+    playSound('success');
+    _liveRoundsData = setup.rounds;
+    _liveRoundIdx = 0;
+    _liveTotalCash = 0;
+    _liveTotalFollowers = 0;
+    _liveTotalDamage = 0;
+
+    livestreamStage.classList.remove('hidden');
+    livestreamResult.classList.add('hidden');
+    livestreamChat.innerHTML = '<div class="livestream-chat-placeholder">Connecting to stream...</div>';
+    livestreamChoiceBtns.classList.add('hidden');
+    livestreamModal.classList.remove('hidden');
+
+    liveViewers.textContent = Math.floor(50 + game.followers * 0.05) + ' watching';
+
+    const flexParts = [];
+    if (game.jaw === 'Chiseled' || game.jaw === 'Sharp') flexParts.push('JAW');
+    if (game.skin >= 60) flexParts.push('SKIN');
+    if (game.hairline <= 2) flexParts.push('HAIR');
+    if (flexParts.length === 0) flexParts.push('GRINDSET');
+    liveCamText.textContent = '🔴 FLEXING: ' + flexParts.join(' & ');
+
+    setTimeout(() => {
+      livestreamChat.innerHTML = '';
+      runLivestreamRound();
+    }, 1500);
+  }
+
+  function runLivestreamRound() {
+    if (_liveRoundIdx >= _liveRoundsData.length) {
+      endLivestream();
+      return;
+    }
+
+    liveRoundNum.textContent = _liveRoundIdx + 1;
+    const messages = _liveRoundsData[_liveRoundIdx];
+    let msgIndex = 0;
+
+    function showNextMessage() {
+      if (_liveTimer && livestreamModal.classList.contains('hidden')) return;
+      if (msgIndex >= messages.length) {
+        livestreamChoiceBtns.classList.remove('hidden');
+        return;
+      }
+      const m = messages[msgIndex];
+      const user = _liveChatUsers[Math.floor(Math.random() * _liveChatUsers.length)];
+      const row = document.createElement('div');
+      row.className = 'livestream-chat-row';
+      if (m.type === 'gift') {
+        row.classList.add('chat-gift');
+        row.innerHTML = `<span class="live-chat-user">${user}</span> <span class="live-chat-text">${m.text}</span> <span class="live-chat-gift">+$${m.amount}</span>`;
+      } else {
+        row.classList.add('chat-roast');
+        row.innerHTML = `<span class="live-chat-user">${user}</span> <span class="live-chat-text">${m.text}</span> <span class="live-chat-roast">-${m.damage}%</span>`;
+      }
+      livestreamChat.appendChild(row);
+      livestreamChat.scrollTop = livestreamChat.scrollHeight;
+      msgIndex++;
+      _liveTimer = setTimeout(showNextMessage, 1200 + Math.random() * 800);
+    }
+    showNextMessage();
+  }
+
+  function handleLivestreamChoice(choice) {
+    livestreamChoiceBtns.classList.add('hidden');
+    if (_liveTimer) { clearTimeout(_liveTimer); _liveTimer = null; }
+
+    const messages = _liveRoundsData[_liveRoundIdx];
+    const result = game.processLivestreamRound(messages, choice);
+    _liveTotalCash += result.cash;
+    _liveTotalFollowers += result.followers;
+    _liveTotalDamage += result.confidenceDamage + (result.depressionHit || 0);
+
+    // Show result message
+    const resultMsg = document.createElement('div');
+    resultMsg.className = 'livestream-chat-row livestream-result-msg';
+    if (choice === 'ride') {
+      let txt = `🚀 RODE THE HYPE! +$${result.cash}`;
+      if (result.confidenceDamage > 0) txt += `, -${result.confidenceDamage}% Confidence`;
+      if (result.depressionHit > 0) txt += `, DEPRESSION -${result.depressionHit}%`;
+      txt += `, +${result.followers} followers`;
+      resultMsg.innerHTML = `<span class="live-chat-text" style="color:var(--accent-magenta);font-weight:700;">${txt}</span>`;
+    } else {
+      let txt = `🔨 BANNED HATERS! +$${result.cash}`;
+      if (result.followers > 0) txt += `, +${result.followers} followers`;
+      resultMsg.innerHTML = `<span class="live-chat-text" style="color:var(--accent-cyan);font-weight:700;">${txt}</span>`;
+    }
+    livestreamChat.appendChild(resultMsg);
+    livestreamChat.scrollTop = livestreamChat.scrollHeight;
+
+    _liveRoundIdx++;
+    setTimeout(() => {
+      if (livestreamModal.classList.contains('hidden')) return;
+      runLivestreamRound();
+    }, 2000);
+  }
+
+  function endLivestream() {
+    livestreamStage.classList.add('hidden');
+    livestreamResult.classList.remove('hidden');
+
+    document.getElementById('live-result-cash').textContent = '$' + _liveTotalCash.toLocaleString();
+    document.getElementById('live-result-confidence').textContent = (_liveTotalDamage > 0 ? '-' : '+') + _liveTotalDamage + '%';
+    document.getElementById('live-result-followers').textContent = '+' + _liveTotalFollowers.toLocaleString();
+
+    const summary = document.getElementById('livestream-summary-text');
+    if (_liveTotalCash >= 500) {
+      summary.textContent = 'Massive stream! Chat was popping off. You made bank tonight.';
+    } else if (_liveTotalCash >= 200) {
+      summary.textContent = 'Solid stream. Decent engagement, some haters but you handled it.';
+    } else if (_liveTotalDamage > 20) {
+      summary.textContent = 'Tough stream. Chat was brutal tonight. Sometimes you eat the bar, sometimes the bar eats you.';
+    } else {
+      summary.textContent = 'Small but cozy stream. Every journey starts somewhere.';
+    }
+
+    logToConsole(`Livestream ended: +$${_liveTotalCash}, +${_liveTotalFollowers} followers, ${_liveTotalDamage > 0 ? '-' + _liveTotalDamage + '% Confidence' : 'no confidence loss'}`, _liveTotalCash >= 200 ? 'success' : 'info');
+    playSound('success');
     updateDashboard();
   }
 
@@ -1458,6 +1636,9 @@ function updateDashboard() {
   actStyling.disabled = game.ap < 1 || game.cash < 150;
   if (actTiktok) {
     actTiktok.disabled = game.ap < 2 || game.cash < 100;
+  }
+  if (actLivestream) {
+    actLivestream.disabled = game.ap < 1 || game.cash < 50 || game.followers < 100;
   }
   actPromotion.disabled = game.ap < 2 || game.careerTier === 'ceo';
   actSubstances.disabled = game.cash < 50;

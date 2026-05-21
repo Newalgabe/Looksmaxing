@@ -395,6 +395,15 @@
                    </div>
                  </button>
 
+                 <button class="action-card" id="act-livestream">
+                   <div class="action-icon">🔴</div>
+                   <div class="action-details">
+                     <h4>Go Live</h4>
+                     <p class="desc">Stream your looksmaxxing journey in real-time. Chat bots donate or roast.</p>
+                     <span class="cost text-magenta">-$50 cash / -$1 AP (100+ followers)</span>
+                   </div>
+                 </button>
+
                  <button class="action-card" id="act-promotion">
                   <div class="action-icon">📈</div>
                   <div class="action-details">
@@ -845,6 +854,79 @@
           </div>
 
           <button class="btn primary-btn" id="btn-tiktok-close" style="width: 100%; margin-top: 15px;">KEEP GRINDING</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Livestream Modal -->
+    <div class="modal-overlay hidden" id="livestream-modal">
+      <div class="event-modal-content livestream-content">
+        <div class="event-glow-border"></div>
+
+        <!-- Live Stream Stage -->
+        <div id="livestream-stage">
+          <div class="livestream-header">
+            <span class="live-badge">🔴 LIVE</span>
+            <span class="live-viewer-count" id="live-viewers">0 watching</span>
+          </div>
+
+          <div class="livestream-video">
+            <div class="livestream-video-inner">
+              <span class="livestream-cam-text" id="livestream-cam-text">LOOKSMAXXING STREAM</span>
+            </div>
+          </div>
+
+          <div class="livestream-chat-box">
+            <div class="livestream-chat-feed" id="livestream-chat">
+              <div class="livestream-chat-placeholder">Waiting for viewers...</div>
+            </div>
+          </div>
+
+          <div class="livestream-round-info" id="livestream-round-info">
+            Round <span id="live-round-num">1</span> / 5
+          </div>
+
+          <div class="livestream-choice-btns hidden" id="livestream-choice-btns">
+            <p class="livestream-choice-prompt">How do you handle this wave?</p>
+            <button class="btn tiktok-option-btn" id="btn-live-ride">
+              <span class="btn-icon">🚀</span>
+              <div class="btn-text">
+                <strong>Ride the Hype</strong>
+                <p>Double the cash, but double the damage. High risk, high reward.</p>
+              </div>
+            </button>
+            <button class="btn tiktok-option-btn" id="btn-live-ban">
+              <span class="btn-icon">🔨</span>
+              <div class="btn-text">
+                <strong>Ban Haters</strong>
+                <p>Cancel all roast damage. Costs 1 AP + 5% Confidence.</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Livestream Result Stage -->
+        <div class="hidden" id="livestream-result">
+          <div class="event-header">
+            <span class="event-icon">📊</span>
+            <h3>STREAM OVER</h3>
+          </div>
+          <p class="event-desc" id="livestream-summary-text">Your livestream has ended!</p>
+          <div class="tiktok-stats-summary" style="margin:15px 0;">
+            <div class="tiktok-stat-card">
+              <span class="label">CASH EARNED</span>
+              <strong id="live-result-cash" class="text-green">$0</strong>
+            </div>
+            <div class="tiktok-stat-card">
+              <span class="label">CONFIDENCE</span>
+              <strong id="live-result-confidence" class="text-pink">0%</strong>
+            </div>
+            <div class="tiktok-stat-card">
+              <span class="label">FOLLOWERS</span>
+              <strong id="live-result-followers" class="text-magenta">+0</strong>
+            </div>
+          </div>
+          <button class="btn primary-btn" id="btn-live-close" style="width:100%;">END STREAM</button>
         </div>
       </div>
     </div>

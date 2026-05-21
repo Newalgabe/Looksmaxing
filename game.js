@@ -730,6 +730,112 @@ export class GameState {
     return rank > 0 ? (1 - 0.20 * rank) : 1;
   }
 
+  // === LIVESTREAM SYSTEM ===
+  goLive() {
+    this._validateState();
+    if (this.ap < 1) return { error: 'Need 1 AP to go live.' };
+    if (this.cash < 50) return { error: 'Need $50 for stream setup.' };
+    if (this.followers < 100) return { error: 'Need at least 100 followers to go live.' };
+
+    this.ap -= 1;
+    this.cash -= 50;
+
+    const baseGiftChance = 0.4;
+    const jawBonus = (this.jaw === 'Chiseled' || this.jaw === 'Sharp') ? 0.15 : 0;
+    const skinBonus = this.skin >= 60 ? 0.1 : 0;
+    const hairBonus = this.hairline <= 2 ? 0.1 : 0;
+    const giftChance = Math.min(0.8, baseGiftChance + jawBonus + skinBonus + hairBonus);
+
+    const giftTexts = [
+      (a) => `donated $${a}! 🔥`,
+      (a) => `sent a Lion! 🦁`,
+      (a) => `Your bone structure is insane! 💎`,
+      (a) => `POGGERS CHAMP! 🏆`,
+      (a) => `subscribed! 🌟`,
+      (a) => `dropped a Galaxy! 🌌`,
+      (a) => `jawline goals fr fr 💯`,
+      (a) => `keep maxxing king 💪`,
+    ];
+    const roastTexts = [
+      `Mew harder bro 🤡`,
+      `Receding hairline LMAO 💀`,
+      `Your symmetry is cooked 💀`,
+      `BRO THINKS HE IS A MODEL 😭`,
+      `Copeium overdose ☠️`,
+      `Facial harmony? Never heard of her`,
+      `Framecel coping`,
+      `Looks like a filtered potato 🥔`,
+    ];
+
+    const rounds = [];
+    for (let r = 0; r < 5; r++) {
+      const messages = [];
+      const numMessages = 2 + Math.floor(Math.random() * 2);
+      for (let m = 0; m < numMessages; m++) {
+        const isGift = Math.random() < giftChance;
+        if (isGift) {
+          const baseAmount = this.randomRange(20, 150);
+          const smvMult = 1 + Math.max(0, (this.smv - 4) * 0.25);
+          const amount = Math.round(baseAmount * smvMult);
+          const text = giftTexts[Math.floor(Math.random() * giftTexts.length)](amount);
+          messages.push({ type: 'gift', text, amount });
+        } else {
+          const damage = this.randomRange(2, 5);
+          const text = roastTexts[Math.floor(Math.random() * roastTexts.length)];
+          messages.push({ type: 'roast', text, damage });
+        }
+      }
+      rounds.push(messages);
+    }
+
+    return { success: true, rounds, giftChance: Math.round(giftChance * 100) };
+  }
+
+  processLivestreamRound(messages, choice) {
+    let totalCash = 0;
+    let totalDamage = 0;
+    messages.forEach(m => {
+      if (m.type === 'gift') totalCash += m.amount;
+      if (m.type === 'roast') totalDamage += m.damage;
+    });
+
+    if (choice === 'ride') {
+      totalCash *= 2;
+      totalDamage *= 2;
+      this.cash += totalCash;
+      this.confidence = Math.max(0, this.confidence - totalDamage);
+      let depressionHit = 0;
+      if (totalDamage > 5) {
+        depressionHit = Math.floor(totalDamage / 2);
+        this.confidence = Math.max(0, this.confidence - depressionHit);
+      }
+      const followerGain = Math.floor(totalCash / 10);
+      this.followers += followerGain;
+      if (followerGain > 0 && this.followers >= 5000 && !this.hasInfluencerCard) {
+        this.hasInfluencerCard = true;
+        this.log.push("✨ Unlocked Combat Card: INFLUENCER AURA! (5,000+ followers reached)");
+      }
+      this.updateSMV();
+      return { cash: totalCash, confidenceDamage: totalDamage, depressionHit, followers: followerGain };
+    }
+
+    if (choice === 'ban') {
+      this.cash += totalCash;
+      this.ap = Math.max(0, this.ap - 1);
+      this.confidence = Math.max(0, this.confidence - 5);
+      const followerGain = Math.floor(totalCash / 15);
+      this.followers += followerGain;
+      if (followerGain > 0 && this.followers >= 5000 && !this.hasInfluencerCard) {
+        this.hasInfluencerCard = true;
+        this.log.push("✨ Unlocked Combat Card: INFLUENCER AURA! (5,000+ followers reached)");
+      }
+      this.updateSMV();
+      return { cash: totalCash, confidenceDamage: 0, followers: followerGain };
+    }
+
+    return { cash: 0, confidenceDamage: 0, followers: 0 };
+  }
+
   // === SUBSTANCE SYSTEM ===
   takeSubstance(substanceId) {
     this._validateState();
