@@ -228,6 +228,12 @@ export class GameState {
     // Gym membership
     this.hasGymMembership = false;
 
+    // Travel buffs
+    this.activeTravelBuffs = [];
+
+    // Coaching
+    this.hasCoachingBusiness = false;
+
     // Stat synergies (computed dynamically)
     this.activeSynergies = [];
 
@@ -836,6 +842,71 @@ export class GameState {
     return { cash: 0, confidenceDamage: 0, followers: 0 };
   }
 
+  // === TRAVEL SYSTEM ===
+  travelDestination(destId) {
+    this._validateState();
+    const destinations = {
+      turkey: { name: 'Turkey', cost: 2000, ap: 2, minSMV: 2.0, desc: 'Cheap surgery hub. High risk, low prices.', icon: '🕌', buffYears: 2 },
+      thailand: { name: 'Thailand', cost: 1500, ap: 2, minSMV: 0, desc: 'Land of smiles. Boost confidence and rizz.', icon: '🏝️', buffYears: 2 },
+      dubai: { name: 'Dubai', cost: 3000, ap: 2, minSMV: 4.0, desc: 'Flex on the wealthy. Passive cash and style.', icon: '🌆', buffYears: 2 },
+      bali: { name: 'Bali', cost: 1500, ap: 2, minSMV: 0, desc: 'Tropical paradise for skin and frame.', icon: '🌴', buffYears: 2 },
+    };
+    const dest = destinations[destId];
+    if (!dest) return { error: 'Unknown destination.' };
+    if (this.cash < dest.cost) return { error: `Need $${dest.cost} for ${dest.name} trip.` };
+    if (this.ap < dest.ap) return { error: `Need ${dest.ap} AP for this trip.` };
+    if (this.smv < dest.minSMV) return { error: `Need SMV ${dest.minSMV} for ${dest.name}.` };
+
+    this.cash -= dest.cost;
+    this.ap -= dest.ap;
+
+    // Remove existing buff for same destination, then apply new one
+    this.activeTravelBuffs = this.activeTravelBuffs.filter(b => b.dest !== destId);
+    this.activeTravelBuffs.push({ dest: destId, yearsLeft: dest.buffYears });
+
+    const msg = `You traveled to ${dest.name}! ${dest.icon} Buff lasts ${dest.buffYears} years.`;
+    this.log.push(msg);
+    this.updateSMV();
+    return { success: true, destination: dest.name, buffYears: dest.buffYears };
+  }
+
+  // === COACHING SYSTEM ===
+  startCoaching() {
+    this._validateState();
+    if (this.hasCoachingBusiness) return { error: 'Already running a coaching business.' };
+    if (this.smv < 6.0) return { error: 'Need SMV 6.0+ to start coaching.' };
+    if (this.cash < 500) return { error: 'Need $500 to set up coaching platform.' };
+    this.cash -= 500;
+    this.hasCoachingBusiness = true;
+    this.log.push('You launched your looksmaxxing coaching empire! Passive income unlocked.');
+    return { success: true, message: 'Coaching business launched! +$500/yr passive + 1 AP coaching action.' };
+  }
+
+  doCoach() {
+    this._validateState();
+    if (!this.hasCoachingBusiness) return { error: 'No coaching business. Start one first.' };
+    if (this.ap < 1) return { error: 'Need 1 AP to coach a student.' };
+    this.ap -= 1;
+    const earnings = 500 + Math.floor(this.followers * 0.05);
+    this.cash += earnings;
+    this.confidence = Math.min(100, this.confidence + 3);
+    this.rizz = Math.min(100, this.rizz + 1);
+    return {
+      success: true, earnings, confidenceGain: 3, rizzGain: 1,
+      message: `Coached a student! Earned $${earnings}. +3 Confidence, +1 Rizz.`
+    };
+  }
+
+  getTravelBuff(destId) {
+    const buff = this.activeTravelBuffs.find(b => b.dest === destId);
+    return buff ? buff.yearsLeft : 0;
+  }
+
+  /** Get the surgery cost multiplier from Turkey travel buff (if active) */
+  _getTurkeySurgeryMult() {
+    return this.activeTravelBuffs.some(b => b.dest === 'turkey') ? 0.35 : 0.5;
+  }
+
   // === SUBSTANCE SYSTEM ===
   takeSubstance(substanceId) {
     this._validateState();
@@ -1178,7 +1249,9 @@ export class GameState {
       challengeId: this.challengeId, completedChallenge: this.completedChallenge,
       hasGymMembership: this.hasGymMembership,
       freak: this.freak,
-      adFree: this.adFree
+      adFree: this.adFree,
+      activeTravelBuffs: this.activeTravelBuffs,
+      hasCoachingBusiness: this.hasCoachingBusiness
     }));
   }
 
@@ -1267,7 +1340,7 @@ export class GameState {
     let clinicName = "";
 
     if (clinicTier === 'turkey') {
-      costMult = 0.5;
+      costMult = this._getTurkeySurgeryMult();
       riskMult = 2.5;
       clinicName = "a budget clinic in Istanbul, Turkey";
     } else if (clinicTier === 'beverly') {
@@ -1446,6 +1519,31 @@ export class GameState {
     // General confidence erosion from life stress
     if (this.age >= 25 && Math.random() < 0.10) {
       this.confidence = Math.max(0, this.confidence - this.randomRange(2, 3));
+    }
+
+    // Travel buffs — apply yearly passive effects and decrement
+    const processedBuffs = [];
+    for (const buff of this.activeTravelBuffs) {
+      if (buff.dest === 'thailand') {
+        this.confidence = Math.min(100, this.confidence + 3);
+        this.rizz = Math.min(100, this.rizz + 2);
+      } else if (buff.dest === 'dubai') {
+        this.cash += 500;
+        this.style = Math.min(100, this.style + 2);
+      } else if (buff.dest === 'bali') {
+        this.skin = Math.min(100, this.skin + 2);
+        this.frame = Math.min(100, this.frame + 2);
+      }
+      buff.yearsLeft--;
+      if (buff.yearsLeft > 0) processedBuffs.push(buff);
+    }
+    this.activeTravelBuffs = processedBuffs;
+
+    // Coaching passive income
+    if (this.hasCoachingBusiness) {
+      const income = 500 + Math.floor(this.followers * 0.1);
+      this.cash += income;
+      this.log.push(`Coaching passive income: +$${income}`);
     }
 
     // Relationship maintenance: partner costs 1 AP per year

@@ -615,6 +615,19 @@ const btnLiveRide = document.getElementById('btn-live-ride');
 const btnLiveBan = document.getElementById('btn-live-ban');
 const btnLiveClose = document.getElementById('btn-live-close');
 
+// Travel
+const actTravel = document.getElementById('act-travel');
+const travelModal = document.getElementById('travel-modal');
+const travelDestList = document.getElementById('travel-dest-list');
+const travelActiveBuffs = document.getElementById('travel-active-buffs');
+const btnTravelClose = document.getElementById('btn-travel-close');
+
+// Coach
+const actCoach = document.getElementById('act-coach');
+const coachModal = document.getElementById('coach-modal');
+const coachContent = document.getElementById('coach-content');
+const btnCoachClose = document.getElementById('btn-coach-close');
+
 // Navigation Tabs
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -693,6 +706,17 @@ function logToConsole(message, type = 'system') {
 }
 
 function setupEventListeners() {
+  // Category collapse/expand
+  document.querySelectorAll('.category-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const catId = header.getAttribute('data-category');
+      const content = document.getElementById('cat-' + catId);
+      if (!content) return;
+      content.classList.toggle('collapsed');
+      header.classList.toggle('collapsed');
+    });
+  });
+
   // Gender Choice
   const genderBtns = document.querySelectorAll('.gender-btn');
   genderBtns.forEach(btn => {
@@ -1102,6 +1126,30 @@ tabBtns.forEach(btn => {
     updateDashboard();
   });
 
+  // === TRAVEL ===
+  actTravel.addEventListener('click', () => {
+    playSound('click');
+    renderTravelModal();
+    travelModal.classList.remove('hidden');
+  });
+
+  btnTravelClose.addEventListener('click', () => {
+    playSound('click');
+    travelModal.classList.add('hidden');
+  });
+
+  // === COACHING ===
+  actCoach.addEventListener('click', () => {
+    playSound('click');
+    renderCoachModal();
+    coachModal.classList.remove('hidden');
+  });
+
+  btnCoachClose.addEventListener('click', () => {
+    playSound('click');
+    coachModal.classList.add('hidden');
+  });
+
   // Theme Shop Tabs Click
   document.querySelectorAll('.shop-tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1390,6 +1438,113 @@ tabBtns.forEach(btn => {
     updateDashboard();
   }
 
+  // ===== TRAVEL FUNCTIONS =====
+  function renderTravelModal() {
+    const destinations = {
+      turkey: { name: 'Turkey', cost: 2000, ap: 2, minSMV: 2.0, desc: 'Cheap surgery hub. Surgery costs reduced to 35% (from 50%). High risk.', icon: '🕌', buffYears: 2 },
+      thailand: { name: 'Thailand', cost: 1500, ap: 2, minSMV: 0, desc: '+3 Confidence / +2 Rizz per year for 2 years.', icon: '🏝️', buffYears: 2 },
+      dubai: { name: 'Dubai', cost: 3000, ap: 2, minSMV: 4.0, desc: '+$500 cash / +2 Style per year for 2 years.', icon: '🌆', buffYears: 2 },
+      bali: { name: 'Bali', cost: 1500, ap: 2, minSMV: 0, desc: '+2 Skin / +2 Frame per year for 2 years.', icon: '🌴', buffYears: 2 },
+    };
+
+    let html = '';
+    for (const [id, d] of Object.entries(destinations)) {
+      const hasBuff = game.getTravelBuff(id) > 0;
+      const canAfford = game.cash >= d.cost;
+      const hasAp = game.ap >= d.ap;
+      const meetsSmv = game.smv >= d.minSMV;
+      const disabled = !canAfford || !hasAp || !meetsSmv;
+      html += `
+        <div class="travel-dest-card">
+          <span class="travel-dest-icon">${d.icon}</span>
+          <div class="travel-dest-info">
+            <div class="travel-dest-name">${d.name}</div>
+            <div class="travel-dest-desc">${d.desc}</div>
+            <div class="travel-dest-cost">$${d.cost} / ${d.ap} AP${d.minSMV > 0 ? ' / SMV ' + d.minSMV + '+' : ''}${hasBuff ? ' <span style="color:var(--accent-green);">✅ Active</span>' : ''}</div>
+          </div>
+          <button class="travel-dest-btn" data-dest="${id}" ${disabled ? 'disabled' : ''}>${hasBuff ? 'VISITED' : (disabled ? 'LOCKED' : 'TRAVEL')}</button>
+        </div>`;
+    }
+    travelDestList.innerHTML = html;
+
+    travelDestList.querySelectorAll('.travel-dest-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const destId = btn.getAttribute('data-dest');
+        const res = game.travelDestination(destId);
+        if (res.error) {
+          playSound('error');
+          logToConsole(res.error, 'error');
+        } else {
+          playSound('success');
+          logToConsole(`Traveled to ${res.destination}! Buff for ${res.buffYears} years.`, 'success');
+        }
+        renderTravelModal();
+        updateDashboard();
+      });
+    });
+
+    // Active buffs display
+    if (game.activeTravelBuffs.length > 0) {
+      let buffHtml = '<strong style="font-size:10px;color:var(--accent-green);">ACTIVE TRAVEL BUFFS:</strong>';
+      game.activeTravelBuffs.forEach(b => {
+        const names = { turkey: 'Turkey 🕌', thailand: 'Thailand 🏝️', dubai: 'Dubai 🌆', bali: 'Bali 🌴' };
+        buffHtml += `<div class="travel-buff-row"><span class="buff-icon">✅</span><span class="buff-name">${names[b.dest] || b.dest}</span><span class="buff-years">${b.yearsLeft} year${b.yearsLeft > 1 ? 's' : ''} left</span></div>`;
+      });
+      travelActiveBuffs.innerHTML = buffHtml;
+    } else {
+      travelActiveBuffs.innerHTML = '<span>No active travel buffs. Book a trip!</span>';
+    }
+  }
+
+  // ===== COACH FUNCTIONS =====
+  function renderCoachModal() {
+    if (!game.hasCoachingBusiness) {
+      const canStart = game.smv >= 6.0 && game.cash >= 500;
+      coachContent.innerHTML = `
+        <div class="coach-status">
+          <strong style="font-size:14px;">Looksmaxxing Coach</strong>
+          <p style="font-size:10px;color:var(--text-muted);margin:6px 0;">Turn your SMV ${game.smv.toFixed(1)} into a coaching empire. Passive income + active coaching action.</p>
+          ${game.smv < 6.0 ? '<p style="color:var(--accent-pink);font-size:10px;">Requires SMV 6.0+</p>' : ''}
+          ${game.cash < 500 ? '<p style="color:var(--accent-pink);font-size:10px;">Need $500 to set up</p>' : ''}
+        </div>
+        <button class="btn primary-btn" id="btn-start-coach" ${canStart ? '' : 'disabled'} style="width:100%;">
+          ${canStart ? 'LAUNCH COACHING BUSINESS (-$500)' : (game.smv < 6.0 ? 'SMV 6.0+ REQUIRED' : 'NEED $500')}
+        </button>
+      `;
+      const startBtn = document.getElementById('btn-start-coach');
+      if (startBtn && canStart) {
+        startBtn.addEventListener('click', () => {
+          const res = game.startCoaching();
+          if (res.error) { playSound('error'); logToConsole(res.error, 'error'); }
+          else { playSound('success'); logToConsole(res.message, 'success'); }
+          renderCoachModal();
+          updateDashboard();
+        });
+      }
+    } else {
+      const passiveIncome = 500 + Math.floor(game.followers * 0.1);
+      coachContent.innerHTML = `
+        <div class="coach-status">
+          <strong style="font-size:14px;color:var(--accent-green);">✅ COACHING BUSINESS ACTIVE</strong>
+          <p style="font-size:10px;color:var(--text-muted);margin:6px 0;">Passive income: <span class="passive-income">+$${passiveIncome}/year</span></p>
+        </div>
+        <button class="btn primary-btn" id="btn-do-coach" ${game.ap < 1 ? 'disabled' : ''} style="width:100%;">
+          ${game.ap < 1 ? 'NEED 1 AP' : 'COACH A STUDENT (-1 AP)'}
+        </button>
+      `;
+      const coachBtn = document.getElementById('btn-do-coach');
+      if (coachBtn && game.ap >= 1) {
+        coachBtn.addEventListener('click', () => {
+          const res = game.doCoach();
+          if (res.error) { playSound('error'); logToConsole(res.error, 'error'); }
+          else { playSound('success'); logToConsole(res.message, 'success'); }
+          renderCoachModal();
+          updateDashboard();
+        });
+      }
+    }
+  }
+
   btnEndYear.addEventListener('click', () => {
     if (_endYearLock) return;
     if (!confirm('Advance to the next year? Unused AP will be lost.')) return;
@@ -1639,6 +1794,18 @@ function updateDashboard() {
   }
   if (actLivestream) {
     actLivestream.disabled = game.ap < 1 || game.cash < 50 || game.followers < 100;
+  }
+  if (actTravel) {
+    actTravel.disabled = game.ap < 2 || game.cash < 1500 || game.age < 20;
+  }
+  if (actCoach) {
+    const coachUnlocked = game.smv >= 6.0;
+    actCoach.style.display = coachUnlocked ? '' : 'none';
+    if (game.hasCoachingBusiness) {
+      actCoach.disabled = false;
+    } else {
+      actCoach.disabled = !coachUnlocked || game.cash < 500;
+    }
   }
   actPromotion.disabled = game.ap < 2 || game.careerTier === 'ceo';
   actSubstances.disabled = game.cash < 50;

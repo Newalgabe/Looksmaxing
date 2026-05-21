@@ -834,11 +834,69 @@ body {
 .actions-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
   overflow-y: auto;
   max-height: 380px;
-  padding-right: 5px;
+  padding-right: 3px;
+}
+
+.action-category {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.category-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.category-header:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(57,255,20,0.03);
+}
+.category-name {
+  color: var(--text-main);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.category-arrow {
+  font-size: 8px;
+  transition: transform 0.2s;
+  color: var(--text-muted);
+}
+.category-header.collapsed .category-arrow {
+  transform: rotate(-90deg);
+}
+
+.category-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  transition: max-height 0.2s ease, margin 0.2s ease, opacity 0.15s ease;
+  max-height: 800px;
+  opacity: 1;
+}
+.category-content.collapsed {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .action-card {
@@ -2640,6 +2698,119 @@ body[data-theme="turkey-neon"] {
   color: var(--text-muted);
   text-align: center;
   margin: 0;
+}
+
+/* ==================== TRAVEL MODAL ==================== */
+.travel-dest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0;
+}
+.travel-dest-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.2s ease;
+}
+.travel-dest-card:hover {
+  border-color: var(--accent-cyan);
+}
+.travel-dest-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+.travel-dest-info {
+  flex: 1;
+}
+.travel-dest-name {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+.travel-dest-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 2px 0;
+}
+.travel-dest-cost {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.travel-dest-btn {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  padding: 6px 14px !important;
+  font-size: 10px !important;
+  border-radius: var(--radius-sm) !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.travel-dest-btn:hover:not(:disabled) {
+  border-color: var(--accent-green) !important;
+  background: rgba(57,255,20,0.05) !important;
+}
+.travel-dest-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+.travel-active-buffs {
+  margin-top: 10px;
+  padding: 8px;
+  background: rgba(57,255,20,0.03);
+  border: 1px dashed rgba(57,255,20,0.15);
+  border-radius: var(--radius-md);
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.travel-buff-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.travel-buff-row .buff-icon {
+  font-size: 14px;
+}
+.travel-buff-row .buff-name {
+  color: var(--accent-green);
+  font-weight: 700;
+}
+.travel-buff-row .buff-years {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+/* ==================== COACH MODAL ==================== */
+#coach-content {
+  margin: 10px 0;
+  text-align: center;
+}
+.coach-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+}
+.coach-status .passive-income {
+  color: var(--accent-green);
+  font-weight: 700;
 }
 
 /* ==================== ACHIEVEMENT TOAST ==================== */

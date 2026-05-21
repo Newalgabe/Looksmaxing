@@ -341,140 +341,197 @@
               </div>
 
               <div class="actions-grid">
-                <button class="action-card" id="act-work">
-                  <div class="action-icon">💼</div>
-                  <div class="action-details">
-                    <h4>Work & Grind</h4>
-                    <p class="desc">Earn money, lose 2 AP. Mental health penalty.</p>
-                    <span class="cost text-green">-$2 AP / +$1,500 cash</span>
+
+                <div class="action-category">
+                  <button class="category-header" data-category="physical">
+                    <span class="category-name">PHYSICAL</span>
+                    <span class="category-arrow">▼</span>
+                  </button>
+                  <div class="category-content" id="cat-physical">
+                    <button class="action-card" id="act-gym">
+                      <div class="action-icon">🏋️</div>
+                      <div class="action-details">
+                        <h4>Gym Maxxing</h4>
+                        <p class="desc">Lift weights to build your frame & improve symmetry.</p>
+                        <span class="cost text-magenta">-$100 cash / -$2 AP</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-gym-membership">
+                      <div class="action-icon">🏪</div>
+                      <div class="action-details">
+                        <h4>Gym Membership</h4>
+                        <p class="desc">Passive frame gains each year + cheaper gym sessions.</p>
+                        <span class="cost text-yellow">-$500 cash one-time</span>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                </div>
 
-                <button class="action-card" id="act-gym">
-                  <div class="action-icon">🏋️</div>
-                  <div class="action-details">
-                    <h4>Gym Maxxing</h4>
-                    <p class="desc">Lift weights to build your frame & improve symmetry.</p>
-                    <span class="cost text-magenta">-$100 cash / -$2 AP</span>
+                <div class="action-category">
+                  <button class="category-header" data-category="grooming">
+                    <span class="category-name">GROOMING</span>
+                    <span class="category-arrow">▼</span>
+                  </button>
+                  <div class="category-content" id="cat-grooming">
+                    <button class="action-card" id="act-skincare">
+                      <div class="action-icon">🧴</div>
+                      <div class="action-details">
+                        <h4>Skincare Regimen</h4>
+                        <p class="desc">Cleanse, moisturize, exfoliate to fix skin quality.</p>
+                        <span class="cost text-cyan">-$50 cash / -$1 AP</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-styling">
+                      <div class="action-icon">💇</div>
+                      <div class="action-details">
+                        <h4>Styling & Barber</h4>
+                        <p class="desc">Get a trendy haircut and fashion overhaul.</p>
+                        <span class="cost text-yellow">-$150 cash / -$1 AP</span>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                </div>
 
-                <button class="action-card" id="act-gym-membership">
-                  <div class="action-icon">🏪</div>
-                  <div class="action-details">
-                    <h4>Gym Membership</h4>
-                    <p class="desc">Passive frame gains each year + cheaper gym sessions.</p>
-                    <span class="cost text-yellow">-$500 cash one-time</span>
+                <div class="action-category">
+                  <button class="category-header" data-category="content">
+                    <span class="category-name">CONTENT</span>
+                    <span class="category-arrow">▼</span>
+                  </button>
+                  <div class="category-content" id="cat-content">
+                    <button class="action-card" id="act-tiktok">
+                      <div class="action-icon">🤳</div>
+                      <div class="action-details">
+                        <h4>TikTok Maxxing</h4>
+                        <p class="desc">Post content to gain followers, cash, and unlocks.</p>
+                        <span class="cost text-magenta">-$100 cash / -$2 AP</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-livestream">
+                      <div class="action-icon">🔴</div>
+                      <div class="action-details">
+                        <h4>Go Live</h4>
+                        <p class="desc">Stream your looksmaxxing journey in real-time.</p>
+                        <span class="cost text-magenta">-$50 cash / -$1 AP (100+ followers)</span>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                </div>
 
-                <button class="action-card" id="act-skincare">
-                  <div class="action-icon">🧴</div>
-                  <div class="action-details">
-                    <h4>Skincare Regimen</h4>
-                    <p class="desc">Cleanse, moisturize, exfoliate to fix skin quality.</p>
-                    <span class="cost text-cyan">-$50 cash / -$1 AP</span>
+                <div class="action-category">
+                  <button class="category-header" data-category="career">
+                    <span class="category-name">CAREER</span>
+                    <span class="category-arrow">▼</span>
+                  </button>
+                  <div class="category-content" id="cat-career">
+                    <button class="action-card" id="act-work">
+                      <div class="action-icon">💼</div>
+                      <div class="action-details">
+                        <h4>Work & Grind</h4>
+                        <p class="desc">Earn money, lose 2 AP. Mental health penalty.</p>
+                        <span class="cost text-green">-$2 AP / +$1,500 cash</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-promotion">
+                      <div class="action-icon">📈</div>
+                      <div class="action-details">
+                        <h4>Seek Promotion</h4>
+                        <p class="desc">Network and climb the corporate ladder.</p>
+                        <span class="cost text-cyan">-$2 AP (Requires SMV & Rizz)</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-coach">
+                      <div class="action-icon">🎓</div>
+                      <div class="action-details">
+                        <h4>Coaching</h4>
+                        <p class="desc">Start a coaching biz or coach a student.</p>
+                        <span class="cost text-yellow">SMV 6.0+ / Passive income</span>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                </div>
 
-                <button class="action-card" id="act-styling">
-                  <div class="action-icon">💇</div>
-                  <div class="action-details">
-                    <h4>Styling & Barber</h4>
-                    <p class="desc">Get a trendy haircut and fashion overhaul.</p>
-                    <span class="cost text-yellow">-$150 cash / -$1 AP</span>
+                <div class="action-category">
+                  <button class="category-header" data-category="medical">
+                    <span class="category-name">MEDICAL</span>
+                    <span class="category-arrow">▼</span>
+                  </button>
+                  <div class="category-content" id="cat-medical">
+                    <button class="action-card warning-card" id="act-surgery">
+                      <div class="action-icon">💉</div>
+                      <div class="action-details">
+                        <h4>Risky Surgery</h4>
+                        <p class="desc">Bone shattering / reshaping procedures. Extremely risky.</p>
+                        <span class="cost text-pink">Costs variable (Large Cash Sum)</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-substances">
+                      <div class="action-icon">💊</div>
+                      <div class="action-details">
+                        <h4>Substance Shop</h4>
+                        <p class="desc">Buy performance enhancers (risky).</p>
+                        <span class="cost text-pink">Variable cost & risk</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-rehab" style="display:none;">
+                      <div class="action-icon">🏥</div>
+                      <div class="action-details">
+                        <h4>Go to Rehab</h4>
+                        <p class="desc">Detox from substances and reduce addiction.</p>
+                        <span class="cost text-cyan">-$500 cash / -$2 AP</span>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                </div>
 
-                 <button class="action-card" id="act-tiktok">
-                   <div class="action-icon">🤳</div>
-                   <div class="action-details">
-                     <h4>TikTok Maxxing</h4>
-                     <p class="desc">Post content to gain followers, cash, and unlocks.</p>
-                     <span class="cost text-magenta">-$100 cash / -$2 AP</span>
-                   </div>
-                 </button>
-
-                 <button class="action-card" id="act-livestream">
-                   <div class="action-icon">🔴</div>
-                   <div class="action-details">
-                     <h4>Go Live</h4>
-                     <p class="desc">Stream your looksmaxxing journey in real-time. Chat bots donate or roast.</p>
-                     <span class="cost text-magenta">-$50 cash / -$1 AP (100+ followers)</span>
-                   </div>
-                 </button>
-
-                 <button class="action-card" id="act-promotion">
-                  <div class="action-icon">📈</div>
-                  <div class="action-details">
-                    <h4>Seek Promotion</h4>
-                    <p class="desc">Network and climb the corporate ladder.</p>
-                    <span class="cost text-cyan">-$2 AP (Requires SMV & Rizz)</span>
+                <div class="action-category">
+                  <button class="category-header" data-category="lifestyle">
+                    <span class="category-name">LIFESTYLE</span>
+                    <span class="category-arrow">▼</span>
+                  </button>
+                  <div class="category-content" id="cat-lifestyle">
+                    <button class="action-card" id="act-travel">
+                      <div class="action-icon">✈️</div>
+                      <div class="action-details">
+                        <h4>Travel</h4>
+                        <p class="desc">Visit destinations for buffs or cheaper surgery.</p>
+                        <span class="cost text-cyan">-$1,500-3,000 cash / -$2 AP</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-talents">
+                      <div class="action-icon">⭐</div>
+                      <div class="action-details">
+                        <h4>Talent Tree</h4>
+                        <p class="desc">Spend talent points on permanent perks.</p>
+                        <span class="cost text-yellow">1 Talent Point</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-mirror-game">
+                      <div class="action-icon">🪞</div>
+                      <div class="action-details">
+                        <h4>Mirror Staring</h4>
+                        <p class="desc">Train mental fortitude. No AP cost.</p>
+                        <span class="cost text-cyan">Free action</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-socialize" style="display:none;">
+                      <div class="action-icon">🗣️</div>
+                      <div class="action-details">
+                        <h4>Socialize</h4>
+                        <p class="desc">Go out, meet people, build charisma.</p>
+                        <span class="cost text-cyan">-$50 cash / -1 AP</span>
+                      </div>
+                    </button>
+                    <button class="action-card" id="act-procreate">
+                      <div class="action-icon">👶</div>
+                      <div class="action-details">
+                        <h4>Start a Family</h4>
+                        <p class="desc">Have a child to continue your lineage.</p>
+                        <span class="cost text-green">-$2,000 (Need partner)</span>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                </div>
 
-                 <button class="action-card" id="act-substances">
-                  <div class="action-icon">💊</div>
-                  <div class="action-details">
-                    <h4>Substance Shop</h4>
-                    <p class="desc">Buy performance enhancers (risky).</p>
-                    <span class="cost text-pink">Variable cost & risk</span>
-                  </div>
-                </button>
-
-                 <button class="action-card" id="act-talents">
-                  <div class="action-icon">⭐</div>
-                  <div class="action-details">
-                    <h4>Talent Tree</h4>
-                    <p class="desc">Spend talent points on permanent perks.</p>
-                    <span class="cost text-yellow">1 Talent Point</span>
-                  </div>
-                </button>
-
-                 <button class="action-card warning-card" id="act-surgery">
-                  <div class="action-icon">💉</div>
-                  <div class="action-details">
-                    <h4>Risky Surgery</h4>
-                    <p class="desc">Bone shattering / reshaping procedures. Extremely risky.</p>
-                    <span class="cost text-pink">Costs variable (Large Cash Sum)</span>
-                  </div>
-                </button>
-
-                 <button class="action-card" id="act-procreate">
-                  <div class="action-icon">👶</div>
-                  <div class="action-details">
-                    <h4>Start a Family</h4>
-                    <p class="desc">Have a child to continue your lineage.</p>
-                    <span class="cost text-green">-$2,000 (Need partner)</span>
-                  </div>
-                </button>
-
-                 <button class="action-card" id="act-rehab" style="display:none;">
-                  <div class="action-icon">🏥</div>
-                  <div class="action-details">
-                    <h4>Go to Rehab</h4>
-                    <p class="desc">Detox from substances and reduce addiction.</p>
-                    <span class="cost text-cyan">-$500 cash / -$2 AP</span>
-                  </div>
-                </button>
-
-                 <button class="action-card" id="act-socialize" style="display:none;">
-                  <div class="action-icon">🗣️</div>
-                  <div class="action-details">
-                    <h4>Socialize</h4>
-                    <p class="desc">Go out, meet people, build charisma.</p>
-                    <span class="cost text-cyan">-$50 cash / -1 AP</span>
-                  </div>
-                </button>
-
-                 <button class="action-card" id="act-mirror-game">
-                  <div class="action-icon">🪞</div>
-                  <div class="action-details">
-                    <h4>Mirror Staring</h4>
-                    <p class="desc">Train mental fortitude. No AP cost.</p>
-                    <span class="cost text-cyan">Free action</span>
-                  </div>
-                </button>
               </div>
 
               <!-- Surgery Modal / Details overlay (hidden by default) -->
@@ -928,6 +985,40 @@
           </div>
           <button class="btn primary-btn" id="btn-live-close" style="width:100%;">END STREAM</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Travel Modal -->
+    <div class="modal-overlay hidden" id="travel-modal">
+      <div class="event-modal-content tiktok-modal-content">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">✈️</span>
+          <h3>GLOBAL DESTINATIONS</h3>
+        </div>
+        <p class="event-desc">Travel to destinations for passive stat buffs or surgery discounts. Buffs last 2 years and apply each year automatically.</p>
+        <div class="travel-dest-list" id="travel-dest-list">
+          <!-- populated by js -->
+        </div>
+        <div id="travel-active-buffs" class="travel-active-buffs">
+          <!-- populated by js -->
+        </div>
+        <button class="btn secondary-btn" id="btn-travel-close" style="margin-top:10px;width:100%;">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Coach Modal -->
+    <div class="modal-overlay hidden" id="coach-modal">
+      <div class="event-modal-content tiktok-modal-content">
+        <div class="event-glow-border"></div>
+        <div class="event-header">
+          <span class="event-icon">🎓</span>
+          <h3>COACHING EMPIRE</h3>
+        </div>
+        <div id="coach-content">
+          <!-- populated by js -->
+        </div>
+        <button class="btn secondary-btn" id="btn-coach-close" style="margin-top:10px;width:100%;">CLOSE</button>
       </div>
     </div>
 
