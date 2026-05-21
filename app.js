@@ -1291,13 +1291,13 @@ function updateDashboard() {
   // Update Soft Meters
   // Skin
   const skinPct = game.skin;
-  barSkin.style.transform = `scaleX(${skinPct / 100})`;
+  barSkin.style.width = `${skinPct}%`;
   txtSkin.textContent = skinPct < 30 ? 'Cystic Acne' : skinPct < 60 ? 'Blotchy' : skinPct < 90 ? 'Clear' : 'Glowing';
   
   // Hairline Norwood / Ludwig
   // Bar represents full head = Norwood 1 (100%), Norwood 7 = bald (10%)
   const hairPct = Math.max(10, Math.round(((8 - game.hairline) / 7) * 100));
-  barHairline.style.transform = `scaleX(${hairPct / 100})`;
+  barHairline.style.width = `${hairPct}%`;
   if (game.gender === 'female') {
     lblHairline.textContent = "Hair Volume (Ludwig):";
     txtHairline.textContent = `Ludwig ${game.hairline <= 2 ? 1 : game.hairline <= 5 ? 2 : 3}`;
@@ -1308,22 +1308,22 @@ function updateDashboard() {
 
   // Frame
   const framePct = game.frame;
-  barFrame.style.transform = `scaleX(${framePct / 100})`;
+  barFrame.style.width = `${framePct}%`;
   txtFrame.textContent = framePct < 30 ? 'Narrow' : framePct < 65 ? 'Average' : framePct < 85 ? 'Athletic' : 'Broad/Giga';
 
   // Style
   const stylePct = game.style;
-  barStyle.style.transform = `scaleX(${stylePct / 100})`;
+  barStyle.style.width = `${stylePct}%`;
   txtStyle.textContent = stylePct < 30 ? 'Homeless' : stylePct < 60 ? 'Basic' : stylePct < 80 ? 'Trendy' : 'Dapper';
 
   // Confidence
   const confPct = game.confidence;
-  barConfidence.style.transform = `scaleX(${confPct / 100})`;
+  barConfidence.style.width = `${confPct}%`;
   txtConfidence.textContent = `${confPct}%`;
 
   // Rizz
   const rizzPct = game.rizz;
-  barRizz.style.transform = `scaleX(${rizzPct / 100})`;
+  barRizz.style.width = `${rizzPct}%`;
   txtRizz.textContent = `${rizzPct}/100`;
 
   // Career

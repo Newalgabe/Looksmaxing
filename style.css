@@ -725,10 +725,9 @@ body {
 
 .progress-fill {
   height: 100%;
-  width: 100%;
+  width: 0%;
   border-radius: 3px;
-  transform-origin: left center;
-  transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.3, 1);
+  transition: width 0.3s cubic-bezier(0.1, 0.8, 0.3, 1);
 }
 
 /* Center Panel (Avatar Container) */
