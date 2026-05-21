@@ -17,8 +17,10 @@ An interactive, dark-comedy, turn-based roguelite web game. You are born with ra
 9. **Social Card Battles:** Turn-based battles against 10 opponents. Cards unlocked by your stats. Combo system (Model Look, Sigma Grind, Charisma Cascade, Power Executive). Losing to Impossible difficulty = death.
 10. **Dating App ("swipeMax"):** Swipe profiles, match based on SMV, chat with choices, unlock partners for procreation.
 11. **Mirror Staring Minigame:** Free action — stare without blinking for confidence/rizz rewards up to 30s.
-12. **Interactive Forum Roast:** At run end, see your stats rated on a mock looksmaxing forum with interactive cope replies.
-13. **Death Causes:** Surgery botch (10-40% fatality), steroid overdose, high-addiction overdose, depression suicide (3 years at ≤5 confidence), battle death (Impossible difficulty loss), or natural end at age 50.
+12. **Achievement System:** 24 achievements tracked across runs. View all achievements (locked and unlocked) via the 🏆 button in the left panel. In-game progress bars show how close you are to each locked achievement. Some achievements keep their requirements hidden until unlocked.
+12. **Achievement System:** 24 achievements tracked across runs. View all achievements (locked and unlocked) via the 🏆 button in the left panel. In-game progress bars show how close you are to each locked achievement. Some achievements keep their requirements hidden until unlocked.
+13. **Interactive Forum Roast:** At run end, see your stats rated on a mock looksmaxing forum with interactive cope replies.
+14. **Death Causes:** Surgery botch (10-40% fatality), steroid overdose, high-addiction overdose, depression suicide (3 years at ≤5 confidence), battle death (Impossible difficulty loss), or natural end at age 50.
 
 ---
 
@@ -28,7 +30,7 @@ An interactive, dark-comedy, turn-based roguelite web game. You are born with ra
   - **Permanent Perks:** High Metabolism, Good Donor Area, Rich Uncle, Symmetrical Genes.
   - **Cosmetic Themes:** Stacy Magenta, Obsidian Incel, Beverly Hills Emerald, Turkey Neon.
 - **Genetic Memories Gallery:** Last 10 runs saved with full avatar snapshots.
-- **13 Achievements:** Born, Cash King, GigaChad, Truecel, TikTok Famous, Knife Magnet, Heartbreaker, Ultimate Mogger, CEO Grindset, Natural Beauty, Substance Abuser, Elder, Rizz God.
+- **24 Achievements:** Live progress tracking in a modal overlay (🏆 button in the left panel). Shows all achievements with progress bars, percentages, and unlock status. Some achievements have hidden criteria — hints shown instead of exact requirements.
 - **Leaderboard:** Top 10 scores saved locally.
 - **Save/Load:** 3 save slots with anti-cheat checksums.
 - **Lineage:** Have children who inherit weighted parent stats.
