@@ -1958,27 +1958,62 @@ function renderDatingTab() {
   let screenContent = '';
   
   if (dating.activeChat) {
-    // RENDER CHAT SCREEN
+    // RENDER CHAT / DATE SCREEN
     const chat = dating.activeChat;
     const historyHtml = chat.chatLog.map(c => `
       <div class="chat-bubble ${c.sender}">${c.text}</div>
     `).join('');
 
     let inputHtml = '';
-    if (!chat.resolved) {
-      inputHtml = chat.profile.dialogues.options.map((opt, idx) => `
-        <button class="chat-choice-btn" data-idx="${idx}">${opt.text}</button>
-      `).join('');
+    let catfishWarning = '';
+
+    if (chat.isCatfish) {
+      catfishWarning = `<div style="background:#3a0000;border:1px solid #ff4444;border-radius:4px;padding:6px 10px;margin:4px 0;text-align:center;">
+        <span style="color:#ff4444;font-size:9px;font-weight:700;">⚠️ CATFISH DETECTED</span>
+        <p style="color:#aa6666;font-size:8px;margin-top:2px;">The profile was fake. What do you do?</p>
+      </div>`;
+      if (!chat.resolved) {
+        inputHtml = `
+          <button class="chat-choice-btn catfish-fight-btn" style="flex:1;background:#2a552a;border-color:#50fa7b;">💪 Confront</button>
+          <button class="chat-choice-btn catfish-retreat-btn" style="flex:1;background:#552a2a;border-color:#ff4444;">🏃 Retreat</button>
+        `;
+      } else {
+        inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
+      }
+    } else if (!chat.resolved) {
+      const dateChoices = dating.getDateChoices();
+      if (dateChoices) {
+        inputHtml = dateChoices.choices.map((opt, idx) => `
+          <button class="chat-choice-btn" data-idx="${idx}" style="font-size:8px;padding:5px 6px;">${opt.text}</button>
+        `).join('');
+      } else {
+        inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
+      }
     } else {
       inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
     }
+
+    // Calculate round progress
+    const totalRounds = 3;
+    const currentRound = dating.activeDateRound + 1;
+    const roundBar = !chat.isCatfish && !chat.resolved && chat.chatLog.length > 1
+      ? `<div style="display:flex;gap:4px;justify-content:center;padding:4px 0;">
+          ${Array.from({ length: totalRounds }, (_, i) =>
+            `<div style="width:20px;height:3px;border-radius:2px;${i < dating.dateRoundsCompleted ? 'background:var(--accent-green)' : i === dating.dateRoundsCompleted ? 'background:var(--accent-cyan)' : 'background:#333'}"></div>`
+          ).join('')}
+          <span style="font-size:7px;color:#666;margin-left:4px;">${Math.min(currentRound, totalRounds)}/${totalRounds}</span>
+        </div>`
+      : '';
 
     screenContent = `
       <div class="dating-chat-screen">
         <div class="chat-partner-bar">
           <div class="chat-partner-avatar" style="background: ${chat.profile.avatarColor};"></div>
           <span class="chat-partner-name">${chat.profile.name} (${chat.profile.age})</span>
+          ${chat.isCatfish ? '<span style="color:#ff4444;font-size:8px;margin-left:auto;">⚠️ CATFISH</span>' : ''}
         </div>
+        ${roundBar}
+        ${catfishWarning}
         <div class="chat-history" id="chat-scroller">
           ${historyHtml}
         </div>
@@ -2074,8 +2109,20 @@ function renderDatingTab() {
           renderDatingTab();
           return;
         }
+        if (btn.classList.contains('catfish-fight-btn')) {
+          dating.resolveCatfish(true);
+          renderDatingTab();
+          updateDashboard();
+          return;
+        }
+        if (btn.classList.contains('catfish-retreat-btn')) {
+          dating.resolveCatfish(false);
+          renderDatingTab();
+          updateDashboard();
+          return;
+        }
         const idx = parseInt(btn.getAttribute('data-idx'));
-        dating.chooseChatOption(idx);
+        const res = dating.makeDateChoice(idx);
         renderDatingTab();
         updateDashboard();
       });
