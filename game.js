@@ -229,6 +229,13 @@ export class GameState {
     this.rivalDefeatedCount = 0;
     this.rivalLastMilestone = 0;
 
+    // Quest system
+    this.questStage = 0; // 0=not started, 1-4=in progress, -1=completed
+    this.questCompleted = false;
+    this.questSatDecayReduction = 0;
+    this.questPassiveIncome = 0;
+    this.questIncomeMult = 1;
+
     // Gym membership
     this.hasGymMembership = false;
 
@@ -1243,6 +1250,10 @@ export class GameState {
       relationshipLevel: this.relationshipLevel,
       relationshipSatisfaction: this.relationshipSatisfaction,
       yearsWithPartner: this.yearsWithPartner,
+      questStage: this.questStage, questCompleted: this.questCompleted,
+      questSatDecayReduction: this.questSatDecayReduction,
+      questPassiveIncome: this.questPassiveIncome,
+      questIncomeMult: this.questIncomeMult,
       followers: this.followers,
       hasInfluencerCard: this.hasInfluencerCard, opponentsDefeated: this.opponentsDefeated,
       botchedJaw: this.botchedJaw, botchedHair: this.botchedHair, botchedCanthoplasty: this.botchedCanthoplasty,
@@ -1555,11 +1566,29 @@ export class GameState {
       this.log.push(`Coaching passive income: +$${income}`);
     }
 
+    // Quest reward passive income
+    const questIncome = this.questPassiveIncome || 0;
+    if (questIncome > 0) {
+      this.cash += questIncome;
+      this.log.push(`Quest passive income: +$${questIncome}`);
+    }
+
+    // Quest income multiplier on career/coaching earnings
+    const incomeMult = this.questIncomeMult || 1;
+    if (incomeMult > 1) {
+      const bonus = Math.floor((this.cash - 500) * (incomeMult - 1));
+      if (bonus > 0) {
+        this.cash += bonus;
+        this.log.push(`Power couple income bonus: +$${bonus}`);
+      }
+    }
+
     // Relationship maintenance: satisfaction decay + level bonuses
     if (this.hasDatingPartner) {
       this.yearsWithPartner++;
       // Satisfaction decays slower at higher levels
-      const decay = this.relationshipLevel >= 4 ? 0 : this.relationshipLevel >= 3 ? 2 : this.relationshipLevel >= 2 ? 3 : 5;
+      const baseDecay = this.relationshipLevel >= 4 ? 0 : this.relationshipLevel >= 3 ? 2 : this.relationshipLevel >= 2 ? 3 : 5;
+      const decay = Math.max(0, baseDecay - (this.questSatDecayReduction || 0));
       if (decay > 0) this.relationshipSatisfaction = Math.max(0, this.relationshipSatisfaction - decay);
       // AP cost for maintenance
       if (this.ap >= 1) {

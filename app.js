@@ -2574,6 +2574,11 @@ function renderRelationshipDashboard(container) {
 
     ${levelUpHint ? `<div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:4px;">⬆ ${levelUpHint}</div>` : ''}
 
+    <div class="rel-quest-section">
+      <div class="rel-section-title">📜 PARTNER QUEST</div>
+      ${renderQuestSection(p)}
+    </div>
+
     <div class="rel-interactions">
       <div class="rel-section-title">ACTIVITIES</div>
       ${interactions.length === 0 ? '<div class="rel-no-actions">No activities available (check AP/cash/level)</div>' :
@@ -2620,13 +2625,84 @@ function renderRelationshipDashboard(container) {
       updateDashboard();
     }
   });
+
+  // Quest listeners
+  const startQuestBtn = document.getElementById('btn-start-quest');
+  if (startQuestBtn) {
+    startQuestBtn.addEventListener('click', () => {
+      playSound('click');
+      dating.startQuest();
+      renderDatingTab();
+      updateDashboard();
+    });
+  }
+  dashboard.querySelectorAll('.quest-choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      const idx = parseInt(btn.getAttribute('data-choice'));
+      dating.advanceQuest(idx);
+      renderDatingTab();
+      updateDashboard();
+    });
+  });
+  const cancelQuestBtn = document.getElementById('btn-cancel-quest');
+  if (cancelQuestBtn) {
+    cancelQuestBtn.addEventListener('click', () => {
+      playSound('error');
+      dating.cancelQuest();
+      renderDatingTab();
+      updateDashboard();
+    });
+  }
+}
+
+function renderQuestSection(p) {
+  if (!p.hasDatingPartner || !p.partnerProfile) return '';
+  const chain = dating.getQuestChain();
+  if (!chain) return '';
+
+  // Completed
+  if (p.questCompleted) {
+    return `<div class="rel-quest-complete" style="background:rgba(80,250,123,0.1);border:1px solid rgba(80,250,123,0.3);border-radius:8px;padding:8px;text-align:center;">
+      <div style="color:var(--accent-green);font-size:11px;">🏆 Quest Complete!</div>
+      <div style="font-size:9px;color:var(--text-muted);margin-top:2px;">${chain.reward.desc}</div>
+    </div>`;
+  }
+
+  // In progress
+  if (p.questStage > 0) {
+    const stage = dating.getCurrentQuestStage();
+    if (!stage) return '';
+    return `
+      <div class="rel-quest-active" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:8px;">
+        <div style="font-size:9px;color:var(--accent-purple);font-weight:600;">${chain.name} — Stage ${p.questStage}/${chain.stages.length}</div>
+        <div style="font-size:9px;color:var(--text);margin:4px 0;">${stage.desc(p.partnerProfile.name)}</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${stage.choices.map((c, i) => `
+            <button class="quest-choice-btn" data-choice="${i}" style="font-size:8px;padding:4px 8px;border:1px solid rgba(139,92,246,0.4);border-radius:4px;background:rgba(139,92,246,0.05);color:var(--text);cursor:pointer;">
+              ${c.text}
+            </button>
+          `).join('')}
+          <button id="btn-cancel-quest" style="font-size:7px;padding:2px 6px;border:none;background:none;color:var(--text-muted);cursor:pointer;margin-top:2px;">✕ Cancel quest</button>
+        </div>
+      </div>`;
+  }
+
+  // Not started — show start button
+  return `
+    <div class="rel-quest-start" style="text-align:center;">
+      <button id="btn-start-quest" style="font-size:9px;padding:4px 12px;border:1px solid rgba(139,92,246,0.5);border-radius:4px;background:rgba(139,92,246,0.1);color:var(--accent-purple);cursor:pointer;">
+        📜 Start "${chain.name}"
+      </button>
+      <div style="font-size:7px;color:var(--text-muted);margin-top:2px;">A ${chain.stages.length}-stage quest to deepen your bond</div>
+    </div>`;
 }
 
 function renderCanvasAvatar(profile, size = 80) {
   const seed = encodeURIComponent(profile.name || profile.avatarType || 'default');
   const isMale = profile.gender === 'male';
-  const facialHair = isMale ? '' : '&facialHairProbability=0';
-  const url = `https://api.dicebear.com/9.x/micah/png?seed=${seed}&size=${size * 2}${facialHair}`;
+  const featuresProb = isMale ? '' : '&featuresProbability=0';
+  const url = `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=${size * 2}${featuresProb}`;
   return `<img src="${url}" width="${size}" height="${size}" style="object-fit:cover;display:block;" alt="${profile.name || 'Avatar'}" loading="lazy">`;
 }
 

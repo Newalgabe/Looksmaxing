@@ -699,4 +699,280 @@ export class DatingSimulator {
     this.player.confidence = Math.max(0, this.player.confidence - 20);
     this.logCallback(`💔 You broke up with your partner. -20% Confidence.`, 'error');
   }
+
+  // === QUEST SYSTEM ===
+  static QUEST_CHAINS = {
+    lookist: {
+      name: 'The Mirror',
+      stages: [
+        {
+          title: 'Gym Date',
+          desc: (name) => `${name} wants to hit the gym together. "Let's get that pump!"`,
+          choices: [
+            { text: 'Crush the workout together', satGain: 15, style: 2, skin: 1, resultMsg: 'You both got an insane pump. They love the effort.' },
+            { text: 'Spot them but take it easy', satGain: 5, style: 1, resultMsg: 'You tried. They appreciate you showing up.' },
+            { text: 'Skip — too tired', satGain: -10, confidence: -3, resultMsg: `They're disappointed you didn't prioritize fitness.` }
+          ]
+        },
+        {
+          title: 'The Photoshoot',
+          desc: (name) => `${name} booked a couple's photoshoot. "We'll look flawless!"`,
+          choices: [
+            { text: 'Pose with confidence', satGain: 15, style: 3, confidence: 5, resultMsg: 'The photos turned out amazing. Your confidence shines.' },
+            { text: 'Agree but feel awkward', satGain: 5, resultMsg: 'The photos are mid but at least you showed up.' },
+            { text: 'Refuse — too vain', satGain: -10, style: -2, resultMsg: `${name} is annoyed you didn't support their vision.` }
+          ]
+        },
+        {
+          title: 'Aging Fears',
+          desc: (name) => `${name} confesses: "I'm scared of losing my looks as I get older."`,
+          choices: [
+            { text: 'Reassure them with genuine warmth', satGain: 20, rizz: 3, resultMsg: 'Your words truly comforted them. They feel secure.' },
+            { text: 'Suggest skincare routines', satGain: 8, skin: 2, resultMsg: 'Practical advice. They appreciate the tips.' },
+            { text: 'Brush it off', satGain: -5, confidence: -3, resultMsg: 'They felt dismissed and shut down.' }
+          ]
+        },
+        {
+          title: 'Going Public',
+          desc: (name) => `${name} wants to post your relationship on social media. "You in?"`,
+          choices: [
+            { text: 'Post a cute couple photo', satGain: 25, confidence: 5, style: 2, resultMsg: 'The likes pour in. You both feel validated.' },
+            { text: 'Let them post, stay low-key', satGain: 10, resultMsg: 'They appreciate the compromise.' },
+            { text: 'Say no — keep it private', satGain: -15, resultMsg: `${name} feels like you're hiding them.` }
+          ]
+        }
+      ],
+      reward: { desc: 'You\'ve embraced the spotlight together. Permanent +10 Style, +10 Skin.', style: 10, skin: 10 }
+    },
+    egirl: {
+      name: 'The Real Connection',
+      stages: [
+        {
+          title: 'Game Night',
+          desc: (name) => `${name} challenges you to a fighting game. "Hope you're ready to lose!"`,
+          choices: [
+            { text: 'Play competitively and have fun', satGain: 15, rizz: 2, resultMsg: 'Epic battles! You bonded over the competition.' },
+            { text: 'Let them win', satGain: 8, resultMsg: 'They saw through it but thought it was sweet.' },
+            { text: 'Refuse — games are childish', satGain: -10, confidence: -2, resultMsg: 'They feel judged for their hobbies.' }
+          ]
+        },
+        {
+          title: 'Playlist Share',
+          desc: (name) => `${name} made you a playlist. "Each song means something. Listen with me."`,
+          choices: [
+            { text: 'Listen intently and discuss', satGain: 20, rizz: 3, resultMsg: 'You connected on a deep emotional level through music.' },
+            { text: 'Put it on as background', satGain: 5, resultMsg: 'They noticed you weren\'t really listening.' },
+            { text: 'Say you\'ll listen later', satGain: -8, resultMsg: 'You forgot. They noticed.' }
+          ]
+        },
+        {
+          title: 'Opening Up',
+          desc: (name) => `${name} gets vulnerable. "I don't talk about this with anyone."`,
+          choices: [
+            { text: 'Hold them and listen', satGain: 25, confidence: 5, resultMsg: 'They feel truly seen and safe with you.' },
+            { text: 'Share your own struggles', satGain: 15, rizz: 3, resultMsg: 'Mutual vulnerability strengthens your bond.' },
+            { text: 'Change the subject', satGain: -15, resultMsg: 'They shut down. Trust takes a hit.' }
+          ]
+        },
+        {
+          title: 'The Real Meet',
+          desc: (name) => `${name} wants to take you somewhere meaningful. "This place is special to me."`,
+          choices: [
+            { text: 'Go enthusiastically', satGain: 30, rizz: 5, confidence: 5, resultMsg: 'An unforgettable day. You\'ve never felt closer.' },
+            { text: 'Go but keep guard up', satGain: 10, resultMsg: 'It was nice but they wanted more from you.' },
+            { text: 'Cancel', satGain: -20, resultMsg: `They're deeply hurt you didn't come.` }
+          ]
+        }
+      ],
+      reward: { desc: 'You\'ve earned their deepest trust. Permanent +15 Rizz.', rizz: 15 }
+    },
+    normie: {
+      name: 'Soulmates',
+      stages: [
+        {
+          title: 'Home Cooking',
+          desc: (name) => `${name} wants to cook dinner together. "I make a mean pasta!"`,
+          choices: [
+            { text: 'Cook together and laugh', satGain: 15, rizz: 2, resultMsg: 'The kitchen is a mess but your hearts are full.' },
+            { text: 'Order takeout instead', satGain: 5, resultMsg: 'Easy but less memorable.' },
+            { text: 'Let them cook alone', satGain: -5, confidence: -2, resultMsg: 'They feel like they\'re putting in all the effort.' }
+          ]
+        },
+        {
+          title: 'Hobby Time',
+          desc: (name) => `${name} wants to show you their favorite hobby.`,
+          choices: [
+            { text: 'Give it an honest try', satGain: 15, style: 2, resultMsg: 'You actually enjoyed it! They\'re thrilled.' },
+            { text: 'Watch and cheer them on', satGain: 8, resultMsg: 'Your support means a lot to them.' },
+            { text: 'Not interested', satGain: -5, resultMsg: 'They feel rejected.' }
+          ]
+        },
+        {
+          title: 'Meet the Friends',
+          desc: (name) => `${name}'s friends want to meet you. "They're excited!"`,
+          choices: [
+            { text: 'Be charming and sociable', satGain: 20, rizz: 3, confidence: 3, resultMsg: 'The friends love you. Your partner is beaming.' },
+            { text: 'Be polite but quiet', satGain: 8, resultMsg: 'Acceptable but they hoped you\'d engage more.' },
+            { text: 'Cancel', satGain: -10, confidence: -3, resultMsg: 'They\'re embarrassed having to cancel on friends.' }
+          ]
+        },
+        {
+          title: 'The Surprise',
+          desc: (name) => `${name} planned a surprise for you. They seem nervous.`,
+          choices: [
+            { text: 'Embrace it with open arms', satGain: 30, confidence: 5, rizz: 3, resultMsg: 'The surprise was perfect. You\'re both overjoyed.' },
+            { text: 'Appreciate it but overwhelmed', satGain: 10, resultMsg: 'Sweet, but your reaction was muted.' },
+            { text: 'Anxiety', satGain: -10, resultMsg: 'They feel their effort went unappreciated.' }
+          ]
+        }
+      ],
+      reward: { desc: 'You\'ve built a rock-solid foundation. Satisfaction decay reduced by 1/year permanently.', satDecayReduction: 1 }
+    },
+    gold_digger: {
+      name: 'Trust & Treasure',
+      stages: [
+        {
+          title: 'Money Talk',
+          desc: (name) => `${name} asks about your financial goals. "Where do you see yourself?"`,
+          choices: [
+            { text: 'Share ambitious plans', satGain: 15, rizz: 2, confidence: 2, resultMsg: 'They\'re impressed by your drive.' },
+            { text: 'Be humble but honest', satGain: 8, resultMsg: 'Honest but not very exciting to them.' },
+            { text: 'Deflect', satGain: -5, resultMsg: 'They sense you\'re insecure about money.' }
+          ]
+        },
+        {
+          title: 'Shopping Spree',
+          desc: (name) => `${name} wants to take you shopping. "My treat. Pick something nice."`,
+          choices: [
+            { text: 'Accept graciously, pick one item', satGain: 15, style: 3, resultMsg: 'Classy. They appreciate your restraint.' },
+            { text: 'Go all out', satGain: 5, cash: 500, style: 5, resultMsg: 'You got some nice stuff, but they noticed the greed.' },
+            { text: 'Refuse — don\'t owe them', satGain: -8, confidence: 3, resultMsg: 'They respect your independence but feel rejected.' }
+          ]
+        },
+        {
+          title: 'The Prenup',
+          desc: (name) => `${name} brings up a prenuptial agreement. "It's just practical."`,
+          choices: [
+            { text: 'Sign without hesitation', satGain: 25, confidence: 5, resultMsg: 'They\'re relieved and touched by your trust.' },
+            { text: 'Read carefully, then sign', satGain: 15, rizz: 2, resultMsg: 'Responsible. They respect your thoroughness.' },
+            { text: 'Refuse', satGain: -20, resultMsg: 'This becomes a major issue between you.' }
+          ]
+        },
+        {
+          title: 'The Secret Vault',
+          desc: (name) => `${name} reveals their true wealth. "I needed to trust you first."`,
+          choices: [
+            { text: 'Appreciate the trust', satGain: 30, cash: 2500, resultMsg: `They're overjoyed you love them for who they are. And you get a generous gift.` },
+            { text: 'Offer to help manage it', satGain: 15, rizz: 5, resultMsg: 'You discuss future investments together.' },
+            { text: 'Act entitled', satGain: -25, cash: -1000, resultMsg: 'They withdraw. This was a test — and you failed.' }
+          ]
+        }
+      ],
+      reward: { desc: 'You\'ve earned their trust completely. +$1,000 passive income per year.', passiveIncome: 1000 }
+    },
+    corporate: {
+      name: 'Power Couple',
+      stages: [
+        {
+          title: 'The Gala',
+          desc: (name) => `${name} scored invites to a networking gala. "This could be huge!"`,
+          choices: [
+            { text: 'Network like a pro', satGain: 15, rizz: 3, confidence: 3, resultMsg: 'You made connections. They\'re proud to have you by their side.' },
+            { text: 'Stick by their side', satGain: 10, resultMsg: 'Solid support but you didn\'t make your own mark.' },
+            { text: 'Skip it', satGain: -8, confidence: -2, resultMsg: 'They went alone and felt embarrassed explaining your absence.' }
+          ]
+        },
+        {
+          title: 'The Side Hustle',
+          desc: (name) => `${name} wants to start a joint venture. "We'd make a great team."`,
+          choices: [
+            { text: 'Invest $2,000 and dive in', satGain: 20, cash: -2000, rizz: 3, resultMsg: 'The business is off to a promising start!' },
+            { text: 'Support but stay hands-off', satGain: 8, cash: -500, resultMsg: 'Small investment, minimal involvement.' },
+            { text: 'Too risky', satGain: -10, resultMsg: 'They feel you don\'t believe in them.' }
+          ]
+        },
+        {
+          title: 'The Relocation Offer',
+          desc: (name) => `${name} got a dream job offer... in another city. "Come with me?"`,
+          choices: [
+            { text: 'Support unconditionally', satGain: 25, confidence: 5, resultMsg: 'Your unwavering support means everything.' },
+            { text: 'Negotiate a timeline', satGain: 15, rizz: 3, resultMsg: 'A mature compromise. You both feel heard.' },
+            { text: 'Say no', satGain: -20, resultMsg: 'This creates a rift that may not heal.' }
+          ]
+        },
+        {
+          title: 'The Corner Office',
+          desc: (name) => `${name} got the promotion. But it means twice the hours. "Will you wait?"`,
+          choices: [
+            { text: 'Weather it together', satGain: 30, rizz: 5, confidence: 5, resultMsg: 'You\'re a true partner. They promise to make it up to you.' },
+            { text: 'Support with boundaries', satGain: 15, style: 2, resultMsg: 'Healthy balance. You\'ll make it work.' },
+            { text: 'Complain about the hours', satGain: -15, resultMsg: 'They feel torn between you and their dream.' }
+          ]
+        }
+      ],
+      reward: { desc: 'You\'re an unstoppable power couple. Permanent +25% income on all earnings.', incomeMult: 1.25 }
+    }
+  };
+
+  getQuestChain() {
+    if (!this.player.hasDatingPartner || !this.player.partnerProfile) return null;
+    const archetype = this.player.partnerProfile.archetype || 'normie';
+    return DatingSimulator.QUEST_CHAINS[archetype] || null;
+  }
+
+  startQuest() {
+    if (this.player.questStage !== 0) return { status: 'error', msg: 'Quest already in progress or completed.' };
+    if (!this.player.hasDatingPartner) return { status: 'error', msg: 'No partner.' };
+    this.player.questStage = 1;
+    this.logCallback(`📜 Quest started: ${this.getQuestChain().name}`, 'success');
+    return { status: 'started' };
+  }
+
+  getCurrentQuestStage() {
+    const chain = this.getQuestChain();
+    if (!chain || this.player.questStage < 1 || this.player.questStage > chain.stages.length) return null;
+    return chain.stages[this.player.questStage - 1];
+  }
+
+  advanceQuest(choiceIndex) {
+    const chain = this.getQuestChain();
+    const stage = this.getCurrentQuestStage();
+    if (!chain || !stage) return { status: 'error', msg: 'No active quest.' };
+    if (choiceIndex < 0 || choiceIndex >= stage.choices.length) return { status: 'error', msg: 'Invalid choice.' };
+
+    const choice = stage.choices[choiceIndex];
+    const p = this.player;
+
+    if (choice.satGain) p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + choice.satGain));
+    if (choice.cash) p.cash = Math.max(0, p.cash + choice.cash);
+    if (choice.confidence) p.confidence = Math.min(100, Math.max(0, p.confidence + choice.confidence));
+    if (choice.style) p.style = Math.min(100, p.style + choice.style);
+    if (choice.skin) p.skin = Math.min(100, p.skin + choice.skin);
+    if (choice.rizz) p.rizz = Math.min(100, p.rizz + choice.rizz);
+
+    if (p.questStage >= chain.stages.length) {
+      p.questStage = -1;
+      p.questCompleted = true;
+      const reward = chain.reward;
+      if (reward.style) p.style = Math.min(100, p.style + reward.style);
+      if (reward.skin) p.skin = Math.min(100, p.skin + reward.skin);
+      if (reward.rizz) p.rizz = Math.min(100, p.rizz + reward.rizz);
+      if (reward.passiveIncome) p.questPassiveIncome = (p.questPassiveIncome || 0) + reward.passiveIncome;
+      if (reward.incomeMult) p.questIncomeMult = (p.questIncomeMult || 1) * reward.incomeMult;
+      if (reward.satDecayReduction) p.questSatDecayReduction = (p.questSatDecayReduction || 0) + reward.satDecayReduction;
+      p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 15);
+      this.logCallback(`🏆 Quest complete! ${reward.desc}`, 'success');
+      return { status: 'completed', reward };
+    }
+
+    p.questStage++;
+    this.logCallback(`📖 ${choice.resultMsg || 'Quest continues...'}`, 'success');
+    return { status: 'advanced', stage: p.questStage };
+  }
+
+  cancelQuest() {
+    if (this.player.questStage <= 0) return;
+    this.player.questStage = 0;
+    this.logCallback('Quest cancelled.', 'error');
+  }
 }
