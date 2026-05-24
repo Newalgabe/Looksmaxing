@@ -1997,8 +1997,15 @@ function triggerGameOver(reasonText) {
   }
   endTitleEl.textContent = ending;
 
-  // Calculate Cope Tokens earned: base SMV + achievements + botched surgeries
-  const tokensEarned = Math.round(game.smv * 15 + game.surgeryBotchedCount * 10 + game.achievementsUnlocked.length * 5);
+  // Calculate Cope Tokens earned: SMV + new achievements + milestones
+  const tokensEarned = Math.round(
+    game.smv * 15 +
+    achs.length * 5 +
+    (game.hasDatingPartner ? 15 : 0) +
+    (game.careerTier === 'ceo' || game.careerTier === 'executive' ? 20 : 0) +
+    (game.followers >= 5000 ? 15 : 0) +
+    (game.hasProcreated ? 20 : 0)
+  );
   copeTokens += tokensEarned;
   _saveCopeTokens(copeTokens);
 
@@ -2311,6 +2318,18 @@ function renderDatingTab() {
     return;
   }
 
+  // If player has a partner, show relationship dashboard instead of swipe
+  if (game.hasDatingPartner && !dating.activeChat) {
+    if (!game.partnerProfile && game.partnerName) {
+      // Reconstruct minimal profile for old saves
+      game.partnerProfile = { name: game.partnerName, age: '?', archetype: 'normie', bio: 'Your partner.', avatarColor: '#50fa7b' };
+    }
+    if (game.partnerProfile) {
+      renderRelationshipDashboard(container);
+      return;
+    }
+  }
+
   // Create Phone Frame
   const phoneFrame = document.createElement('div');
   phoneFrame.className = 'dating-phone-frame';
@@ -2519,6 +2538,201 @@ function renderDatingTab() {
   }
 }
 
+// === RELATIONSHIP DASHBOARD ===
+function renderRelationshipDashboard(container) {
+  const p = game;
+  const profile = p.partnerProfile;
+  if (!profile) return;
+
+  const satPct = p.relationshipSatisfaction;
+  const lvlNames = { 1: '💕 Dating', 2: '💗 Exclusive', 3: '💍 Engaged', 4: '💒 Married' };
+  const lvlName = lvlNames[p.relationshipLevel] || 'Dating';
+  const levelUpHint = p.relationshipLevel === 1 ? `Needs: 2+ yrs together & 60%+ satisfaction` :
+                      p.relationshipLevel === 2 ? `Needs: 3+ yrs together & 80%+ satisfaction` :
+                      p.relationshipLevel === 3 ? `Propose with a ring ($5,000)` : '';
+
+  const interactions = dating.getAvailableInteractions();
+
+  const dashboard = document.createElement('div');
+  dashboard.className = 'relationship-dashboard';
+  dashboard.innerHTML = `
+    <div class="rel-header">
+      <div class="rel-avatar-box">
+        ${renderPartnerAvatarSVG(profile)}
+      </div>
+      <div class="rel-info">
+        <div class="rel-name">${profile.name} <span class="rel-age">(${profile.age})</span></div>
+        <div class="rel-level-badge">${lvlName}</div>
+        <div class="rel-years">${p.yearsWithPartner} ${p.yearsWithPartner === 1 ? 'year' : 'years'} together</div>
+      </div>
+    </div>
+
+    <div class="rel-bio">${profile.bio}</div>
+
+    <div class="rel-stat-section">
+      <div class="rel-stat-label">
+        <span>❤️ Satisfaction</span>
+        <span class="${satPct >= 60 ? 'text-green' : satPct >= 30 ? 'text-yellow' : 'text-pink'}">${satPct}%</span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-fill ${satPct >= 60 ? 'bg-green' : satPct >= 30 ? 'bg-yellow' : 'bg-pink'}" style="width:${satPct}%;"></div>
+      </div>
+    </div>
+
+    ${levelUpHint ? `<div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:4px;">⬆ ${levelUpHint}</div>` : ''}
+
+    <div class="rel-interactions">
+      <div class="rel-section-title">ACTIVITIES</div>
+      ${interactions.length === 0 ? '<div class="rel-no-actions">No activities available (check AP/cash/level)</div>' :
+        interactions.map(i => `
+          <button class="rel-action-btn" data-action="${i.id}">
+            <span class="rel-action-label">${i.label}</span>
+            <span class="rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
+            <span class="rel-action-sat">+${i.satGain} ❤️</span>
+          </button>
+        `).join('')}
+    </div>
+
+    <div class="rel-footer">
+      <button class="btn secondary-btn" id="btn-breakup" style="width:100%;font-size:10px;border-color:#ff4444;color:#ff4444;">💔 BREAK UP</button>
+    </div>
+  `;
+
+  container.appendChild(dashboard);
+
+  // Interaction listeners
+  dashboard.querySelectorAll('.rel-action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-action');
+      playSound('click');
+      const result = dating.doInteraction(id);
+      if (result.status === 'error') {
+        logToConsole(result.msg, 'error');
+      } else if (result.status === 'married') {
+        renderDatingTab();
+        updateDashboard();
+      } else {
+        renderDatingTab();
+        updateDashboard();
+      }
+    });
+  });
+
+  // Breakup listener
+  document.getElementById('btn-breakup').addEventListener('click', () => {
+    if (confirm(`Are you sure you want to break up with ${profile.name}?`)) {
+      playSound('error');
+      dating.breakUp();
+      renderDatingTab();
+      updateDashboard();
+    }
+  });
+}
+
+function renderPartnerAvatarSVG(profile) {
+  const color = profile.avatarColor || '#ff75b5';
+  const type = profile.archetype || 'normie';
+  const name = profile.name || '?';
+  // Archetype-specific SVG avatars
+  const svgs = {
+    lookist: `
+      <svg viewBox="0 0 100 100">
+        <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -40)}"/></linearGradient></defs>
+        <circle cx="50" cy="38" r="32" fill="url(#lg)"/>
+        <path d="M18 90 Q50 55 82 90 Z" fill="url(#lg)"/>
+        <!-- Sharp jawline -->
+        <polygon points="28,70 50,82 72,70" fill="${adjustColor(color, -20)}" opacity="0.5"/>
+        <!-- Eyes -->
+        <ellipse cx="35" cy="35" rx="5" ry="3" fill="#fff" opacity="0.9"/>
+        <ellipse cx="65" cy="35" rx="5" ry="3" fill="#fff" opacity="0.9"/>
+        <circle cx="35" cy="35" r="2" fill="#111"/>
+        <circle cx="65" cy="35" r="2" fill="#111"/>
+        <!-- Smirk -->
+        <path d="M38 50 Q50 58 62 50" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
+        <!-- Crown for high standards -->
+        <polygon points="30,18 40,8 50,15 60,8 70,18" fill="#ffd700" opacity="0.8"/>
+      </svg>`,
+    egirl: `
+      <svg viewBox="0 0 100 100">
+        <defs><linearGradient id="eg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -30)}"/></linearGradient></defs>
+        <circle cx="50" cy="38" r="30" fill="url(#eg)"/>
+        <path d="M20 88 Q50 58 80 88 Z" fill="url(#eg)"/>
+        <!-- Alt hair -->
+        <path d="M18 25 Q30 10 50 15 Q70 10 82 25" fill="${adjustColor(color, -50)}" opacity="0.7"/>
+        <!-- Dark lipstick -->
+        <ellipse cx="50" cy="52" rx="8" ry="4" fill="#2d0a1e" opacity="0.8"/>
+        <!-- Piercing -->
+        <circle cx="40" cy="55" r="2" fill="#c0c0c0"/>
+        <circle cx="60" cy="55" r="2" fill="#c0c0c0"/>
+        <!-- Eyes -->
+        <ellipse cx="35" cy="35" rx="5" ry="4" fill="#fff"/>
+        <ellipse cx="65" cy="35" rx="5" ry="4" fill="#fff"/>
+        <circle cx="35" cy="35" r="2.5" fill="#8b0000"/>
+        <circle cx="65" cy="35" r="2.5" fill="#8b0000"/>
+        <!-- Heavy eyeliner -->
+        <path d="M28 33 Q35 30 42 33" stroke="#111" stroke-width="2" fill="none"/>
+        <path d="M58 33 Q65 30 72 33" stroke="#111" stroke-width="2" fill="none"/>
+      </svg>`,
+    gold_digger: `
+      <svg viewBox="0 0 100 100">
+        <defs><linearGradient id="gd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -20)}"/></linearGradient></defs>
+        <circle cx="50" cy="38" r="30" fill="url(#gd)"/>
+        <path d="M22 90 Q50 60 78 90 Z" fill="url(#gd)"/>
+        <!-- Money sunglasses -->
+        <rect x="28" y="33" width="18" height="10" rx="3" fill="#111" opacity="0.8"/>
+        <rect x="54" y="33" width="18" height="10" rx="3" fill="#111" opacity="0.8"/>
+        <path d="M46 38 L54 38" stroke="#111" stroke-width="2"/>
+        <!-- Smile with gold tooth -->
+        <path d="M38 52 Q50 60 62 52" stroke="#fff" stroke-width="2" fill="none"/>
+        <rect x="48" y="52" width="4" height="5" fill="#ffd700"/>
+        <!-- Dollar signs -->
+        <text x="15" y="30" font-size="14" fill="#50fa7b" opacity="0.6">$</text>
+        <text x="75" y="25" font-size="12" fill="#50fa7b" opacity="0.6">$</text>
+      </svg>`,
+    normie: `
+      <svg viewBox="0 0 100 100">
+        <defs><linearGradient id="nm" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -20)}"/></linearGradient></defs>
+        <circle cx="50" cy="40" r="28" fill="url(#nm)"/>
+        <path d="M22 92 Q50 65 78 92 Z" fill="url(#nm)"/>
+        <!-- Friendly eyes -->
+        <ellipse cx="35" cy="38" rx="5" ry="5" fill="#fff"/>
+        <ellipse cx="65" cy="38" rx="5" ry="5" fill="#fff"/>
+        <circle cx="37" cy="38" r="2.5" fill="#333"/>
+        <circle cx="63" cy="38" r="2.5" fill="#333"/>
+        <!-- Big smile -->
+        <path d="M35 52 Q50 64 65 52" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <!-- Glasses -->
+        <circle cx="35" cy="38" r="10" stroke="#555" stroke-width="1.5" fill="none"/>
+        <circle cx="65" cy="38" r="10" stroke="#555" stroke-width="1.5" fill="none"/>
+        <path d="M45 38 L55 38" stroke="#555" stroke-width="1.5"/>
+      </svg>`
+  };
+
+  // Fallback for corporate/other types
+  const generic = `
+    <svg viewBox="0 0 100 100">
+      <circle cx="50" cy="40" r="30" fill="${color}" opacity="0.8"/>
+      <path d="M20 90 Q50 65 80 90 Z" fill="${color}" opacity="0.9"/>
+      <ellipse cx="35" cy="38" rx="5" ry="3" fill="#fff" opacity="0.8"/>
+      <ellipse cx="65" cy="38" rx="5" ry="3" fill="#fff" opacity="0.8"/>
+      <circle cx="35" cy="38" r="2" fill="#111"/>
+      <circle cx="65" cy="38" r="2" fill="#111"/>
+      <path d="M38 52 Q50 60 62 52" stroke="#fff" stroke-width="2" fill="none" opacity="0.6"/>
+    </svg>`;
+
+  return svgs[type] || generic;
+}
+
+function adjustColor(hex, amount) {
+  try {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const r = Math.min(255, Math.max(0, (num >> 16) + amount));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
+    return `rgb(${r},${g},${b})`;
+  } catch(e) { return hex; }
+}
+
 // --- Render Encounters Tab (Card Battle) ---
 function renderSocialTab() {
   const container = document.getElementById('social-encounter-view');
@@ -2565,11 +2779,7 @@ function renderBattleMenu(container) {
 
     if (!e.isLocked && !isDefeated) {
       card.addEventListener('click', () => {
-        showCutscene('battle');
-        playSound('click');
-        battle.startBattle(e.id);
-        switchBGM();
-        renderSocialTab();
+        showEncounterLore(e);
       });
     } else if (isDefeated) {
       card.style.opacity = 0.5;
@@ -2589,6 +2799,7 @@ function renderActiveBattle(container) {
   // Opponent details
   const opp = battle.opponent;
   const oppSkepticismPct = Math.round((battle.opponentSkepticism / battle.opponentMaxSkepticism) * 100);
+  const momentumPct = Math.round((battle.momentum / battle.maxMomentum) * 100);
 
   arena.innerHTML = `
     <!-- Overlay Canvas for Animations -->
@@ -2599,6 +2810,8 @@ function renderActiveBattle(container) {
       <span class="battle-opponent-avatar">${opp.avatar}</span>
       <div class="opponent-stats">
         <div class="opponent-name">${opp.name}</div>
+        ${opp.passive ? `<div class="opponent-passive">⚡ ${opp.passive.name}: ${opp.passive.desc}</div>` : ''}
+        ${battle.phase === 2 ? `<div class="phase-badge">⚠️ PHASE 2 — ENRAGED</div>` : ''}
         <div class="skepticism-bar-label">
           <span>OPPONENT SKEPTICISM:</span>
           <span>${battle.opponentSkepticism} / ${battle.opponentMaxSkepticism}</span>
@@ -2612,6 +2825,14 @@ function renderActiveBattle(container) {
     <!-- Dialog Bubble -->
     <div class="battle-speech-bubble">
       "${battle.opponentDialog}"
+    </div>
+
+    <!-- Momentum Meter -->
+    <div class="momentum-bar">
+      <div class="momentum-label">🔥 MOMENTUM <span class="text-cyan">${battle.momentum} / ${battle.maxMomentum}</span></div>
+      <div class="progress-bar-container">
+        <div class="progress-fill bg-orange" style="width: ${momentumPct}%;"></div>
+      </div>
     </div>
 
     <!-- Hand Cards -->
@@ -2628,7 +2849,11 @@ function renderActiveBattle(container) {
     <!-- Actions Control -->
     <div class="battle-action-bar">
       <span>Confidence: <strong class="text-cyan">${battle.playerConfidence}%</strong></span>
-      <button class="btn warning-btn" id="btn-end-turn" style="padding: 4px 10px; font-size: 10px;">END TURN</button>
+      <div style="display:flex;gap:6px;">
+        ${battle.energy >= 1 ? `<button class="btn secondary-btn" id="btn-block" style="padding:4px 10px;font-size:10px;">🛡️ BLOCK</button>` : ''}
+        ${battle.momentum >= battle.maxMomentum ? `<button class="btn primary-btn" id="btn-ultimate" style="padding:4px 10px;font-size:10px;background:linear-gradient(135deg,#ff6ec7,#ffaa00);border-color:#ffaa00;">💥 ULTIMATE</button>` : ''}
+        <button class="btn warning-btn" id="btn-end-turn" style="padding: 4px 10px; font-size: 10px;">END TURN</button>
+      </div>
     </div>
   `;
 
@@ -2673,7 +2898,7 @@ function renderActiveBattle(container) {
   container.appendChild(arena);
 
   // End turn listener
-    document.getElementById('btn-end-turn').addEventListener('click', () => {
+  document.getElementById('btn-end-turn').addEventListener('click', () => {
     playSound('error');
     battle.endTurn();
     if (battle.isOver) {
@@ -2684,13 +2909,57 @@ function renderActiveBattle(container) {
       renderSocialTab();
     }
   });
+
+  // Block listener
+  const blockBtn = document.getElementById('btn-block');
+  if (blockBtn) {
+    blockBtn.addEventListener('click', () => {
+      battle.block();
+      playSound('click');
+      renderSocialTab();
+    });
+  }
+
+  // Ultimate listener
+  const ultBtn = document.getElementById('btn-ultimate');
+  if (ultBtn) {
+    ultBtn.addEventListener('click', () => {
+      playSound('level-up');
+      triggerUltimateAnimation(arena);
+      battle.useUltimate();
+      setTimeout(() => {
+        if (battle.isOver) {
+          renderBattleResolution(container);
+          updateDashboard();
+          if (game.isDead) checkGameOver();
+        } else {
+          renderSocialTab();
+        }
+      }, 1000);
+    });
+  }
+}
+
+function drawParticles(ctx, w, h, progress, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = progress * (50 + Math.random() * 150);
+    const x = w/2 + Math.cos(angle) * dist;
+    const y = h/2 + Math.sin(angle) * dist;
+    const size = 3 + Math.random() * 5;
+    ctx.beginPath();
+    ctx.arc(x, y, size * (1 - progress * 0.5), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${color}, ${1 - progress})`;
+    ctx.shadowColor = `rgba(${color}, 0.5)`;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+  }
 }
 
 function triggerCardAnimation(cardName, arena) {
   const canvas = arena.querySelector('#combat-fx-canvas');
   if (!canvas) return;
   
-  // Set accurate dimensions
   canvas.width = arena.clientWidth || 400;
   canvas.height = arena.clientHeight || 400;
   
@@ -2720,6 +2989,9 @@ function triggerCardAnimation(cardName, arena) {
     
     if (cardName === 'Jawline Flash' || cardName === 'Hunter Eye Lock') {
       const color = cardName === 'Jawline Flash' ? '#00f0ff' : '#ff007f';
+      const r = cardName === 'Jawline Flash' ? '0,240,255' : '255,0,127';
+      
+      // Laser beam from bottom-left to center
       const startX = 0;
       const startY = h;
       const endX = w * progress;
@@ -2734,6 +3006,7 @@ function triggerCardAnimation(cardName, arena) {
       ctx.shadowBlur = 20;
       ctx.stroke();
       
+      drawParticles(ctx, w, h, progress, r, 12);
       drawFloatingText(ctx, "LASER SHADOW!", progress, color, w/2, h/3);
     } 
     else if (cardName === 'Retinol Radiance') {
@@ -2744,13 +3017,62 @@ function triggerCardAnimation(cardName, arena) {
       ctx.shadowColor = '#00f0ff';
       ctx.shadowBlur = 30;
       ctx.stroke();
+
+      const ring2 = ctx;
+      ring2.beginPath();
+      ring2.arc(w/2, h/3, progress * 200, 0, Math.PI * 2);
+      ring2.strokeStyle = `rgba(255, 255, 255, ${(1 - progress) * 0.5})`;
+      ring2.lineWidth = 5;
+      ring2.stroke();
       
+      drawParticles(ctx, w, h, progress, '0,240,255', 20);
       drawFloatingText(ctx, "GLAZED RADIANCE!", progress, '#00f0ff', w/2, h/3);
     }
     else if (cardName === 'Model Look' || cardName === 'Influencer Aura' || cardName === 'Loom Over') {
       ctx.fillStyle = `rgba(255, 0, 127, ${(1 - progress) * 0.5})`;
       ctx.fillRect(0, 0, w, h);
-      drawFloatingText(ctx, "CRITICAL HIT!", progress, '#ffea00', w/2, h/3);
+      
+      // Flash border
+      ctx.strokeStyle = `rgba(255, 234, 0, ${1 - progress})`;
+      ctx.lineWidth = 20 * (1 - progress);
+      ctx.shadowColor = '#ffea00';
+      ctx.shadowBlur = 40;
+      ctx.strokeRect(10, 10, w - 20, h - 20);
+
+      drawParticles(ctx, w, h, progress, '255,234,0', 30);
+      drawFloatingText(ctx, "⚡ CRITICAL HIT! ⚡", progress, '#ffea00', w/2, h/3);
+    }
+    else if (cardName === 'Charisma Overload' || cardName === 'Rizz Flash') {
+      ctx.fillStyle = `rgba(255, 100, 0, ${(1 - progress) * 0.3})`;
+      ctx.fillRect(0, 0, w, h);
+      
+      // Fire rings
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, progress * (150 + i * 40), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, ${150 - i * 50}, 0, ${1 - progress})`;
+        ctx.lineWidth = 8;
+        ctx.shadowColor = '#ff6400';
+        ctx.shadowBlur = 20;
+        ctx.stroke();
+      }
+      drawParticles(ctx, w, h, progress, '255,100,0', 25);
+      drawFloatingText(ctx, "🔥 CHARISMA!", progress, '#ff6400', w/2, h/3);
+    }
+    else if (cardName === 'Wallet Flash' || cardName === 'Drip Overload') {
+      ctx.fillStyle = `rgba(0, 255, 100, ${(1 - progress) * 0.3})`;
+      ctx.fillRect(0, 0, w, h);
+      
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * w;
+        const y = progress * h - Math.random() * h * 0.3;
+        ctx.font = '16px sans-serif';
+        ctx.fillStyle = `rgba(0, 255, 100, ${1 - progress})`;
+        ctx.shadowColor = '#00ff64';
+        ctx.shadowBlur = 10;
+        ctx.fillText(['$','💎','✨','💰','💳'][i % 5], x, y);
+      }
+      drawFloatingText(ctx, "💰 WEALTH FLEX!", progress, '#00ff64', w/2, h/3);
     }
     else {
       drawFloatingText(ctx, "HIT!", progress, '#ffffff', w/2, h/3);
@@ -2766,11 +3088,81 @@ function triggerCardAnimation(cardName, arena) {
   const oppCard = document.getElementById('opponent-card');
   if (cardName === 'Model Look' || cardName === 'Influencer Aura' || cardName === 'Loom Over') {
     if (oppCard) oppCard.classList.add('shake-heavy');
-    playSound('level-up'); // Use a loud sound for heavy hits
+    playSound('level-up');
     setTimeout(() => { if (oppCard) oppCard.classList.remove('shake-heavy') }, 400);
+  } else if (cardName === 'Charisma Overload' || cardName === 'Rizz Flash') {
+    if (oppCard) oppCard.classList.add('shake');
+    setTimeout(() => { if (oppCard) oppCard.classList.remove('shake') }, 300);
   } else {
     if (oppCard) oppCard.classList.add('shake');
     setTimeout(() => { if (oppCard) oppCard.classList.remove('shake') }, 200);
+  }
+}
+
+function triggerUltimateAnimation(arena) {
+  const canvas = arena.querySelector('#combat-fx-canvas');
+  if (!canvas) return;
+  
+  canvas.width = arena.clientWidth || 400;
+  canvas.height = arena.clientHeight || 400;
+  
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  let startTime = performance.now();
+
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / 1000, 1);
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // Flash screen
+    ctx.fillStyle = `rgba(255, 200, 0, ${(1 - progress) * 0.6})`;
+    ctx.fillRect(0, 0, w, h);
+    
+    // Expanding shockwave rings
+    for (let i = 0; i < 5; i++) {
+      const offset = i * 20;
+      const ringProgress = Math.max(0, Math.min(1, (progress - offset / 300) * 1.5));
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, ringProgress * 300, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 234, 0, ${1 - ringProgress})`;
+      ctx.lineWidth = 15 * (1 - ringProgress);
+      ctx.shadowColor = '#ffea00';
+      ctx.shadowBlur = 40;
+      ctx.stroke();
+    }
+
+    // Particles burst
+    drawParticles(ctx, w, h, progress, '255,234,0', 40);
+    drawParticles(ctx, w, h, progress, '255,0,127', 30);
+    
+    // Text
+    ctx.save();
+    ctx.font = 'bold 36px var(--font-display)';
+    ctx.fillStyle = '#ffea00';
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = 1 - progress;
+    ctx.shadowColor = '#ff6ec7';
+    ctx.shadowBlur = 30;
+    ctx.translate(w/2, h/2 - progress * 60);
+    ctx.scale(1 + progress * 0.3, 1 + progress * 0.3);
+    ctx.fillText('💥 ULTIMATE! 💥', 0, 0);
+    ctx.restore();
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+  
+  requestAnimationFrame(animate);
+
+  const oppCard = document.getElementById('opponent-card');
+  if (oppCard) {
+    oppCard.classList.add('shake-heavy');
+    setTimeout(() => oppCard.classList.remove('shake-heavy'), 500);
   }
 }
 
@@ -3256,6 +3648,53 @@ function showCutscene(type) {
     overlay.classList.remove('show');
     setTimeout(() => overlay.classList.add('hidden'), 300);
   }, 1500);
+}
+
+function showEncounterLore(encounter) {
+  const modal = document.getElementById('encounter-modal');
+  document.getElementById('encounter-modal-avatar').textContent = encounter.avatar;
+  document.getElementById('encounter-modal-title').textContent = encounter.name;
+  document.getElementById('encounter-modal-subtitle').textContent = encounter.title + ' // ' + encounter.difficulty;
+  document.getElementById('encounter-modal-lore').textContent = encounter.lore || 'No lore available for this encounter.';
+
+  const rewardLabels = { cash: '💰', confidence: '⭐', style: '👔', datingScore: '💕', rizz: '🔥', skin: '✨', frame: '💪', followers: '📱' };
+  const rewardEntries = Object.entries(encounter.rewards || {}).filter(([k]) => k !== 'log');
+  const rewardHtml = rewardEntries.length
+    ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #333;"><span style="color:#ff6ec7;font-size:12px;">REWARDS</span><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">' +
+      rewardEntries.map(([k, v]) => `<span style="background:#1a1a2e;padding:3px 10px;border-radius:12px;font-size:12px;border:1px solid #333;">${rewardLabels[k]||''} ${v > 0 ? '+' : ''}${v}${k==='cash'?'':k==='confidence'?'%':''}</span>`).join('') +
+      '</div></div>'
+    : '';
+  const existingReward = document.getElementById('encounter-modal-rewards');
+  if (existingReward) existingReward.outerHTML = rewardHtml ? `<div id="encounter-modal-rewards">${rewardHtml}</div>` : '';
+  else if (rewardHtml) {
+    const div = document.createElement('div');
+    div.id = 'encounter-modal-rewards';
+    div.innerHTML = rewardHtml;
+    document.getElementById('encounter-modal-lore').after(div);
+  }
+
+  modal.classList.remove('hidden');
+
+  const startBtn = document.getElementById('btn-start-battle');
+  const closeBtn = document.getElementById('btn-close-encounter');
+
+  const startBattle = () => {
+    modal.classList.add('hidden');
+    showCutscene('battle');
+    playSound('click');
+    battle.startBattle(encounter.id);
+    switchBGM();
+    renderSocialTab();
+  };
+
+  const closeModal = () => {
+    modal.classList.add('hidden');
+  };
+
+  startBtn.removeEventListener('click', startBattle);
+  closeBtn.removeEventListener('click', closeModal);
+  startBtn.addEventListener('click', startBattle);
+  closeBtn.addEventListener('click', closeModal);
 }
 
 // Start Init

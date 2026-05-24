@@ -23,7 +23,30 @@ export class BattleSystem {
     this.outcome = null; // 'win' or 'lose'
     this.opponentDialog = "";
     this.lastCardPlayed = null; // Combat Combo tracker
+    this.isBlocking = false;
+    this.momentum = 0;
+    this.maxMomentum = 4;
+    this.phase = 1;
+    this.cardsPlayedThisTurn = 0;
+    this.lastPlayedCardCost = 0;
+    this.opponentRage = 0;
     
+    // Passive abilities per opponent ID (shared across genders)
+    const passives = {
+      hs_bully: { name: 'Mean Streak', desc: 'Attacks deal +5 damage when your Confidence > 60%' },
+      vip_bouncer: { name: 'Velvet Rope', desc: 'Your first card each turn deals 30% less damage' },
+      chad_gym_bro: { name: 'Grindset', desc: 'Heals 5 Skepticism when you play a 2-cost card' },
+      stacy_tinder: { name: 'High Standards', desc: '1-cost cards deal 40% less damage' },
+      ceo_interviewer: { name: 'Power Play', desc: 'Every 3 turns, attacks deal +10 damage' },
+      clav_influencer: { name: 'Swipe Fatigue', desc: 'Each card you play heals them 3 Skepticism' },
+      brad_boss: { name: 'Quarterly Review', desc: 'Attacks deal +8 damage on even turns' },
+      forum_admin: { name: 'Permaban', desc: 'Attacks deal +4 more damage each turn (cumulative)' },
+      plastic_surgeon: { name: 'Clinical Eye', desc: 'All card damage reduced by 15%' },
+      tiktok_rat: { name: 'Shadow Ban', desc: 'At turn start, randomly discards 1 card from your hand' },
+      social_media_manager: { name: 'Report Spam', desc: 'Your healing is 30% less effective' },
+      ex_partner: { name: 'Emotional Damage', desc: 'Attacks deal +6 damage when your Confidence < 40%' }
+    };
+
     // Dynamic Opponent Archetypes based on player gender
     if (this.player.gender === 'female') {
       this.opponents = [
@@ -31,6 +54,7 @@ export class BattleSystem {
           id: 'hs_bully',
           name: 'Brittany (High School Bully)',
           title: 'Queen Bee of 9th Grade',
+          lore: "She's been terrorizing the schoolyard since freshman year. Stealing lunch money and crushing self-esteem is just another Tuesday. No one has ever stood up to her — until now.",
           avatar: '🎒',
           skepticism: 40,
           difficulty: 'Very Easy',
@@ -52,6 +76,7 @@ export class BattleSystem {
           id: 'vip_bouncer',
           name: 'Sasha (VIP Hostess)',
           title: 'Gatekeeper of Club Neon',
+          lore: "Sasha has guarded the velvet rope for over a decade and can smell insecurity from across the street. Her clipboard holds the power of entry or exile, and she wields it with surgical precision.",
           avatar: '🕶️',
           skepticism: 60,
           difficulty: 'Easy',
@@ -74,6 +99,7 @@ export class BattleSystem {
           id: 'chad_gym_bro',
           name: 'Chanthal (Pilates Instructor)',
           title: 'Dominator of the Reformer',
+          lore: "The Pilates studio is Chanthal's cathedral and the reformer machine is her altar. She measures self-worth in waist-to-hip ratios and has never met a mirror she didn't pose in front of.",
           avatar: '🧘‍♀️',
           skepticism: 85,
           difficulty: 'Medium',
@@ -96,6 +122,7 @@ export class BattleSystem {
           id: 'stacy_tinder',
           name: 'Chad (High Expectations)',
           title: 'Tinder Elite Reviewer',
+          lore: "Chad has perfected the art of the swipe. A living algorithm of physical standards, he's rejected hundreds in search of someone who ticks every box. The bar is high, but maybe you're the exception.",
           avatar: '🏋️‍♂️',
           skepticism: 110,
           difficulty: 'Hard',
@@ -119,6 +146,7 @@ export class BattleSystem {
           id: 'ceo_interviewer',
           name: 'Mrs. Sterling (Venture Capitalist)',
           title: 'Strict Job Interviewer',
+          lore: "She built her corporate empire from nothing and now decides who gets a seat at the table. Your resume got you through the door — your presence will determine if you stay.",
           avatar: '💼',
           skepticism: 130,
           difficulty: 'Extreme',
@@ -141,6 +169,7 @@ export class BattleSystem {
           id: 'clav_influencer',
           name: 'Clav (@clavicular0)',
           title: 'Aesthetic Reviewer & Influencer',
+          lore: "Half a million followers and Clav became the internet's unofficial judge of aesthetic worth. What started as rating forum threads turned into a full-time career in bone-structure gatekeeping.",
           avatar: '🎭',
           skepticism: 140,
           difficulty: 'Hard',
@@ -163,6 +192,7 @@ export class BattleSystem {
           id: 'brad_boss',
           name: 'Brad (Managing Director)',
           title: 'Corporate Dominator',
+          lore: "Brad climbed the corporate ladder by stepping on everyone above him. He runs the boardroom like a battlefield and sees every junior employee as a potential threat to his corner office.",
           avatar: '👔',
           skepticism: 150,
           difficulty: 'Very Hard',
@@ -185,6 +215,7 @@ export class BattleSystem {
           id: 'forum_admin',
           name: 'FemCope (Forum Administrator)',
           title: 'Ultimate Gatekeeper of Looksmaxing.org',
+          lore: "The gatekeeper of the most ruthless looksmaxxing forum on the internet. She's banned thousands, rate-threads with surgical cruelty, and answers to no one. The final boss of social approval.",
           avatar: '👑',
           skepticism: 200,
           difficulty: 'Impossible',
@@ -208,6 +239,7 @@ export class BattleSystem {
           id: 'plastic_surgeon',
           name: 'Dr. Riviera (Plastic Surgeon)',
           title: 'Gatekeeper of Aesthetics',
+          lore: "Dr. Riviera has reshaped more faces than anyone in the tri-state area. Every patient is a canvas and every flaw a challenge. Your bone structure is about to be clinically evaluated.",
           avatar: '🔪',
           skepticism: 130,
           difficulty: 'Hard',
@@ -230,6 +262,7 @@ export class BattleSystem {
           id: 'tiktok_rat',
           name: '@looksmax_algo (TikTok Algorithm)',
           title: 'The Shadow Ban Enforcer',
+          lore: "The algorithm is a cold, calculating god. It has seen every trend die and every career fade. It doesn't hate you — it's just indifferent. But it can be beaten.",
           avatar: '🤖',
           skepticism: 100,
           difficulty: 'Medium',
@@ -251,6 +284,7 @@ export class BattleSystem {
           id: 'social_media_manager',
           name: 'Karen (Instagram Moderator)',
           title: 'The Comment Section Tyrant',
+          lore: "Karen patrols the comment sections like a digital warden. Banning, blocking, and shadow-deleting with bureaucratic efficiency. But the algorithm can be bargained with.",
           avatar: '📱',
           skepticism: 70,
           difficulty: 'Easy',
@@ -273,6 +307,7 @@ export class BattleSystem {
           id: 'ex_partner',
           name: 'Your Ex (Jason)',
           title: 'The One Who Got Away',
+          lore: "Jason was your first real relationship. The breakup felt like a mirror shattering. He walked away saying you'd never change. Now, years later, you're face-to-face again — and everything is different.",
           avatar: '💔',
           skepticism: 120,
           difficulty: 'Hard',
@@ -292,12 +327,31 @@ export class BattleSystem {
           }
         }
       ];
+      this.opponents.forEach(o => {
+        o.passive = passives[o.id] || null;
+        const phase2Lines = {
+          hs_bully: "Oh, you've got teeth now? Let me show you who's boss!",
+          vip_bouncer: "You're persistent. Time to call security.",
+          chad_gym_bro: "Alright, no more warm-up sets. Going heavy now!",
+          stacy_tinder: "Impressive... but I'm still hard to please.",
+          ceo_interviewer: "You show potential. Let's see if you crack under real pressure.",
+          clav_influencer: "My followers are watching. Time to go viral on your failure.",
+          brad_boss: "This is my corner office. You don't get it that easily.",
+          forum_admin: "YOU DARE DEFY THE GODS OF LOOKSMAXING?",
+          plastic_surgeon: "Remarkable... time for a closer clinical look.",
+          tiktok_rat: "Algorithm update: your engagement is being throttled.",
+          social_media_manager: "You want to play? I'll crash your reach.",
+          ex_partner: "You've actually changed... but so have I."
+        };
+        o.dialogs.phase2 = phase2Lines[o.id] || "You're pushing me too far!";
+      });
     } else {
       this.opponents = [
         {
           id: 'hs_bully',
           name: 'Biff (High School Bully)',
           title: 'Ego Destroyer of 9th Grade',
+          lore: "Biff has been shaking down freshmen since day one. Stealing lunch money and crushing self-esteem is just another Tuesday. No one has ever stood up to him — until now.",
           avatar: '🎒',
           skepticism: 40,
           difficulty: 'Very Easy',
@@ -319,6 +373,7 @@ export class BattleSystem {
           id: 'vip_bouncer',
           name: 'Sven (VIP Bouncer)',
           title: 'Gatekeeper of the Club Neon',
+          lore: "Sven has guarded the velvet rope for over a decade and can smell insecurity from across the street. His clipboard holds the power of entry or exile, and he wields it with surgical precision.",
           avatar: '🕶️',
           skepticism: 60,
           difficulty: 'Easy',
@@ -341,6 +396,7 @@ export class BattleSystem {
           id: 'chad_gym_bro',
           name: 'Trent (Giga Gym Bro)',
           title: 'Dominator of the Squat Rack',
+          lore: "The gym is Trent's temple and the squat rack is his altar. He measures self-worth in deadlift PRs and has never met a mirror he didn't pose in front of.",
           avatar: '🏋️',
           skepticism: 85,
           difficulty: 'Medium',
@@ -363,6 +419,7 @@ export class BattleSystem {
           id: 'stacy_tinder',
           name: 'Stacy (High Expectations)',
           title: 'Tinder Elite Reviewer',
+          lore: "Stacy has perfected the art of the swipe. A living algorithm of physical standards, she's rejected hundreds in search of someone who ticks every box. The bar is high, but maybe you're the exception.",
           avatar: '💅',
           skepticism: 110,
           difficulty: 'Hard',
@@ -386,6 +443,7 @@ export class BattleSystem {
           id: 'ceo_interviewer',
           name: 'Mr. Sterling (Venture Capitalist)',
           title: 'Strict Job Interviewer',
+          lore: "He built his corporate empire from nothing and now decides who gets a seat at the table. Your resume got you through the door — your presence will determine if you stay.",
           avatar: '💼',
           skepticism: 130,
           difficulty: 'Extreme',
@@ -408,6 +466,7 @@ export class BattleSystem {
           id: 'clav_influencer',
           name: 'Clav (@clavicular0)',
           title: 'Aesthetic Reviewer & Influencer',
+          lore: "Half a million followers and Clav became the internet's unofficial judge of aesthetic worth. What started as rating forum threads turned into a full-time career in bone-structure gatekeeping.",
           avatar: '🎭',
           skepticism: 140,
           difficulty: 'Hard',
@@ -430,6 +489,7 @@ export class BattleSystem {
           id: 'brad_boss',
           name: 'Brad (Managing Director)',
           title: 'Corporate Dominator',
+          lore: "Brad climbed the corporate ladder by stepping on everyone above him. He runs the boardroom like a battlefield and sees every junior employee as a potential threat to his corner office.",
           avatar: '👔',
           skepticism: 150,
           difficulty: 'Very Hard',
@@ -452,6 +512,7 @@ export class BattleSystem {
           id: 'forum_admin',
           name: 'GigaCope (Forum Administrator)',
           title: 'Ultimate Gatekeeper of Looksmaxing.org',
+          lore: "The gatekeeper of the most ruthless looksmaxxing forum on the internet. He's banned thousands, rate-threads with surgical cruelty, and answers to no one. The final boss of social approval.",
           avatar: '👑',
           skepticism: 200,
           difficulty: 'Impossible',
@@ -475,6 +536,7 @@ export class BattleSystem {
           id: 'plastic_surgeon',
           name: 'Dr. Riviera (Plastic Surgeon)',
           title: 'Gatekeeper of Aesthetics',
+          lore: "Dr. Riviera has reshaped more faces than anyone in the tri-state area. Every patient is a canvas and every flaw a challenge. Your bone structure is about to be clinically evaluated.",
           avatar: '🔪',
           skepticism: 130,
           difficulty: 'Hard',
@@ -497,6 +559,7 @@ export class BattleSystem {
           id: 'tiktok_rat',
           name: '@looksmax_algo (TikTok Algorithm)',
           title: 'The Shadow Ban Enforcer',
+          lore: "The algorithm is a cold, calculating god. It has seen every trend die and every career fade. It doesn't hate you — it's just indifferent. But it can be beaten.",
           avatar: '🤖',
           skepticism: 100,
           difficulty: 'Medium',
@@ -518,6 +581,7 @@ export class BattleSystem {
           id: 'social_media_manager',
           name: 'SMM Kyle (Instagram Moderator)',
           title: 'The Comment Section Tyrant',
+          lore: "Kyle patrols the comment sections like a digital warden. Banning, blocking, and shadow-deleting with bureaucratic efficiency. But the algorithm can be bargained with.",
           avatar: '📱',
           skepticism: 70,
           difficulty: 'Easy',
@@ -540,6 +604,7 @@ export class BattleSystem {
           id: 'ex_partner',
           name: 'Your Ex (Alexis)',
           title: 'The One Who Got Away',
+          lore: "Alexis left without looking back, claiming you were never going to be enough. The memory of that conversation has haunted you through every gym session and every new hairstyle. Closure is one conversation away.",
           avatar: '💔',
           skepticism: 120,
           difficulty: 'Hard',
@@ -559,6 +624,24 @@ export class BattleSystem {
           }
         }
       ];
+      this.opponents.forEach(o => {
+        o.passive = passives[o.id] || null;
+        const phase2Lines = {
+          hs_bully: "Oh, you've got teeth now? Let me show you who's boss!",
+          vip_bouncer: "You're persistent. Time to call security.",
+          chad_gym_bro: "Alright, no more warm-up sets. Going heavy now!",
+          stacy_tinder: "Impressive... but I'm still hard to please.",
+          ceo_interviewer: "You show potential. Let's see if you crack under real pressure.",
+          clav_influencer: "My followers are watching. Time to go viral on your failure.",
+          brad_boss: "This is my corner office. You don't get it that easily.",
+          forum_admin: "YOU DARE DEFY THE GODS OF LOOKSMAXING?",
+          plastic_surgeon: "Remarkable... time for a closer clinical look.",
+          tiktok_rat: "Algorithm update: your engagement is being throttled.",
+          social_media_manager: "You want to play? I'll crash your reach.",
+          ex_partner: "You've actually changed... but so have I."
+        };
+        o.dialogs.phase2 = phase2Lines[o.id] || "You're pushing me too far!";
+      });
     }
   }
 
@@ -588,6 +671,12 @@ export class BattleSystem {
     this.turn = 1;
     this.opponentDialog = opp.dialogs.start;
     this.lastCardPlayed = null;
+    this.isBlocking = false;
+    this.momentum = 0;
+    this.phase = 1;
+    this.cardsPlayedThisTurn = 0;
+    this.lastPlayedCardCost = 0;
+    this.opponentRage = 0;
 
     // Compile deck based on player stats
     this.buildDeck();
@@ -595,6 +684,28 @@ export class BattleSystem {
     
     this.logCallback(`Encounter started: vs ${opp.name}. Opponent Skepticism: ${opp.skepticism}. Your Confidence: ${this.playerConfidence}%`, 'action');
     return true;
+  }
+
+  // BLOCK — spend 1 energy to reduce incoming damage by 50%
+  block() {
+    if (this.isOver || this.energy < 1) return false;
+    this.energy -= 1;
+    this.isBlocking = true;
+    this.logCallback("🛡️ You brace for impact! Damage reduced by 50% this turn.", "success");
+    return true;
+  }
+
+  // ULTIMATE — unleash at max momentum
+  useUltimate() {
+    if (this.isOver || this.momentum < this.maxMomentum) return false;
+    this.momentum = 0;
+    const p = this.player;
+    const bestStat = Math.max(p.smv * 10, p.confidence, p.style * 0.8, p.frame * 0.8, p.rizz * 0.9);
+    const dmg = Math.floor(40 + bestStat * 0.5);
+    this.damageOpponent(dmg);
+    this.logCallback(`💥 ULTIMATE! You unleash your full potential for ${dmg} damage!`, "success");
+    if (this.opponentSkepticism <= 0) this.resolveBattle(true);
+    return dmg;
   }
 
   // Deck Building based on stats
@@ -868,6 +979,8 @@ export class BattleSystem {
     }
 
     this.energy -= card.cost;
+    this.lastPlayedCardCost = card.cost;
+    this.cardsPlayedThisTurn++;
     card.effect(this);
     
     // Remove card from hand
@@ -876,6 +989,21 @@ export class BattleSystem {
     
     // Update combo tracker
     this.lastCardPlayed = card.name;
+
+    // Momentum: +1 per card played
+    this.momentum = Math.min(this.maxMomentum, this.momentum + 1);
+
+    // Passive: Grindset — heals 5 skepticism on 2-cost card
+    if (this.opponent.id === 'chad_gym_bro' && card.cost === 2) {
+      this.opponentSkepticism = Math.min(this.opponentMaxSkepticism, this.opponentSkepticism + 5);
+      this.logCallback("💪 Grindset: Opponent heals 5 Skepticism from your high-effort play!", "event");
+    }
+
+    // Passive: Swipe Fatigue — each card heals 3 skepticism
+    if (this.opponent.id === 'clav_influencer') {
+      this.opponentSkepticism = Math.min(this.opponentMaxSkepticism, this.opponentSkepticism + 3);
+      this.logCallback("📱 Swipe Fatigue: Opponent regenerates 3 Skepticism!", "event");
+    }
 
     // Check Win
     if (this.opponentSkepticism <= 0) {
@@ -886,12 +1014,41 @@ export class BattleSystem {
   }
 
   damageOpponent(val) {
-    this.opponentSkepticism = Math.max(0, this.opponentSkepticism - val);
+    let modified = val;
+
+    // Passive: High Standards — 1-cost cards deal 40% less
+    if (this.opponent.id === 'stacy_tinder' && this.lastPlayedCardCost === 1) {
+      modified = Math.floor(modified * 0.6);
+    }
+
+    // Passive: Velvet Rope — first card per turn deals 30% less
+    if (this.opponent.id === 'vip_bouncer' && this.cardsPlayedThisTurn <= 1) {
+      modified = Math.floor(modified * 0.7);
+    }
+
+    // Passive: Clinical Eye — all card damage reduced by 15%
+    if (this.opponent.id === 'plastic_surgeon') {
+      modified = Math.floor(modified * 0.85);
+    }
+
+    this.opponentSkepticism = Math.max(0, this.opponentSkepticism - modified);
     this.opponentDialog = this.opponent.dialogs.hit;
+
+    // Phase 2 check: at 50% HP
+    if (this.phase === 1 && this.opponentSkepticism <= this.opponentMaxSkepticism * 0.5) {
+      this.phase = 2;
+      this.opponentDialog = this.opponent.dialogs.phase2 || "You're pushing me too far!";
+      this.logCallback(`⚠️ ${this.opponent.name} enters PHASE 2! Attacks intensified!`, "error");
+    }
   }
 
   healPlayer(val) {
-    this.playerConfidence = Math.min(100, this.playerConfidence + val);
+    let modified = val;
+    // Passive: Report Spam — healing 30% less effective
+    if (this.opponent.id === 'social_media_manager') {
+      modified = Math.floor(modified * 0.7);
+    }
+    this.playerConfidence = Math.min(100, this.playerConfidence + modified);
   }
 
   // END TURN
@@ -899,23 +1056,53 @@ export class BattleSystem {
     if (this.isOver) return;
 
     // Opponent turn: Attack Player Confidence
-    const baseAttack = this.opponent.id === 'forum_admin' ? 30 :
-                       this.opponent.id === 'brad_boss' ? 24 :
-                       this.opponent.id === 'ceo_interviewer' ? 22 : 
-                       this.opponent.id === 'plastic_surgeon' ? 25 :
-                       this.opponent.id === 'stacy_tinder' ? 18 : 
-                       this.opponent.id === 'tiktok_rat' ? 20 :
-                       this.opponent.id === 'chad_gym_bro' ? 14 :
-                       this.opponent.id === 'ex_partner' ? 20 :
-                       this.opponent.id === 'social_media_manager' ? 12 : 10;
+    let baseAttack = this.opponent.id === 'forum_admin' ? 30 :
+                     this.opponent.id === 'brad_boss' ? 24 :
+                     this.opponent.id === 'ceo_interviewer' ? 22 : 
+                     this.opponent.id === 'plastic_surgeon' ? 25 :
+                     this.opponent.id === 'stacy_tinder' ? 18 : 
+                     this.opponent.id === 'tiktok_rat' ? 20 :
+                     this.opponent.id === 'chad_gym_bro' ? 14 :
+                     this.opponent.id === 'ex_partner' ? 20 :
+                     this.opponent.id === 'social_media_manager' ? 12 : 10;
     
+    // Phase 2: 1.5x attack
+    if (this.phase === 2) baseAttack = Math.floor(baseAttack * 1.5);
+
+    // Passive: Mean Streak — +5 if player confidence > 60
+    if (this.opponent.id === 'hs_bully' && this.playerConfidence > 60) baseAttack += 5;
+
+    // Passive: Power Play — every 3 turns, +10 damage
+    if (this.opponent.id === 'ceo_interviewer' && this.turn % 3 === 0) baseAttack += 10;
+
+    // Passive: Quarterly Review — +8 on even turns
+    if (this.opponent.id === 'brad_boss' && this.turn % 2 === 0) baseAttack += 8;
+
+    // Passive: Permaban — cumulative rage
+    if (this.opponent.id === 'forum_admin') {
+      this.opponentRage++;
+      baseAttack += this.opponentRage * 4;
+    }
+
+    // Passive: Emotional Damage — +6 if player confidence < 40
+    if (this.opponent.id === 'ex_partner' && this.playerConfidence < 40) baseAttack += 6;
+
     const damage = Math.floor(baseAttack * (0.8 + Math.random() * 0.4));
-    this.playerConfidence = Math.max(0, this.playerConfidence - damage);
+
+    // Block: reduce damage by 50%
+    let finalDamage = damage;
+    if (this.isBlocking) {
+      finalDamage = Math.floor(finalDamage * 0.5);
+      this.logCallback(`🛡️ Block absorbed ${damage - finalDamage} damage!`, "success");
+      this.isBlocking = false;
+    }
+
+    this.playerConfidence = Math.max(0, this.playerConfidence - finalDamage);
     this.opponentDialog = this.opponent.dialogs.attack;
     
     this.lastCardPlayed = null; // Reset combo tracker on turn transition
 
-    this.logCallback(`${this.opponent.name} insults you: "${this.opponentDialog}" (-${damage}% Confidence)`, "event");
+    this.logCallback(`${this.opponent.name} insults you: "${this.opponentDialog}" (-${finalDamage}% Confidence)`, "event");
 
     // Check Loss
     if (this.playerConfidence <= 0) {
@@ -926,7 +1113,16 @@ export class BattleSystem {
     // Reset Turn
     this.energy = this.maxEnergy;
     this.turn++;
+    this.cardsPlayedThisTurn = 0;
     this.drawHand(4);
+
+    // Passive: Shadow Ban — randomly discard 1 card
+    if (this.opponent.id === 'tiktok_rat' && this.playerHand.length > 0) {
+      const removeIdx = Math.floor(Math.random() * this.playerHand.length);
+      const removed = this.playerHand.splice(removeIdx, 1)[0];
+      this.logCallback(`🤖 Shadow Ban: "${removed.name}" was randomly removed from your hand!`, "error");
+    }
+
     this.logCallback(`Turn ${this.turn} started. Hand replenished.`, "system");
   }
 

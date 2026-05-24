@@ -546,6 +546,10 @@ export class DatingSimulator {
           this.player.datingScore += 25;
           this.player.hasDatingPartner = true;
           this.player.partnerName = this.currentProfile.name;
+          this.player.partnerProfile = { ...this.currentProfile };
+          this.player.relationshipLevel = 1;
+          this.player.relationshipSatisfaction = 60;
+          this.player.yearsWithPartner = 0;
           this.logCallback(`Date with ${this.currentProfile.name} went perfectly! Confidence boosted.`, "success");
         }
         this.activeChat.resolved = true;
@@ -583,5 +587,116 @@ export class DatingSimulator {
     this.goldSubscription = true;
     this.logCallback('Purchased SwipeMax Premium Gold! Swipes are now FREE!', 'success');
     return true;
+  }
+
+  // === RELATIONSHIP INTERACTIONS ===
+  getAvailableInteractions() {
+    if (!this.player.hasDatingPartner) return [];
+    const p = this.player;
+    const lvl = p.relationshipLevel;
+    const interactions = [];
+
+    interactions.push({ id: 'date', label: 'Go on a Date', desc: 'A nice evening out', costAP: 1, costCash: 200, satGain: 20, minLevel: 1 });
+    interactions.push({ id: 'gift', label: 'Buy a Gift', desc: 'A thoughtful present', costAP: 0, costCash: 500, satGain: 25, minLevel: 1 });
+    interactions.push({ id: 'deep_talk', label: 'Deep Talk', desc: 'A heartfelt conversation', costAP: 1, costCash: 0, satGain: 15, minLevel: 1, requiresRizz: 50 });
+    if (lvl >= 2) {
+      interactions.push({ id: 'luxury_date', label: 'Luxury Date ✨', desc: 'Go all out', costAP: 1, costCash: 1000, satGain: 40, minLevel: 2 });
+    }
+    if (lvl >= 3) {
+      interactions.push({ id: 'propose', label: 'Propose Marriage 💍', desc: 'Take the next step', costAP: 0, costCash: 5000, satGain: 0, minLevel: 3 });
+    }
+
+    return interactions.filter(i => {
+      if (p.ap < i.costAP) return false;
+      if (p.cash < i.costCash) return false;
+      if (p.relationshipLevel < i.minLevel) return false;
+      if (i.requiresRizz && p.rizz < i.requiresRizz) return false;
+      return true;
+    });
+  }
+
+  doInteraction(id) {
+    const p = this.player;
+    const profile = p.partnerProfile;
+    if (!profile) return { status: 'error', msg: 'No partner data.' };
+
+    const archetype = profile.archetype || 'normie';
+    let satGain = 0;
+    let msg = '';
+
+    if (id === 'date') {
+      p.cash -= 200;
+      p.ap -= 1;
+      satGain = 20;
+      // Archetype bonuses
+      if (archetype === 'normie') satGain += 10;
+      if (archetype === 'egirl') satGain += 5;
+      msg = `You took ${profile.name} on a lovely date. +${satGain} satisfaction.`;
+    } else if (id === 'gift') {
+      p.cash -= 500;
+      satGain = 25;
+      if (archetype === 'gold_digger') satGain += 15;
+      if (p.cash >= 20000) satGain += 5;
+      msg = `You gave ${profile.name} a thoughtful gift. +${satGain} satisfaction.`;
+    } else if (id === 'deep_talk') {
+      p.ap -= 1;
+      satGain = 15 + Math.floor(p.rizz / 20);
+      if (archetype === 'normie') satGain += 5;
+      msg = `You shared a deep conversation with ${profile.name}. +${satGain} satisfaction.`;
+    } else if (id === 'luxury_date') {
+      p.cash -= 1000;
+      p.ap -= 1;
+      satGain = 40;
+      if (archetype === 'gold_digger') satGain += 15;
+      if (archetype === 'lookist') satGain += 5;
+      msg = `You took ${profile.name} on an extravagant luxury date. +${satGain} satisfaction.`;
+    } else if (id === 'propose') {
+      if (p.relationshipLevel < 3) return { status: 'error', msg: 'You must be Engaged first.' };
+      if (p.cash < 5000) return { status: 'error', msg: 'A ring costs $5,000!' };
+      p.cash -= 5000;
+      p.relationshipLevel = 4;
+      p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 30);
+      p.confidence = Math.min(100, p.confidence + 20);
+      this.logCallback(`💍 You married ${profile.name}! Massive confidence boost!`, 'success');
+      return { status: 'married' };
+    } else {
+      return { status: 'error', msg: 'Unknown interaction.' };
+    }
+
+    // Archetype-specific needs: lookist satisfaction decays based on appearance
+    if (archetype === 'lookist' && (p.style < 50 || p.skin < 50)) {
+      satGain = Math.floor(satGain * 0.6);
+      msg += ' (Your appearance disappointed them — less effective.)';
+    }
+
+    p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + satGain);
+    p.confidence = Math.min(100, p.confidence + 5);
+    this.logCallback(msg, 'success');
+
+    // Check level-up
+    const oldLevel = p.relationshipLevel;
+    if (p.relationshipLevel === 1 && p.yearsWithPartner >= 2 && p.relationshipSatisfaction >= 60) {
+      p.relationshipLevel = 2;
+      p.confidence = Math.min(100, p.confidence + 10);
+      this.logCallback(`💗 Your relationship with ${profile.name} has deepened! You are now EXCLUSIVE!`, 'success');
+    }
+    if (p.relationshipLevel === 2 && p.yearsWithPartner >= 3 && p.relationshipSatisfaction >= 80) {
+      p.relationshipLevel = 3;
+      p.confidence = Math.min(100, p.confidence + 15);
+      this.logCallback(`💍 ${profile.name} accepted your commitment! You are now ENGAGED!`, 'success');
+    }
+
+    return { status: 'success', satGain };
+  }
+
+  breakUp() {
+    if (!this.player.hasDatingPartner) return;
+    this.player.hasDatingPartner = false;
+    this.player.partnerProfile = null;
+    this.player.relationshipLevel = 1;
+    this.player.relationshipSatisfaction = 0;
+    this.player.yearsWithPartner = 0;
+    this.player.confidence = Math.max(0, this.player.confidence - 20);
+    this.logCallback(`💔 You broke up with your partner. -20% Confidence.`, 'error');
   }
 }

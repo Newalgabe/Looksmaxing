@@ -197,7 +197,11 @@ export class GameState {
     // Milestones & accomplishments
     this.hasDatingPartner = false;
     this.partnerName = "";
+    this.partnerProfile = null;
     this.datingScore = 0;
+    this.relationshipLevel = 1; // 1=Dating, 2=Exclusive, 3=Engaged, 4=Married
+    this.relationshipSatisfaction = 50; // 0-100
+    this.yearsWithPartner = 0;
     this.followers = 0;
     this.hasInfluencerCard = false;
     this.opponentsDefeated = [];
@@ -1234,7 +1238,12 @@ export class GameState {
       smv: this.smv, socialTier: this.socialTier,
       isDead: this.isDead, surgeryBotchedCount: this.surgeryBotchedCount,
       hasDatingPartner: this.hasDatingPartner, partnerName: this.partnerName,
-      datingScore: this.datingScore, followers: this.followers,
+      partnerProfile: this.partnerProfile,
+      datingScore: this.datingScore,
+      relationshipLevel: this.relationshipLevel,
+      relationshipSatisfaction: this.relationshipSatisfaction,
+      yearsWithPartner: this.yearsWithPartner,
+      followers: this.followers,
       hasInfluencerCard: this.hasInfluencerCard, opponentsDefeated: this.opponentsDefeated,
       botchedJaw: this.botchedJaw, botchedHair: this.botchedHair, botchedCanthoplasty: this.botchedCanthoplasty,
       careerTier: this.careerTier, talentPoints: this.talentPoints, talents: this.talents,
@@ -1546,15 +1555,31 @@ export class GameState {
       this.log.push(`Coaching passive income: +$${income}`);
     }
 
-    // Relationship maintenance: partner costs 1 AP per year
+    // Relationship maintenance: satisfaction decay + level bonuses
     if (this.hasDatingPartner) {
+      this.yearsWithPartner++;
+      // Satisfaction decays slower at higher levels
+      const decay = this.relationshipLevel >= 4 ? 0 : this.relationshipLevel >= 3 ? 2 : this.relationshipLevel >= 2 ? 3 : 5;
+      if (decay > 0) this.relationshipSatisfaction = Math.max(0, this.relationshipSatisfaction - decay);
+      // AP cost for maintenance
       if (this.ap >= 1) {
         this.ap -= 1;
-      } else if (Math.random() < 0.25) {
+      } else if (this.relationshipLevel < 4 && Math.random() < 0.25) {
         this.hasDatingPartner = false;
+        this.relationshipSatisfaction = 0;
         this.confidence = Math.max(0, this.confidence - 25);
         this.log.push('Your relationship fell apart from neglect.');
       }
+      // Breakup if satisfaction hits 0 (not at marriage level)
+      if (this.relationshipSatisfaction <= 0 && this.relationshipLevel < 4) {
+        this.hasDatingPartner = false;
+        this.confidence = Math.max(0, this.confidence - 30);
+        this.log.push('Your partner left you — the relationship was beyond repair.');
+      }
+      // Passive bonuses per level
+      if (this.relationshipLevel >= 2) this.confidence = Math.min(100, this.confidence + 3);
+      if (this.relationshipLevel >= 3) { this.confidence = Math.min(100, this.confidence + 2); this.rizz = Math.min(100, this.rizz + 1); }
+      if (this.relationshipLevel >= 4) { this.confidence = Math.min(100, this.confidence + 5); this.style = Math.min(100, this.style + 1); this.skin = Math.min(100, this.skin + 1); }
     }
 
     // Depression tracking: if confidence at 0 for 3+ consecutive years → suicide
