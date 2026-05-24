@@ -1714,6 +1714,12 @@ body {
   font-style: italic;
 }
 
+.opponent-effects {
+  font-size: 9px;
+  color: #ffaa00;
+  margin-bottom: 3px;
+}
+
 .phase-badge {
   font-size: 10px;
   font-weight: 700;

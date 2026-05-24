@@ -19,12 +19,12 @@ export const CAREER_TIERS = [
   { id: 'unemployed', title: 'Unemployed', pay: 0, apCost: 0, reqSMV: 0, reqRizz: 0 },
   { id: 'entry', title: 'Entry Level', pay: 1000, apCost: 2, reqSMV: 0, reqRizz: 0 },
   { id: 'junior', title: 'Junior Associate', pay: 1500, apCost: 2, reqSMV: 2.0, reqRizz: 10 },
-  { id: 'mid', title: 'Mid-Level Specialist', pay: 2200, apCost: 2, reqSMV: 3.0, reqRizz: 20 },
-  { id: 'senior', title: 'Senior Analyst', pay: 3000, apCost: 2, reqSMV: 4.0, reqRizz: 30 },
-  { id: 'manager', title: 'Department Manager', pay: 4000, apCost: 3, reqSMV: 5.0, reqRizz: 45 },
-  { id: 'director', title: 'Director', pay: 5500, apCost: 3, reqSMV: 6.0, reqRizz: 55 },
-  { id: 'executive', title: 'Executive VP', pay: 7500, apCost: 3, reqSMV: 7.0, reqRizz: 65 },
-  { id: 'ceo', title: 'CEO', pay: 10000, apCost: 4, reqSMV: 8.0, reqRizz: 75 }
+  { id: 'mid', title: 'Mid-Level Specialist', pay: 2500, apCost: 2, reqSMV: 3.0, reqRizz: 20 },
+  { id: 'senior', title: 'Senior Analyst', pay: 4000, apCost: 2, reqSMV: 4.0, reqRizz: 30 },
+  { id: 'manager', title: 'Department Manager', pay: 7000, apCost: 3, reqSMV: 5.0, reqRizz: 45 },
+  { id: 'director', title: 'Director', pay: 10000, apCost: 3, reqSMV: 6.0, reqRizz: 55 },
+  { id: 'executive', title: 'Executive VP', pay: 16000, apCost: 3, reqSMV: 7.0, reqRizz: 65 },
+  { id: 'ceo', title: 'CEO', pay: 25000, apCost: 4, reqSMV: 8.0, reqRizz: 75 }
 ];
 
 // Talent tree
@@ -943,7 +943,7 @@ export class GameState {
     if (!this.hasCoachingBusiness) return { error: 'No coaching business. Start one first.' };
     if (this.ap < 1) return { error: 'Need 1 AP to coach a student.' };
     this.ap -= 1;
-    const earnings = 500 + Math.floor(this.followers * 0.05);
+    const earnings = 500 + Math.floor(this.followers * 0.12);
     this.cash += earnings;
     this.confidence = Math.min(100, this.confidence + 3);
     this.rizz = Math.min(100, this.rizz + 1);
@@ -960,7 +960,7 @@ export class GameState {
 
   /** Get the surgery cost multiplier from Turkey travel buff (if active) */
   _getTurkeySurgeryMult() {
-    return this.activeTravelBuffs.some(b => b.dest === 'turkey') ? 0.35 : 0.5;
+    return this.activeTravelBuffs.some(b => b.dest === 'turkey') ? 0.25 : 0.5;
   }
 
   // === SUBSTANCE SYSTEM ===
@@ -1585,10 +1585,11 @@ export class GameState {
       }
 
       this.confidence = Math.min(100, this.confidence + 25);
+      this.getTalentPoint();
       this.updateSMV();
       return {
         success: true,
-        message: `SUCCESS! You underwent ${surgery.name} at ${clinicName}. ${successText} (+25% Confidence)`,
+        message: `SUCCESS! You underwent ${surgery.name} at ${clinicName}. ${successText} (+25% Confidence, +1 Talent Point)`,
         type: 'success'
       };
     }
@@ -1680,7 +1681,7 @@ export class GameState {
 
     // Coaching passive income
     if (this.hasCoachingBusiness) {
-      const income = 500 + Math.floor(this.followers * 0.05);
+      const income = 500 + Math.floor(this.followers * 0.08);
       this.cash += income;
       this.log.push(`Coaching passive income: +$${income}`);
     }
@@ -1710,7 +1711,7 @@ export class GameState {
     if (this.hasDatingPartner) {
       this.yearsWithPartner++;
       // Satisfaction decays slower at higher levels
-      const baseDecay = this.relationshipLevel >= 4 ? 0 : this.relationshipLevel >= 3 ? 2 : this.relationshipLevel >= 2 ? 3 : 5;
+      const baseDecay = this.relationshipLevel >= 4 ? 1 : this.relationshipLevel >= 3 ? 2 : this.relationshipLevel >= 2 ? 3 : 5;
       const decay = Math.max(0, baseDecay - (this.questSatDecayReduction || 0));
       if (decay > 0) this.relationshipSatisfaction = Math.max(0, this.relationshipSatisfaction - decay);
       // AP cost for maintenance

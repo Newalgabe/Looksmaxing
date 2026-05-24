@@ -3051,6 +3051,7 @@ function renderActiveBattle(container) {
         <div class="opponent-name">${opp.name}</div>
         ${opp.passive ? `<div class="opponent-passive">⚡ ${opp.passive.name}: ${opp.passive.desc}</div>` : ''}
         ${battle.phase === 2 ? `<div class="phase-badge">⚠️ PHASE 2 — ENRAGED</div>` : ''}
+        ${battle.getEffectsDisplay('opponent') ? `<div class="opponent-effects">${battle.getEffectsDisplay('opponent')}</div>` : ''}
         <div class="skepticism-bar-label">
           <span>OPPONENT SKEPTICISM:</span>
           <span>${battle.opponentSkepticism} / ${battle.opponentMaxSkepticism}</span>
@@ -3063,6 +3064,7 @@ function renderActiveBattle(container) {
 
     <!-- Dialog Bubble -->
     <div class="battle-speech-bubble">
+      ${battle.lastMoveName ? `<div style="font-size:9px;font-weight:700;color:var(--accent-magenta);margin-bottom:3px;">🎯 ${battle.lastMoveName}</div>` : ''}
       "${battle.opponentDialog}"
     </div>
 
@@ -3080,6 +3082,7 @@ function renderActiveBattle(container) {
         <span>YOUR CARDS:</span>
         <span class="text-green">Energy: ${battle.energy} / ${battle.maxEnergy}</span>
       </div>
+      ${battle.getEffectsDisplay('player') ? `<div style="font-size:9px;color:var(--text-muted);margin-bottom:4px;">🧑 ${battle.getEffectsDisplay('player')}</div>` : ''}
       <div class="battle-cards">
         <!-- Render card deck items -->
       </div>
@@ -3139,6 +3142,9 @@ function renderActiveBattle(container) {
   // End turn listener
   document.getElementById('btn-end-turn').addEventListener('click', () => {
     playSound('error');
+    const oppCard = document.getElementById('opponent-card');
+    if (oppCard) oppCard.classList.add('shake');
+    setTimeout(() => { if (oppCard) oppCard.classList.remove('shake'); }, 300);
     battle.endTurn();
     if (battle.isOver) {
       renderBattleResolution(container);
@@ -3303,6 +3309,68 @@ function triggerCardAnimation(cardName, arena) {
       drawParticles(ctx, w, h, progress, '255,100,0', 25);
       drawFloatingText(ctx, "🔥 CHARISMA!", progress, '#ff6400', w/2, h/3);
     }
+    else if (cardName === 'Motivational Speech') {
+      ctx.fillStyle = `rgba(0, 255, 100, ${(1 - progress) * 0.2})`;
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, progress * (80 + i * 30), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 255, 100, ${(1 - progress) * (0.6 - i * 0.1)})`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#00ff64';
+        ctx.shadowBlur = 15;
+        ctx.stroke();
+      }
+      drawFloatingText(ctx, "💚 MOTIVATION!", progress, '#00ff64', w/2, h/3);
+      drawParticles(ctx, w, h, progress, '0,255,100', 15);
+    }
+    else if (cardName === 'Guard Up') {
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, 40 + progress * 60, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0, 180, 255, ${1 - progress})`;
+      ctx.lineWidth = 12 * (1 - progress);
+      ctx.shadowColor = '#00b4ff';
+      ctx.shadowBlur = 25;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, 30 + progress * 40, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - progress) * 0.5})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      drawFloatingText(ctx, "🛡️ SHIELD UP!", progress, '#00b4ff', w/2, h/3);
+    }
+    else if (cardName === 'Withering Gaze') {
+      ctx.fillStyle = `rgba(100, 0, 50, ${(1 - progress) * 0.4})`;
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + progress * 2;
+        const dist = progress * 120;
+        const x = w/2 + Math.cos(angle) * dist;
+        const y = h/2 + Math.sin(angle) * dist;
+        ctx.beginPath();
+        ctx.arc(x, y, 6 * (1 - progress), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(150, 0, 255, ${1 - progress})`;
+        ctx.shadowColor = '#9600ff';
+        ctx.shadowBlur = 15;
+        ctx.fill();
+      }
+      drawFloatingText(ctx, "👁️ WITHERING GAZE!", progress, '#9600ff', w/2, h/3);
+      drawParticles(ctx, w, h, progress, '100,0,50', 10);
+    }
+    else if (cardName === 'Charm Offensive') {
+      ctx.fillStyle = `rgba(255, 50, 150, ${(1 - progress) * 0.25})`;
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 6; i++) {
+        const x = w/2 + Math.cos(progress * 3 + i) * progress * 100;
+        const y = h/2 + Math.sin(progress * 3 + i) * progress * 80;
+        ctx.font = '24px sans-serif';
+        ctx.fillStyle = `rgba(255, 50, 150, ${1 - progress})`;
+        ctx.shadowColor = '#ff3296';
+        ctx.shadowBlur = 15;
+        ctx.fillText('💘', x, y);
+      }
+      drawFloatingText(ctx, "💘 CHARM OFFENSIVE!", progress, '#ff3296', w/2, h/3);
+    }
     else if (cardName === 'Wallet Flash' || cardName === 'Drip Overload') {
       ctx.fillStyle = `rgba(0, 255, 100, ${(1 - progress) * 0.3})`;
       ctx.fillRect(0, 0, w, h);
@@ -3410,6 +3478,57 @@ function triggerUltimateAnimation(arena) {
   }
 }
 
+function triggerEnemyAttack(arena, battle, callback) {
+  const canvas = arena.querySelector('#combat-fx-canvas');
+  if (!canvas) { callback(); return; }
+  canvas.width = arena.clientWidth || 400;
+  canvas.height = arena.clientHeight || 400;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  let startTime = performance.now();
+  const opp = battle.opponent;
+  const moveName = battle.lastMoveName || 'Basic Shade';
+
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / 500, 1);
+    ctx.clearRect(0, 0, w, h);
+
+    if (opp && opp.avatar) {
+      ctx.font = '48px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = 1 - progress * 0.5;
+      ctx.fillText(opp.avatar, w/2, h/2 - 20);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.font = getCanvasFont('16px', 'bold');
+    ctx.fillStyle = `rgba(255, 50, 50, ${1 - progress})`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#ff3232';
+    ctx.shadowBlur = 20;
+    ctx.fillText(`⚡ ${moveName}`, w/2, h/2 + 30 - progress * 40);
+
+    ctx.fillStyle = `rgba(255, 0, 0, ${(1 - progress) * 0.15})`;
+    ctx.fillRect(0, 0, w, h);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, w, h);
+      callback();
+    }
+  }
+  requestAnimationFrame(animate);
+
+  const oppCard = document.getElementById('opponent-card');
+  if (oppCard) {
+    oppCard.classList.add('shake');
+    setTimeout(() => oppCard.classList.remove('shake'), 400);
+  }
+}
+
 function renderBattleResolution(container) {
   container.innerHTML = '';
   const outcome = battle.outcome;
@@ -3430,6 +3549,7 @@ function renderBattleResolution(container) {
          ${opp.rewards.confidence ? `+${opp.rewards.confidence}% Confidence<br/>` : ''}
          ${opp.rewards.style ? `+${opp.rewards.style}% Style<br/>` : ''}
          ${opp.rewards.frame ? `+${opp.rewards.frame}% Frame<br/>` : ''}
+         ${opp.rewards.followers ? `+${opp.rewards.followers} Followers<br/>` : ''}
          ${opp.rewards.partner ? `Dating relationship unlocked: ${opp.rewards.partner}!<br/>` : ''}` :
         `Penalties Incurred:<br/>
          - Confidence dropped to 10%<br/>
