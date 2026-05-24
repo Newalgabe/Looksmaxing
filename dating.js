@@ -265,7 +265,7 @@ export class DatingSimulator {
       {
         name: 'Chad', age: 22, archetype: 'lookist',
         bio: 'D1 athlete. Looking for an 8/10+ Stacy. Must have slim proportions and good style. 🏋️‍♂️🔥',
-        avatarColor: '#ff75b5', avatarType: 'chad',
+        avatarColor: '#ff75b5', avatarType: 'chad', gender: 'male',
         reqSMV: 7.5, reqSkin: 60,
         dialogues: {
           match: "Hey. You look decent. What's your Instagram?",
@@ -276,7 +276,7 @@ export class DatingSimulator {
       {
         name: 'Tyrone', age: 24, archetype: 'egirl',
         bio: '6\'4". Positive canthal tilts only. Alt aesthetics are a plus. Let\'s swap playlists.',
-        avatarColor: '#bd93f9', avatarType: 'tyrone',
+        avatarColor: '#bd93f9', avatarType: 'tyrone', gender: 'male',
         reqTilt: 'Positive', reqSMV: 6.0, reqSkin: 65,
         dialogues: {
           match: "Hey, beautiful eyes. What kind of music are you into?",
@@ -287,7 +287,7 @@ export class DatingSimulator {
       {
         name: 'Beta Bob', age: 25, archetype: 'normie',
         bio: 'Software engineer. Looking for a nice girl to play video games and build LEGO with. 🎮🤓',
-        avatarColor: '#50fa7b', avatarType: 'bob',
+        avatarColor: '#50fa7b', avatarType: 'bob', gender: 'male',
         reqSMV: 3.5,
         dialogues: {
           match: "Hi! Your profile looks really friendly.",
@@ -298,7 +298,7 @@ export class DatingSimulator {
       {
         name: 'Richard', age: 72, archetype: 'gold_digger',
         bio: 'CEO. Looking for a companion to spoil on yacht trips. Allowance provided. 💰🛥️',
-        avatarColor: '#ffb86c', avatarType: 'sugar_daddy',
+        avatarColor: '#ffb86c', avatarType: 'sugar_daddy', gender: 'male',
         reqSMV: 1.0,
         dialogues: {
           match: "Hello dear! I would love to pamper you.",
@@ -309,7 +309,7 @@ export class DatingSimulator {
       {
         name: 'Marcus', age: 27, archetype: 'normie',
         bio: 'Rizz instructor. Looking for someone with conversational game. 🎯',
-        avatarColor: '#00f0ff', avatarType: 'chad',
+        avatarColor: '#00f0ff', avatarType: 'chad', gender: 'male',
         reqSMV: 4.5, reqRizz: 40,
         dialogues: {
           match: "Hey, you seem interesting. Let's chat.",
@@ -317,11 +317,11 @@ export class DatingSimulator {
           success: "You've got real charm."
         }
       },
-      {
-        name: 'Derek', age: 30, archetype: 'gold_digger',
-        bio: 'CEO of a tech startup. Looking for a power couple. 📈',
-        avatarColor: '#50fa7b', avatarType: 'corporate',
-        reqSMV: 5.5, reqRizz: 30,
+    {
+      name: 'Derek', age: 30, archetype: 'gold_digger',
+      bio: 'CEO of a tech startup. Looking for a power couple. 📈',
+      avatarColor: '#50fa7b', avatarType: 'corporate', gender: 'male',
+      reqSMV: 5.5, reqRizz: 30,
         dialogues: {
           match: "Impressive profile. I appreciate ambition.",
           reject: "I need someone with more drive.",
@@ -333,10 +333,10 @@ export class DatingSimulator {
 
   getMaleProfiles() {
     return [
-      {
-        name: 'Tiffany', age: 21, archetype: 'lookist',
-        bio: 'No short kings! 6\'2" minimum. Must drive a clean car. 💅✨',
-        avatarColor: '#ff75b5', avatarType: 'stacy',
+    {
+      name: 'Tiffany', age: 21, archetype: 'lookist',
+      bio: 'No short kings! 6\'2" minimum. Must drive a clean car. 💅✨',
+      avatarColor: '#ff75b5', avatarType: 'stacy', gender: 'female',
         reqHeight: 74, reqSMV: 7.5, reqSkin: 60,
         dialogues: {
           match: "Hey! Loved your height. Are you busy this weekend?",
@@ -344,10 +344,10 @@ export class DatingSimulator {
           success: "Wow, okay. Pick me up at 8."
         }
       },
-      {
-        name: 'Chloe', age: 23, archetype: 'egirl',
-        bio: 'Alt girl. Positive canthal tilts and clean skin. Let\'s ignore our responsibilities.',
-        avatarColor: '#bd93f9', avatarType: 'goth',
+    {
+      name: 'Chloe', age: 23, archetype: 'egirl',
+      bio: 'Alt girl. Positive canthal tilts and clean skin. Let\'s ignore our responsibilities.',
+      avatarColor: '#bd93f9', avatarType: 'goth', gender: 'female',
         reqTilt: 'Positive', reqSMV: 6.0, reqSkin: 65,
         dialogues: {
           match: "Hey, nice eyes. You look like you'd ruin my life.",
@@ -355,10 +355,10 @@ export class DatingSimulator {
           success: "Let's hang out. Bring snacks."
         }
       },
-      {
-        name: 'Gemma', age: 26, archetype: 'lookist',
-        bio: 'Corporate analyst. Stable career only. Norwood 5+ dealbreaker.',
-        avatarColor: '#50fa7b', avatarType: 'corporate',
+    {
+      name: 'Gemma', age: 26, archetype: 'lookist',
+      bio: 'Corporate analyst. Stable career only. Norwood 5+ dealbreaker.',
+      avatarColor: '#50fa7b', avatarType: 'corporate', gender: 'female',
         reqHairline: 4, reqSMV: 5.0, reqSkin: 50,
         dialogues: {
           match: "Hello. You look presentable. What do you do?",
@@ -366,10 +366,10 @@ export class DatingSimulator {
           success: "Great, let's schedule a formal dinner."
         }
       },
-      {
-        name: 'Gertrude', age: 69, archetype: 'gold_digger',
-        bio: 'Looking for a young boy to spoil. 💰🛍️',
-        avatarColor: '#ffb86c', avatarType: 'sugar',
+    {
+      name: 'Gertrude', age: 69, archetype: 'gold_digger',
+      bio: 'Looking for a young boy to spoil. 💰🛍️',
+      avatarColor: '#ffb86c', avatarType: 'sugar', gender: 'female',
         reqSMV: 1.0,
         dialogues: {
           match: "Hello there, handsome! I want to spoil you.",
@@ -377,10 +377,10 @@ export class DatingSimulator {
           success: "Here's some shopping allowance!"
         }
       },
-      {
-        name: 'Valentina', age: 25, archetype: 'normie',
-        bio: 'Rizz queen. Looking for a guy with actual game. 🎯',
-        avatarColor: '#00f0ff', avatarType: 'goth',
+    {
+      name: 'Valentina', age: 25, archetype: 'normie',
+      bio: 'Rizz queen. Looking for a guy with actual game. 🎯',
+      avatarColor: '#00f0ff', avatarType: 'goth', gender: 'female',
         reqSMV: 4.5, reqRizz: 40,
         dialogues: {
           match: "Hey, you seem interesting. Try to keep up.",
@@ -388,10 +388,10 @@ export class DatingSimulator {
           success: "You've got real charm."
         }
       },
-      {
-        name: 'Priya', age: 28, archetype: 'gold_digger',
-        bio: 'Corporate lawyer. Someone ambitious with a good career. 📈',
-        avatarColor: '#50fa7b', avatarType: 'corporate',
+    {
+      name: 'Priya', age: 28, archetype: 'gold_digger',
+      bio: 'Corporate lawyer. Someone ambitious with a good career. 📈',
+      avatarColor: '#50fa7b', avatarType: 'corporate', gender: 'female',
         reqSMV: 5.5, reqRizz: 35,
         dialogues: {
           match: "Impressive profile. I appreciate direction.",

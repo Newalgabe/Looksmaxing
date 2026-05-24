@@ -2415,14 +2415,7 @@ function renderDatingTab() {
         <div class="phone-body">
           <div class="dating-profile-card" id="dating-swipe-card">
             <div class="dating-avatar-box">
-              <!-- Render stylized face silhouette of profile -->
-              <svg viewBox="0 0 100 100">
-                <circle cx="50" cy="40" r="28" fill="${prof.avatarColor}" opacity="0.8"/>
-                <path d="M20 90 Q50 65 80 90 Z" fill="${prof.avatarColor}" opacity="0.9"/>
-                <!-- details based on avatarType -->
-                ${prof.avatarType === 'goth' ? '<rect x="35" y="42" width="30" height="2" fill="#fff"/><circle cx="50" cy="50" r="3" fill="#ff007f"/>' : ''}
-                ${prof.avatarType === 'corporate' ? '<polygon points="50,45 42,65 58,65" fill="#fff" opacity="0.2"/>' : ''}
-              </svg>
+              ${renderCanvasAvatar(prof, 180)}
               <span class="dating-match-badge">${matchPct}% Match</span>
             </div>
             <div class="dating-info">
@@ -2558,7 +2551,7 @@ function renderRelationshipDashboard(container) {
   dashboard.innerHTML = `
     <div class="rel-header">
       <div class="rel-avatar-box">
-        ${renderPartnerAvatarSVG(profile)}
+        ${renderCanvasAvatar(profile)}
       </div>
       <div class="rel-info">
         <div class="rel-name">${profile.name} <span class="rel-age">(${profile.age})</span></div>
@@ -2629,108 +2622,12 @@ function renderRelationshipDashboard(container) {
   });
 }
 
-function renderPartnerAvatarSVG(profile) {
-  const color = profile.avatarColor || '#ff75b5';
-  const type = profile.archetype || 'normie';
-  const name = profile.name || '?';
-  // Archetype-specific SVG avatars
-  const svgs = {
-    lookist: `
-      <svg viewBox="0 0 100 100">
-        <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -40)}"/></linearGradient></defs>
-        <circle cx="50" cy="38" r="32" fill="url(#lg)"/>
-        <path d="M18 90 Q50 55 82 90 Z" fill="url(#lg)"/>
-        <!-- Sharp jawline -->
-        <polygon points="28,70 50,82 72,70" fill="${adjustColor(color, -20)}" opacity="0.5"/>
-        <!-- Eyes -->
-        <ellipse cx="35" cy="35" rx="5" ry="3" fill="#fff" opacity="0.9"/>
-        <ellipse cx="65" cy="35" rx="5" ry="3" fill="#fff" opacity="0.9"/>
-        <circle cx="35" cy="35" r="2" fill="#111"/>
-        <circle cx="65" cy="35" r="2" fill="#111"/>
-        <!-- Smirk -->
-        <path d="M38 50 Q50 58 62 50" stroke="#fff" stroke-width="2" fill="none" opacity="0.7"/>
-        <!-- Crown for high standards -->
-        <polygon points="30,18 40,8 50,15 60,8 70,18" fill="#ffd700" opacity="0.8"/>
-      </svg>`,
-    egirl: `
-      <svg viewBox="0 0 100 100">
-        <defs><linearGradient id="eg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -30)}"/></linearGradient></defs>
-        <circle cx="50" cy="38" r="30" fill="url(#eg)"/>
-        <path d="M20 88 Q50 58 80 88 Z" fill="url(#eg)"/>
-        <!-- Alt hair -->
-        <path d="M18 25 Q30 10 50 15 Q70 10 82 25" fill="${adjustColor(color, -50)}" opacity="0.7"/>
-        <!-- Dark lipstick -->
-        <ellipse cx="50" cy="52" rx="8" ry="4" fill="#2d0a1e" opacity="0.8"/>
-        <!-- Piercing -->
-        <circle cx="40" cy="55" r="2" fill="#c0c0c0"/>
-        <circle cx="60" cy="55" r="2" fill="#c0c0c0"/>
-        <!-- Eyes -->
-        <ellipse cx="35" cy="35" rx="5" ry="4" fill="#fff"/>
-        <ellipse cx="65" cy="35" rx="5" ry="4" fill="#fff"/>
-        <circle cx="35" cy="35" r="2.5" fill="#8b0000"/>
-        <circle cx="65" cy="35" r="2.5" fill="#8b0000"/>
-        <!-- Heavy eyeliner -->
-        <path d="M28 33 Q35 30 42 33" stroke="#111" stroke-width="2" fill="none"/>
-        <path d="M58 33 Q65 30 72 33" stroke="#111" stroke-width="2" fill="none"/>
-      </svg>`,
-    gold_digger: `
-      <svg viewBox="0 0 100 100">
-        <defs><linearGradient id="gd" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -20)}"/></linearGradient></defs>
-        <circle cx="50" cy="38" r="30" fill="url(#gd)"/>
-        <path d="M22 90 Q50 60 78 90 Z" fill="url(#gd)"/>
-        <!-- Money sunglasses -->
-        <rect x="28" y="33" width="18" height="10" rx="3" fill="#111" opacity="0.8"/>
-        <rect x="54" y="33" width="18" height="10" rx="3" fill="#111" opacity="0.8"/>
-        <path d="M46 38 L54 38" stroke="#111" stroke-width="2"/>
-        <!-- Smile with gold tooth -->
-        <path d="M38 52 Q50 60 62 52" stroke="#fff" stroke-width="2" fill="none"/>
-        <rect x="48" y="52" width="4" height="5" fill="#ffd700"/>
-        <!-- Dollar signs -->
-        <text x="15" y="30" font-size="14" fill="#50fa7b" opacity="0.6">$</text>
-        <text x="75" y="25" font-size="12" fill="#50fa7b" opacity="0.6">$</text>
-      </svg>`,
-    normie: `
-      <svg viewBox="0 0 100 100">
-        <defs><linearGradient id="nm" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${adjustColor(color, -20)}"/></linearGradient></defs>
-        <circle cx="50" cy="40" r="28" fill="url(#nm)"/>
-        <path d="M22 92 Q50 65 78 92 Z" fill="url(#nm)"/>
-        <!-- Friendly eyes -->
-        <ellipse cx="35" cy="38" rx="5" ry="5" fill="#fff"/>
-        <ellipse cx="65" cy="38" rx="5" ry="5" fill="#fff"/>
-        <circle cx="37" cy="38" r="2.5" fill="#333"/>
-        <circle cx="63" cy="38" r="2.5" fill="#333"/>
-        <!-- Big smile -->
-        <path d="M35 52 Q50 64 65 52" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-        <!-- Glasses -->
-        <circle cx="35" cy="38" r="10" stroke="#555" stroke-width="1.5" fill="none"/>
-        <circle cx="65" cy="38" r="10" stroke="#555" stroke-width="1.5" fill="none"/>
-        <path d="M45 38 L55 38" stroke="#555" stroke-width="1.5"/>
-      </svg>`
-  };
-
-  // Fallback for corporate/other types
-  const generic = `
-    <svg viewBox="0 0 100 100">
-      <circle cx="50" cy="40" r="30" fill="${color}" opacity="0.8"/>
-      <path d="M20 90 Q50 65 80 90 Z" fill="${color}" opacity="0.9"/>
-      <ellipse cx="35" cy="38" rx="5" ry="3" fill="#fff" opacity="0.8"/>
-      <ellipse cx="65" cy="38" rx="5" ry="3" fill="#fff" opacity="0.8"/>
-      <circle cx="35" cy="38" r="2" fill="#111"/>
-      <circle cx="65" cy="38" r="2" fill="#111"/>
-      <path d="M38 52 Q50 60 62 52" stroke="#fff" stroke-width="2" fill="none" opacity="0.6"/>
-    </svg>`;
-
-  return svgs[type] || generic;
-}
-
-function adjustColor(hex, amount) {
-  try {
-    const num = parseInt(hex.replace('#', ''), 16);
-    const r = Math.min(255, Math.max(0, (num >> 16) + amount));
-    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount));
-    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount));
-    return `rgb(${r},${g},${b})`;
-  } catch(e) { return hex; }
+function renderCanvasAvatar(profile, size = 80) {
+  const seed = encodeURIComponent(profile.name || profile.avatarType || 'default');
+  const isMale = profile.gender === 'male';
+  const facialHair = isMale ? '' : '&facialHairProbability=0';
+  const url = `https://api.dicebear.com/9.x/micah/png?seed=${seed}&size=${size * 2}${facialHair}`;
+  return `<img src="${url}" width="${size}" height="${size}" style="object-fit:cover;display:block;" alt="${profile.name || 'Avatar'}" loading="lazy">`;
 }
 
 // --- Render Encounters Tab (Card Battle) ---
