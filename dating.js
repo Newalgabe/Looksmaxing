@@ -596,12 +596,17 @@ export class DatingSimulator {
     const lvl = p.relationshipLevel;
     const interactions = [];
 
-    interactions.push({ id: 'date', label: 'Go on a Date', desc: 'A nice evening out', costAP: 1, costCash: 200, satGain: 20, minLevel: 1 });
+    // Date locations (replaces generic 'date' and 'luxury_date')
+    DatingSimulator.DATE_LOCATIONS.forEach(loc => {
+      interactions.push({
+        id: loc.id, label: loc.label, desc: loc.desc,
+        costAP: loc.costAP, costCash: loc.costCash,
+        satGain: loc.satGain, minLevel: loc.minLevel
+      });
+    });
+
     interactions.push({ id: 'gift', label: 'Buy a Gift', desc: 'A thoughtful present', costAP: 0, costCash: 500, satGain: 25, minLevel: 1 });
     interactions.push({ id: 'deep_talk', label: 'Deep Talk', desc: 'A heartfelt conversation', costAP: 1, costCash: 0, satGain: 15, minLevel: 1, requiresRizz: 50 });
-    if (lvl >= 2) {
-      interactions.push({ id: 'luxury_date', label: 'Luxury Date ✨', desc: 'Go all out', costAP: 1, costCash: 1000, satGain: 40, minLevel: 2 });
-    }
     if (lvl >= 3) {
       interactions.push({ id: 'propose', label: 'Propose Marriage 💍', desc: 'Take the next step', costAP: 0, costCash: 5000, satGain: 0, minLevel: 3 });
     }
@@ -611,8 +616,33 @@ export class DatingSimulator {
       if (p.cash < i.costCash) return false;
       if (p.relationshipLevel < i.minLevel) return false;
       if (i.requiresRizz && p.rizz < i.requiresRizz) return false;
+      if (i.id.startsWith('loc_') && !this.isLocationAvailable(i)) return false;
       return true;
     });
+  }
+
+  static DATE_LOCATIONS = [
+    { id: 'loc_park', label: '🌳 Park Picnic', desc: 'A quiet afternoon in the park', costAP: 0, costCash: 50, satGain: 10, cooldown: 1, minLevel: 1, bonus: { normie: 5 } },
+    { id: 'loc_restaurant', label: '🍽️ Dinner Date', desc: 'A nice restaurant evening', costAP: 1, costCash: 200, satGain: 20, cooldown: 0, minLevel: 1, bonus: { lookist: 5, corporate: 5 } },
+    { id: 'loc_movies', label: '🎬 Movie Night', desc: 'Catch the latest film', costAP: 1, costCash: 100, satGain: 12, cooldown: 1, minLevel: 1, bonus: { egirl: 5 } },
+    { id: 'loc_beach', label: '🏖️ Beach Walk', desc: 'A romantic stroll on the shore', costAP: 1, costCash: 0, satGain: 8, cooldown: 2, minLevel: 1, bonus: { normie: 5 } },
+    { id: 'loc_concert', label: '🎵 Concert', desc: 'See a live band', costAP: 1, costCash: 300, satGain: 22, cooldown: 2, minLevel: 2, bonus: { egirl: 10 } },
+    { id: 'loc_rooftop', label: '🌆 Rooftop Bar', desc: 'Drinks with a stunning view', costAP: 1, costCash: 400, satGain: 25, cooldown: 2, minLevel: 2, bonus: { lookist: 10, gold_digger: 5 } },
+    { id: 'loc_escape', label: '🔐 Escape Room', desc: 'Work together to escape', costAP: 1, costCash: 150, satGain: 18, cooldown: 2, minLevel: 2, bonus: { normie: 5, egirl: 5 } },
+    { id: 'loc_cooking', label: '👨‍🍳 Cooking Class', desc: 'Learn to cook together', costAP: 2, costCash: 250, satGain: 30, cooldown: 3, minLevel: 3, bonus: { normie: 10 } },
+    { id: 'loc_spa', label: '💆 Spa Day', desc: 'Relax and recharge as a couple', costAP: 1, costCash: 500, satGain: 35, cooldown: 3, minLevel: 3, bonus: { lookist: 10, gold_digger: 10 } }
+  ];
+
+  isLocationAvailable(location) {
+    const entry = this.player.visitedLocations.find(v => v.id === location.id);
+    if (!entry) return true;
+    return this.player.age - entry.lastYear > location.cooldown;
+  }
+
+  _visitLocation(locationId) {
+    const entry = this.player.visitedLocations.find(v => v.id === locationId);
+    if (entry) { entry.lastYear = this.player.age; }
+    else { this.player.visitedLocations.push({ id: locationId, lastYear: this.player.age }); }
   }
 
   doInteraction(id) {
@@ -624,14 +654,16 @@ export class DatingSimulator {
     let satGain = 0;
     let msg = '';
 
-    if (id === 'date') {
-      p.cash -= 200;
-      p.ap -= 1;
-      satGain = 20;
-      // Archetype bonuses
-      if (archetype === 'normie') satGain += 10;
-      if (archetype === 'egirl') satGain += 5;
-      msg = `You took ${profile.name} on a lovely date. +${satGain} satisfaction.`;
+    if (id.startsWith('loc_')) {
+      const loc = DatingSimulator.DATE_LOCATIONS.find(l => l.id === id);
+      if (!loc) return { status: 'error', msg: 'Unknown location.' };
+      p.cash -= loc.costCash;
+      p.ap -= loc.costAP;
+      let bonus = 0;
+      if (loc.bonus && loc.bonus[archetype]) bonus = loc.bonus[archetype];
+      satGain = loc.satGain + bonus;
+      this._visitLocation(id);
+      msg = `You took ${profile.name} on ${loc.label.toLowerCase()}. +${satGain} satisfaction.${bonus > 0 ? ' (Archetype bonus!)' : ''}`;
     } else if (id === 'gift') {
       p.cash -= 500;
       satGain = 25;
@@ -643,13 +675,6 @@ export class DatingSimulator {
       satGain = 15 + Math.floor(p.rizz / 20);
       if (archetype === 'normie') satGain += 5;
       msg = `You shared a deep conversation with ${profile.name}. +${satGain} satisfaction.`;
-    } else if (id === 'luxury_date') {
-      p.cash -= 1000;
-      p.ap -= 1;
-      satGain = 40;
-      if (archetype === 'gold_digger') satGain += 15;
-      if (archetype === 'lookist') satGain += 5;
-      msg = `You took ${profile.name} on an extravagant luxury date. +${satGain} satisfaction.`;
     } else if (id === 'propose') {
       if (p.relationshipLevel < 3) return { status: 'error', msg: 'You must be Engaged first.' };
       if (p.cash < 5000) return { status: 'error', msg: 'A ring costs $5,000!' };
@@ -696,8 +721,71 @@ export class DatingSimulator {
     this.player.relationshipLevel = 1;
     this.player.relationshipSatisfaction = 0;
     this.player.yearsWithPartner = 0;
+    this.player.lastTextedYear = 0;
     this.player.confidence = Math.max(0, this.player.confidence - 20);
     this.logCallback(`💔 You broke up with your partner. -20% Confidence.`, 'error');
+  }
+
+  // === TEXTING SYSTEM ===
+  static TEXTS = [
+    { id: 'sweet', label: '💕 Sweet', text: '"Good morning, thinking of you"', satGain: 5, rizzGain: 0, confGain: 2 },
+    { id: 'caring', label: '💬 Check in', text: '"How was your day?"', satGain: 3, rizzGain: 2, confGain: 0 },
+    { id: 'funny', label: '😂 Meme', text: 'Sent a funny meme', satGain: 4, rizzGain: 0, confGain: 3 }
+  ];
+
+  getAvailableTexts() {
+    if (!this.player.hasDatingPartner) return [];
+    if (this.player.lastTextedYear === this.player.age) return [];
+    return DatingSimulator.TEXTS;
+  }
+
+  textPartner(toneId) {
+    const p = this.player;
+    if (!p.hasDatingPartner || !p.partnerProfile) return { status: 'error', msg: 'No partner.' };
+    if (p.lastTextedYear === p.age) return { status: 'error', msg: 'Already texted this year.' };
+
+    const tone = DatingSimulator.TEXTS.find(t => t.id === toneId);
+    if (!tone) return { status: 'error', msg: 'Unknown tone.' };
+
+    p.lastTextedYear = p.age;
+    p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + tone.satGain));
+    p.rizz = Math.min(100, Math.max(0, p.rizz + (tone.rizzGain || 0)));
+    p.confidence = Math.min(100, Math.max(0, p.confidence + (tone.confGain || 0)));
+
+    const archetype = p.partnerProfile.archetype || 'normie';
+    const responses = this._getTextResponses(archetype, tone.id);
+    const reply = responses[Math.floor(Math.random() * responses.length)];
+
+    this.logCallback(`📱 You: ${tone.text}`, 'action');
+    this.logCallback(`💬 ${p.partnerProfile.name}: ${reply}`, 'success');
+    return { status: 'success', reply, satGain: tone.satGain };
+  }
+
+  _getTextResponses(archetype, toneId) {
+    const all = {
+      sweet: {
+        lookist: ['"You\'re the only 10/10 I need 💕"', '"Aww, you look cute today too"', '"Missing you too babe 💋"'],
+        egirl: ['"Ugh you\'re so soft 🥺"', '"This is why you\'re my favorite person"', '"🤍"'],
+        normie: ['"You\'re so sweet 🥹"', '"Best morning ever. How did I get so lucky?"', '"Can\'t stop smiling 😊"'],
+        gold_digger: ['"Thinking about you too... and that trip we should take 💎"', '"You\'re the best thing in my life 💕"', '"My friends are so jealous of us ❤️"'],
+        corporate: ['"Sweet of you to say. Let\'s have dinner tonight."', '"Noted. You\'re growing on me."', '"That\'s... nice. Busy day ahead?"']
+      },
+      caring: {
+        lookist: ['"Work was fine, but I\'d rather be with you"', '"Just did a killer workout. Wish you were here 💪"', '"Busy but better now that you texted ✨"'],
+        egirl: ['"Meh, same old. Let\'s play something later?"', '"Stressful. Send memes."', '"Actually had a good day. Wanna hear about it?"'],
+        normie: ['"It was okay. Better now that you asked 🥰"', '"You\'re so thoughtful. Let\'s cook together soon!"', '"Rough day but this helps ❤️"'],
+        gold_digger: ['"Exhausting. But I saw the cutest bag today..."', '"Work work work. Take me somewhere nice?"', '"Better now. Let\'s plan our next trip 💅"'],
+        corporate: ['"Productive day. Closed two deals."', '"Long meetings. Your text was a good break."', '"Busy but thriving. How about you?"']
+      },
+      funny: {
+        lookist: ['"LMAOOO stop 💀"', '"I sent this to my group chat 😂"', '"You\'re actually funny. Lucky me 😏"'],
+        egirl: ['"SCREAMING 💀💀💀"', '"This is exactly my humor 😭"', '"Okay you win the internet today"'],
+        normie: ['"HAHAHA I\'m saving this 📱"', '"This is so us 🤣"', '"You know exactly how to cheer me up 😂"'],
+        gold_digger: ['"Lol cute. Send me the one with the cat 💅"', '"Okay that was actually funny 😂"', '"You\'re lucky you\'re funny *and* cute 💕"'],
+        corporate: ['"...I chuckled. Well played."', '"Not bad. You\'ve earned bonus points."', '"Sending this to my assistant. Enjoy your win."']
+      }
+    };
+    return (all[toneId] && all[toneId][archetype]) || ['"Thanks baby ❤️"', '"You\'re the best 💕"', '"Made me smile 😊"'];
   }
 
   // === QUEST SYSTEM ===

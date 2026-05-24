@@ -230,11 +230,17 @@ export class GameState {
     this.rivalLastMilestone = 0;
 
     // Quest system
-    this.questStage = 0; // 0=not started, 1-4=in progress, -1=completed
+    this.questStage = 0;
     this.questCompleted = false;
     this.questSatDecayReduction = 0;
     this.questPassiveIncome = 0;
     this.questIncomeMult = 1;
+
+    // Texting
+    this.lastTextedYear = 0;
+
+    // Date locations
+    this.visitedLocations = [];
 
     // Gym membership
     this.hasGymMembership = false;
@@ -1254,6 +1260,8 @@ export class GameState {
       questSatDecayReduction: this.questSatDecayReduction,
       questPassiveIncome: this.questPassiveIncome,
       questIncomeMult: this.questIncomeMult,
+      lastTextedYear: this.lastTextedYear,
+      visitedLocations: this.visitedLocations,
       followers: this.followers,
       hasInfluencerCard: this.hasInfluencerCard, opponentsDefeated: this.opponentsDefeated,
       botchedJaw: this.botchedJaw, botchedHair: this.botchedHair, botchedCanthoplasty: this.botchedCanthoplasty,

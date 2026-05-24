@@ -2572,6 +2572,11 @@ function renderRelationshipDashboard(container) {
       </div>
     </div>
 
+    <div class="rel-texting-section">
+      <div class="rel-section-title">📱 TEXT YOUR PARTNER</div>
+      ${renderTextingSection(p)}
+    </div>
+
     ${levelUpHint ? `<div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:4px;">⬆ ${levelUpHint}</div>` : ''}
 
     <div class="rel-quest-section">
@@ -2654,6 +2659,17 @@ function renderRelationshipDashboard(container) {
       updateDashboard();
     });
   }
+
+  // Texting listeners
+  dashboard.querySelectorAll('.text-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      const tone = btn.getAttribute('data-tone');
+      dating.textPartner(tone);
+      renderDatingTab();
+      updateDashboard();
+    });
+  });
 }
 
 function renderQuestSection(p) {
@@ -2695,6 +2711,22 @@ function renderQuestSection(p) {
         📜 Start "${chain.name}"
       </button>
       <div style="font-size:7px;color:var(--text-muted);margin-top:2px;">A ${chain.stages.length}-stage quest to deepen your bond</div>
+    </div>`;
+}
+
+function renderTextingSection(p) {
+  if (!p.hasDatingPartner) return '';
+  const texts = dating.getAvailableTexts();
+  if (texts.length === 0) {
+    return `<div style="font-size:9px;color:var(--text-muted);text-align:center;padding:4px;">✅ Texted for this year</div>`;
+  }
+  return `
+    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+      ${texts.map(t => `
+        <button class="text-btn" data-tone="${t.id}" style="flex:1;min-width:60px;font-size:8px;padding:4px 6px;border:1px solid rgba(0,240,255,0.3);border-radius:4px;background:rgba(0,240,255,0.05);color:var(--text);cursor:pointer;">
+          ${t.label}
+        </button>
+      `).join('')}
     </div>`;
 }
 
