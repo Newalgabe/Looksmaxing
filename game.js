@@ -213,7 +213,6 @@ export class GameState {
 
     // NEW: Career system
     this.careerTier = 'unemployed';
-    this.promotionChances = 0;
 
     // Substance system (talent tree init happens above with perk check)
     this.substancesUsed = 0;
@@ -242,6 +241,43 @@ export class GameState {
     // Date locations
     this.visitedLocations = [];
 
+    // Conflict & drama
+    this.jealousyMeter = 0;
+    this.hasActiveConflict = false;
+    this.rivalActive = false;
+    this.rivalYearsActive = 0;
+
+    // Living together
+    this.livingTogether = false;
+    this.homeType = null;
+
+    // Pets
+    this.petType = null;
+    this.petName = null;
+
+    // Partner stats
+    this.partnerStyle = 50;
+    this.partnerRizz = 50;
+    this.partnerConfidence = 50;
+
+    // Social
+    this.familyApproval = 50;
+
+    // Love language
+    this.partnerLoveLanguage = 'quality_time';
+
+    // Couple goals
+    this.coupleGoalId = null;
+    this.coupleGoalProgress = 0;
+    this.coupleGoalTarget = 0;
+
+    // Anniversary
+    this.lastAnniversaryYear = 0;
+
+    // Wedding planning
+    this.weddingVenue = null;
+    this.weddingPlanned = false;
+
     // Gym membership
     this.hasGymMembership = false;
 
@@ -262,7 +298,7 @@ export class GameState {
     this.adFree = false;
 
     // NEW: Achievements (tracked via localStorage, checked at milestones)
-    this.achievementsUnlocked = JSON.parse(localStorage.getItem('looksmax_achievements') || '[]');
+    try { this.achievementsUnlocked = JSON.parse(localStorage.getItem('looksmax_achievements') || '[]'); } catch (e) { this.achievementsUnlocked = []; }
 
     // NEW: Stat timeline for analytics
     this.statTimeline = [];
@@ -636,7 +672,7 @@ export class GameState {
       this.cash -= 80;
       this.log.push('Your night out got expensive. Someone spilled drinks on your outfit.');
       this.updateSMV();
-      return { success: true, message: `You went out but a fight broke out. Lost $80. (+${rizzGain} Rizz, +${confGain} Confidence)`, type: 'action' };
+      return { success: true, message: `You went out but a fight broke out. Lost $130 total ($50 cover + $80 damages). (+${rizzGain} Rizz, +${confGain} Confidence)`, type: 'action' };
     } else if (randEvent < 0.25) {
       const extraRizz = this.randomRange(1, 3);
       this.rizz = Math.min(100, this.rizz + extraRizz);
@@ -663,20 +699,23 @@ export class GameState {
     this._validateState();
     const tier = CAREER_TIERS.find(t => t.id === this.careerTier);
     if (!tier || tier.apCost === 0) {
-      // Unemployed - can still hustle
+      // Unemployed hustle
       if (this.ap < 1) return false;
       this.ap -= 1;
-      this.cash += 200;
-      this.confidence = Math.max(0, this.confidence - 3);
-      return { message: `You did odd jobs and side hustles. Earned $200 cash. (-1 AP)`, type: 'action' };
+      this.cash += 500 + Math.floor(this.rizz * 0.1);
+      this.confidence = Math.max(0, this.confidence - 5);
+      this.log.push('You did odd jobs to get by. -5% Confidence');
+      return { success: true, message: `Hustled odd jobs. Earned $${(500 + Math.floor(this.rizz * 0.1)).toLocaleString()}.`, type: 'action' };
     }
+    if (!tier) return false;
     if (this.ap < tier.apCost) return false;
     this.ap -= tier.apCost;
-    this.cash += this._getCareerBonus(tier.pay);
+    const earned = this._getCareerBonus(tier.pay);
+    this.cash += earned;
     this.confidence = Math.max(0, this.confidence - 3);
     this.updateSMV();
     return {
-      message: `You worked as ${tier.title}. Earned $${tier.pay.toLocaleString()} cash. (-${tier.apCost} AP)`,
+      message: `You worked as ${tier.title}. Earned $${earned.toLocaleString()} cash. (-${tier.apCost} AP)`,
       type: 'action'
     };
   }
@@ -690,7 +729,7 @@ export class GameState {
     if (this.rizz < next.reqRizz) return { error: `Need Rizz ${next.reqRizz} to become ${next.title}. Current: ${this.rizz}` };
     if (this.ap < 2) return { error: 'Need 2 AP to network for a promotion.' };
     this.ap -= 2;
-    const chance = (this.smv / next.reqSMV) * (this.rizz / Math.max(1, next.reqRizz)) * 0.5;
+    const chance = (this.smv / Math.max(0.1, next.reqSMV)) * (this.rizz / Math.max(1, next.reqRizz)) * 0.5;
     if (Math.random() < chance) {
       this.careerTier = next.id;
       this.confidence = Math.min(100, this.confidence + 20);
@@ -943,6 +982,11 @@ export class GameState {
     // Risk check (reduced by iron_stomach talent)
     const finalRisk = sub.risk * this._getSubstanceRiskReduction();
     if (Math.random() < finalRisk) {
+      // Apply substance-specific side effects on bad reaction too
+      if (sub.sideEffects) {
+        if (sub.sideEffects.confidence) this.confidence = Math.max(0, this.confidence + sub.sideEffects.confidence);
+        if (sub.sideEffects.frame) this.frame = Math.max(0, this.frame + sub.sideEffects.frame);
+      }
       this.skin = Math.max(0, this.skin - 10);
       this.confidence = Math.max(0, this.confidence - 20);
       if (substanceId === 'steroids' && Math.random() < (this.addictionLevel >= 5 ? 0.25 : 0.1)) {
@@ -955,7 +999,7 @@ export class GameState {
         this.log.push(`FATAL OVERDOSE: Your body couldn't handle ${sub.name}.`);
         return { success: false, message: `FATAL OVERDOSE: Your body couldn't handle ${sub.name}. You died.`, type: 'error' };
       }
-      return { success: false, message: `BAD REACTION: ${sub.name} caused side effects! (-10 Skin, -20 Confidence)`, type: 'error', effects: sub.effects };
+      return { success: false, message: `BAD REACTION: ${sub.name} caused side effects! (-10 Skin, -20 Confidence)`, type: 'error', sideEffects: sub.sideEffects };
     }
 
     // Apply effects
@@ -966,6 +1010,7 @@ export class GameState {
       if (sub.effects.style) this.style = Math.min(100, this.style + sub.effects.style);
       if (sub.effects.confidence) this.confidence = Math.min(100, this.confidence + sub.effects.confidence);
     }
+    // Side effects always happen (even on success, for substances that have them)
     if (sub.sideEffects) {
       if (sub.sideEffects.confidence) this.confidence = Math.max(0, this.confidence + sub.sideEffects.confidence);
       if (sub.sideEffects.frame) this.frame = Math.max(0, this.frame + sub.sideEffects.frame);
@@ -986,7 +1031,7 @@ export class GameState {
       }
     });
     this.achievementsUnlocked = [...unlocked];
-    localStorage.setItem('looksmax_achievements', JSON.stringify(this.achievementsUnlocked));
+    try { localStorage.setItem('looksmax_achievements', JSON.stringify(this.achievementsUnlocked)); } catch (e) { /* storage unavailable */ }
     return newlyUnlocked;
   }
 
@@ -1001,6 +1046,7 @@ export class GameState {
     if (!this.hasDatingPartner) return { error: 'Need a partner to procreate.' };
     if (this.hasProcreated) return { error: 'Already have a child this run.' };
     if (this.age < 20) return { error: 'Too young to start a family.' };
+    if (this.cash < 2000) return { error: 'Need $2,000 for childbirth and hospital costs.' };
     this.hasProcreated = true;
     const child = {
       name: this.generateRandomName(),
@@ -1039,7 +1085,7 @@ export class GameState {
     const mil = RIVAL_MILESTONES.find(m => m.age === this.age);
     if (!mil) return null;
     if (this.rivalLastMilestone >= RIVAL_MILESTONES.indexOf(mil) + 1) return null;
-    const rivalSMV = parseFloat((this.smv + 0.8 + Math.random() * 0.5).toFixed(1));
+    const rivalSMV = parseFloat((mil.reqSMV + Math.random() * 1.5).toFixed(1));
     const playerWon = this.smv >= rivalSMV;
     if (playerWon) {
       this.rivalDefeatedCount++;
@@ -1111,9 +1157,9 @@ export class GameState {
     if (this.cash < cost) return { error: `Need $${cost} for a yearly gym membership.` };
     this.cash -= cost;
     this.hasGymMembership = true;
-    this.log.push('Purchased a gym membership! +2 passive Frame per year, cheaper gym sessions.');
+    this.log.push('Purchased a gym membership! +1-3 passive Frame per year, cheaper gym sessions.');
     this.updateSMV();
-    return { success: true, message: `You purchased a gym membership! Gym actions now cost $50 (was $100) and you gain +2 Frame passively each year.`, type: 'success' };
+    return { success: true, message: `You purchased a gym membership! Gym actions now cost $50 (was $100) and you gain +1-3 Frame passively each year.`, type: 'success' };
   }
 
   // === STAT SYNERGIES ===
@@ -1192,7 +1238,7 @@ export class GameState {
       try {
         Object.defineProperty(this, prop, {
           get() { return value; },
-          set(newVal) { value = Math.max(min, Math.min(max, newVal)); },
+          set(newVal) { if (typeof newVal !== 'number' || isNaN(newVal) || !isFinite(newVal)) return; value = Math.max(min, Math.min(max, newVal)); },
           enumerable: true,
           configurable: false
         });
@@ -1227,7 +1273,7 @@ export class GameState {
     const validTiers = ['unemployed', 'entry', 'junior', 'mid', 'senior', 'manager', 'director', 'executive', 'ceo'];
     if (!validTiers.includes(this.careerTier)) { this.careerTier = 'unemployed'; reverted = true; }
     // Check no NaN stats
-    const numericStats = ['cash','ap','height','confidence','skin','frame','style','rizz','talentPoints','surgeryBotchedCount','addictionLevel','followers'];
+    const numericStats = ['age','cash','ap','height','confidence','skin','frame','style','rizz','talentPoints','surgeryBotchedCount','addictionLevel','followers'];
     numericStats.forEach(s => {
       if (typeof this[s] !== 'number' || isNaN(this[s]) || !isFinite(this[s])) {
         this[s] = 0;
@@ -1239,6 +1285,43 @@ export class GameState {
 
   validateIntegrity() {
     return !this._validateState();
+  }
+
+  _cleanupRelationship() {
+    const dating = typeof window !== 'undefined' && window.datingSim;
+    if (dating && dating.breakUp) dating.breakUp();
+    this.hasDatingPartner = false;
+    this.partnerProfile = null;
+    this.partnerName = '';
+    this.relationshipLevel = 0;
+    this.relationshipSatisfaction = 0;
+    this.yearsWithPartner = 0;
+    this.hasActiveConflict = false;
+    this._conflictIndex = -1;
+    this.rivalActive = false;
+    this._rivalName = null;
+    this.rivalYearsActive = 0;
+    this.jealousyMeter = 0;
+    this.familyApproval = 50;
+    this.partnerLoveLanguage = '';
+    this.livingTogether = false;
+    this.weddingPlanned = false;
+    this.weddingVenue = null;
+    this.petType = null;
+    this.petName = null;
+    this.questSatDecayReduction = 0;
+    this.questPassiveIncome = 0;
+    this.questIncomeMult = 1;
+    this.datingScore = 0;
+    this.lastAnniversaryYear = 0;
+    this.coupleGoalId = null;
+    this.coupleGoalProgress = 0;
+    this.coupleGoalTarget = 0;
+    this.partnerStyle = 50;
+    this.partnerRizz = 50;
+    this.partnerConfidence = 50;
+    this.questStage = 0;
+    this.questCompleted = false;
   }
 
   // === DEBUG / SERIALIZATION ===
@@ -1262,6 +1345,27 @@ export class GameState {
       questIncomeMult: this.questIncomeMult,
       lastTextedYear: this.lastTextedYear,
       visitedLocations: this.visitedLocations,
+      jealousyMeter: this.jealousyMeter,
+      hasActiveConflict: this.hasActiveConflict,
+      _rivalName: this._rivalName,
+      _conflictIndex: this._conflictIndex,
+      rivalActive: this.rivalActive,
+      rivalYearsActive: this.rivalYearsActive,
+      livingTogether: this.livingTogether,
+      homeType: this.homeType,
+      petType: this.petType,
+      petName: this.petName,
+      partnerStyle: this.partnerStyle,
+      partnerRizz: this.partnerRizz,
+      partnerConfidence: this.partnerConfidence,
+      familyApproval: this.familyApproval,
+      partnerLoveLanguage: this.partnerLoveLanguage,
+      coupleGoalId: this.coupleGoalId,
+      coupleGoalProgress: this.coupleGoalProgress,
+      coupleGoalTarget: this.coupleGoalTarget,
+      lastAnniversaryYear: this.lastAnniversaryYear,
+      weddingVenue: this.weddingVenue,
+      weddingPlanned: this.weddingPlanned,
       followers: this.followers,
       hasInfluencerCard: this.hasInfluencerCard, opponentsDefeated: this.opponentsDefeated,
       botchedJaw: this.botchedJaw, botchedHair: this.botchedHair, botchedCanthoplasty: this.botchedCanthoplasty,
@@ -1494,6 +1598,13 @@ export class GameState {
   advanceYear() {
     this.age += 1;
     const isHard = this.difficulty === 'hard';
+
+    // Pet neglect check (before AP reset — uses previous year's remaining AP)
+    if (this.petType && this.ap < 1 && Math.random() < 0.25) {
+      this.relationshipSatisfaction = Math.max(0, this.relationshipSatisfaction - 5);
+      this.log.push(`Your ${this.petName || 'pet'} is neglected. -5 satisfaction.`);
+    }
+
     this.ap = isHard ? 8 : 10;
 
     this.validateIntegrity();
@@ -1569,7 +1680,7 @@ export class GameState {
 
     // Coaching passive income
     if (this.hasCoachingBusiness) {
-      const income = 500 + Math.floor(this.followers * 0.1);
+      const income = 500 + Math.floor(this.followers * 0.05);
       this.cash += income;
       this.log.push(`Coaching passive income: +$${income}`);
     }
@@ -1584,7 +1695,11 @@ export class GameState {
     // Quest income multiplier on career/coaching earnings
     const incomeMult = this.questIncomeMult || 1;
     if (incomeMult > 1) {
-      const bonus = Math.floor((this.cash - 500) * (incomeMult - 1));
+      const tier = CAREER_TIERS.find(t => t.id === this.careerTier);
+      const careerPay = tier && tier.pay > 0 ? tier.pay : 0;
+      const coachingIncome = this.hasCoachingBusiness ? (500 + Math.floor(this.followers * 0.1)) : 0;
+      const totalEarned = careerPay + coachingIncome + (this.questPassiveIncome || 0);
+      const bonus = Math.floor(totalEarned * (incomeMult - 1));
       if (bonus > 0) {
         this.cash += bonus;
         this.log.push(`Power couple income bonus: +$${bonus}`);
@@ -1602,21 +1717,83 @@ export class GameState {
       if (this.ap >= 1) {
         this.ap -= 1;
       } else if (this.relationshipLevel < 4 && Math.random() < 0.25) {
-        this.hasDatingPartner = false;
-        this.relationshipSatisfaction = 0;
         this.confidence = Math.max(0, this.confidence - 25);
         this.log.push('Your relationship fell apart from neglect.');
+        this._cleanupRelationship();
       }
       // Breakup if satisfaction hits 0 (not at marriage level)
       if (this.relationshipSatisfaction <= 0 && this.relationshipLevel < 4) {
-        this.hasDatingPartner = false;
         this.confidence = Math.max(0, this.confidence - 30);
         this.log.push('Your partner left you — the relationship was beyond repair.');
+        this._cleanupRelationship();
       }
+
+      // Jealousy accumulation (skip if relationship ended above)
+      if (this.hasDatingPartner) {
+      this.jealousyMeter = Math.min(100, this.jealousyMeter + 10);
+      if (this.careerTier !== 'unemployed') this.jealousyMeter = Math.min(100, this.jealousyMeter + 5);
+      if (this.hasGymMembership) this.jealousyMeter = Math.min(100, this.jealousyMeter + 3);
+
+      // Conflict trigger (when satisfaction drops low)
+      if (this.relationshipSatisfaction < 50 && !this.hasActiveConflict && Math.random() < 0.4) {
+        this.hasActiveConflict = true;
+        this._conflictIndex = Math.floor(Math.random() * 3);
+        this.log.push('⚡ A relationship conflict has erupted! Resolve it in the dashboard.');
+      }
+
+      // Jealousy decays each year to prevent runaway
+      this.jealousyMeter = Math.max(0, this.jealousyMeter - 20);
+
+      // Rival check
+      if (this.relationshipSatisfaction < 30 && !this.rivalActive && this.yearsWithPartner >= 2 && Math.random() < 0.3) {
+        this.rivalActive = true;
+        this._rivalName = this.generateRandomName();
+        this.log.push(`⚠️ Someone is pursuing your partner! Deal with it in the dashboard.`);
+      }
+
+      // Family approval drift
+      if (this.age % 2 === 0) { // every 2 years
+        const target = Math.round((this.style + this.confidence + this.rizz) / 3);
+        this.familyApproval = Math.min(100, Math.max(0, this.familyApproval + Math.round((target - this.familyApproval) * 0.15)));
+      }
+
+      // Anniversary
+      const dating = window.datingSim;
+      if (dating && this.lastAnniversaryYear < this.yearsWithPartner) {
+        const result = dating.checkAnniversary();
+        if (result) {
+          this.log.push(`🎉 ${this.yearsWithPartner} year anniversary! ${this.partnerProfile?.name} ${result.event}`);
+        }
+      }
+
+      // Pet care (AP deducted from current year's budget)
+      if (this.petType && this.ap >= 1) {
+        this.ap -= 1;
+      }
+
+      // Living together maintenance
+      if (this.livingTogether) {
+        this.cash = Math.max(0, this.cash - 400);
+        this.confidence = Math.min(100, this.confidence + 2);
+        this.style = Math.min(100, this.style + 1);
+        this.log.push(`Home maintenance: -$400, +2 Confidence, +1 Style.`);
+      }
+
+      // Partner stats passive growth bonus
+      const avgPartner = Math.round(((this.partnerStyle || 50) + (this.partnerRizz || 50) + (this.partnerConfidence || 50)) / 3);
+      if (avgPartner >= 70) this.confidence = Math.min(100, this.confidence + 3);
+      if (avgPartner >= 50) this.rizz = Math.min(100, this.rizz + 1);
+
       // Passive bonuses per level
       if (this.relationshipLevel >= 2) this.confidence = Math.min(100, this.confidence + 3);
       if (this.relationshipLevel >= 3) { this.confidence = Math.min(100, this.confidence + 2); this.rizz = Math.min(100, this.rizz + 1); }
       if (this.relationshipLevel >= 4) { this.confidence = Math.min(100, this.confidence + 5); this.style = Math.min(100, this.style + 1); this.skin = Math.min(100, this.skin + 1); }
+
+      // Couple goal progress (years-based)
+      if (this.coupleGoalId === 'goal_years') {
+        if (window.datingSim) window.datingSim.advanceGoal(1);
+      }
+      } // end inner hasDatingPartner guard
     }
 
     // Depression tracking: if confidence at 0 for 3+ consecutive years → suicide
@@ -1641,20 +1818,28 @@ export class GameState {
 
     this.updateSMV();
 
-    // Record stat timeline
-    this.recordStatTimeline();
-
     // Check for seasonal event
     const seasonal = this.checkSeasonalEvent();
+    if (seasonal && seasonal.effect) {
+      seasonal.effect(this);
+      this.log.push(`🎉 Seasonal event: ${seasonal.name} — ${seasonal.desc}`);
+    }
 
     // Midlife crisis events (age 35-50)
     let midlifeEvent = null;
     if (this.age >= 35 && this.age <= 50 && Math.random() < 0.12) {
+      const hadPartner = this.hasDatingPartner;
       midlifeEvent = this.triggerMidlifeEvent();
+      if (hadPartner && !this.hasDatingPartner) this._cleanupRelationship();
     }
 
     // Trigger random event
+    const hadPartner = this.hasDatingPartner;
     const event = this.triggerRandomEvent();
+    if (hadPartner && !this.hasDatingPartner) this._cleanupRelationship();
+
+    // Record stat timeline (after all events have been applied)
+    this.recordStatTimeline();
 
     return { event, seasonal, midlifeEvent, rivalResult };
   }

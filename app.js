@@ -21,29 +21,34 @@ function _copeChecksum(val) {
   return Math.abs(hash).toString(36);
 }
 function _loadCopeTokens() {
-  const stored = localStorage.getItem('looksmax_cope_tokens');
-  const storedChk = localStorage.getItem('looksmax_cope_tokens_c');
-  if (!stored) return 0;
-  if (storedChk !== _copeChecksum(stored)) {
-    console.warn('[ANTI-CHEAT] Cope token tampering detected — reset to 0');
-    localStorage.removeItem('looksmax_cope_tokens');
-    localStorage.removeItem('looksmax_cope_tokens_c');
-    return 0;
-  }
-  return parseInt(stored) || 0;
+  try {
+    const stored = localStorage.getItem('looksmax_cope_tokens');
+    const storedChk = localStorage.getItem('looksmax_cope_tokens_c');
+    if (!stored) return 0;
+    if (storedChk !== _copeChecksum(stored)) {
+      console.warn('[ANTI-CHEAT] Cope token tampering detected — reset to 0');
+      localStorage.removeItem('looksmax_cope_tokens');
+      localStorage.removeItem('looksmax_cope_tokens_c');
+      return 0;
+    }
+    return parseInt(stored) || 0;
+  } catch (e) { return 0; }
 }
 function _saveCopeTokens(val) {
-  localStorage.setItem('looksmax_cope_tokens', val);
-  localStorage.setItem('looksmax_cope_tokens_c', _copeChecksum(val));
+  try {
+    localStorage.setItem('looksmax_cope_tokens', val);
+    localStorage.setItem('looksmax_cope_tokens_c', _copeChecksum(val));
+  } catch (e) { /* storage unavailable */ }
 }
 let copeTokens = _loadCopeTokens();
-let unlockedPerks = JSON.parse(localStorage.getItem('looksmax_unlocked_perks') || '{}');
-let unlockedThemes = JSON.parse(localStorage.getItem('looksmax_unlocked_themes') || '{"default":true}');
-let activeTheme = localStorage.getItem('looksmax_active_theme') || 'default';
+let unlockedPerks = (() => { try { return JSON.parse(localStorage.getItem('looksmax_unlocked_perks') || '{}'); } catch (e) { return {}; } })();
+let unlockedThemes = (() => { try { return JSON.parse(localStorage.getItem('looksmax_unlocked_themes') || '{"default":true}'); } catch (e) { return { default: true }; } })();
+let activeTheme = (() => { try { return localStorage.getItem('looksmax_active_theme') || 'default'; } catch (e) { return 'default'; } })();
 let activeShopTab = 'perks';
 let chosenGender = 'male';
 let _endYearLock = false;
 let _adCooldown = false;
+let _adCooldownTimer = null;
 
 // --- Fake Ads ---
 const ADS = [
@@ -592,6 +597,24 @@ const eventDesc = document.getElementById('event-modal-desc');
 const eventImpact = document.getElementById('event-modal-impact');
 const btnCloseEvent = document.getElementById('btn-close-event');
 
+/** Show a choice modal with preset buttons; calls onSelect(value) when clicked */
+function showChoiceModal(title, desc, choices, onSelect) {
+  eventTitle.textContent = title;
+  eventDesc.textContent = desc;
+  eventImpact.innerHTML = choices.map(c =>
+    `<button class="choice-modal-btn" data-value="${c.value}" style="display:block;width:100%;padding:8px 12px;margin:4px 0;border:1px solid rgba(0,240,255,0.3);border-radius:6px;background:rgba(0,240,255,0.08);color:var(--text);cursor:pointer;font-size:13px;text-align:left;">${c.label}</button>`
+  ).join('');
+  btnCloseEvent.style.display = 'none';
+  eventModal.classList.remove('hidden');
+  eventImpact.querySelectorAll('.choice-modal-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      eventModal.classList.add('hidden');
+      btnCloseEvent.style.display = '';
+      onSelect(btn.getAttribute('data-value'));
+    });
+  });
+}
+
 // TikTok Modals & Actions
 const actTiktok = document.getElementById('act-tiktok');
 const tiktokModal = document.getElementById('tiktok-modal');
@@ -698,6 +721,7 @@ function setupAudioControl() {
 }
 
 function logToConsole(message, type = 'system') {
+  if (!consoleContainer) return;
   const div = document.createElement('div');
   div.className = `log-entry ${type}`;
   div.innerHTML = `[${type.toUpperCase()}] ${message}`;
@@ -1225,6 +1249,7 @@ tabBtns.forEach(btn => {
 
   document.getElementById('btn-close-mirror').addEventListener('click', () => {
     playSound('click');
+    if (mirrorInterval) clearInterval(mirrorInterval);
     mirrorModal.classList.add('hidden');
   });
 
@@ -1556,9 +1581,13 @@ tabBtns.forEach(btn => {
   btnCloseEvent.addEventListener('click', () => {
     playSound('click');
     eventModal.classList.add('hidden');
-    _endYearLock = false;
-    if (btnEndYear) btnEndYear.disabled = false;
-    checkGameOver();
+    if (_yearEventQueue.length > 0) {
+      _showNextYearEvent();
+    } else {
+      _endYearLock = false;
+      if (btnEndYear) btnEndYear.disabled = false;
+      checkGameOver();
+    }
   });
 
   document.getElementById('btn-clear-logs').addEventListener('click', () => {
@@ -1568,6 +1597,7 @@ tabBtns.forEach(btn => {
 
   document.getElementById('btn-restart').addEventListener('click', () => {
     playSound('click');
+    _gameOverTriggered = false;
     _endYearLock = false;
     if (btnEndYear) btnEndYear.disabled = false;
     renderShop();
@@ -1581,6 +1611,7 @@ tabBtns.forEach(btn => {
     // Switch to heir as the new player
     game = heir;
     dating = new DatingSimulator(game, logToConsole);
+    window.datingSim = dating;
     battle = new BattleSystem(game, logToConsole);
     game.recordStatTimeline();
     const achs = game.checkAchievements();
@@ -1785,6 +1816,13 @@ function updateDashboard() {
   // Enable/Disable Action buttons based on resources
   const careerInfo = CAREER_TIERS.find(t => t.id === game.careerTier);
   actWork.disabled = (careerInfo && careerInfo.apCost > 0) ? game.ap < careerInfo.apCost : game.ap < 1;
+  // Update work button label to match current tier
+  if (careerInfo) {
+    const desc = actWork.querySelector('.desc');
+    const cost = actWork.querySelector('.cost');
+    if (desc) desc.textContent = `Earn money, lose ${careerInfo.apCost} AP. Mental health penalty.`;
+    if (cost) cost.textContent = `-${careerInfo.apCost} AP / +$${careerInfo.pay.toLocaleString()} cash`;
+  }
   const gymCost = game.hasGymMembership ? 50 : 100;
   actGym.disabled = game.ap < 2 || game.cash < gymCost;
   actSkincare.disabled = game.ap < 1 || game.cash < 50;
@@ -1796,7 +1834,8 @@ function updateDashboard() {
     actLivestream.disabled = game.ap < 1 || game.cash < 50 || game.followers < 100;
   }
   if (actTravel) {
-    actTravel.disabled = game.ap < 2 || game.cash < 1500 || game.age < 20;
+    const canAnyDest = game.age >= 20 && game.cash >= 1500 && game.smv >= 2.0;
+    actTravel.disabled = game.ap < 2 || !canAnyDest;
   }
   if (actCoach) {
     const coachUnlocked = game.smv >= 6.0;
@@ -1838,7 +1877,7 @@ function updateDashboard() {
     }
   }
   // Update gym card cost label dynamically
-  const gymCardCost = actGym.querySelector('.cost');
+  const gymCardCost = actGym ? actGym.querySelector('.cost') : null;
   if (gymCardCost) {
     gymCardCost.textContent = game.hasGymMembership ? '-$50 cash / -$2 AP (member)' : '-$100 cash / -$2 AP';
   }
@@ -1871,6 +1910,8 @@ function updateDashboard() {
 }
 
 // --- Year Progression & Events ---
+let _yearEventQueue = [];
+
 function endYear() {
   playSound('level-up');
   const result = game.advanceYear();
@@ -1890,56 +1931,52 @@ function endYear() {
   const newAchs = game.checkAchievements();
   newAchs.forEach(ach => showAchievementToast(ach));
 
-  // Show seasonal event as a modal (before random event)
-  if (result.seasonal) {
-    const seas = result.seasonal;
-    eventTitle.textContent = seas.icon + ' ' + seas.name;
-    eventDesc.textContent = seas.desc;
-    eventImpact.textContent = `EFFECTS: Seasonal event applied.`;
-    eventModal.classList.remove('hidden');
-    logToConsole(`Seasonal Event: ${seas.icon} ${seas.name} - ${seas.desc}`, 'event');
-    return; // wait for modal close before showing next event
-  }
+  // Build event queue
+  _yearEventQueue = [];
+  if (result.seasonal) _yearEventQueue.push({ type: 'seasonal', data: result.seasonal });
+  if (result.midlifeEvent) _yearEventQueue.push({ type: 'midlife', data: result.midlifeEvent });
+  if (result.rivalResult) _yearEventQueue.push({ type: 'rival', data: result.rivalResult });
+  if (result.event) _yearEventQueue.push({ type: 'random', data: result.event });
 
-  // Show midlife crisis event
-  if (result.midlifeEvent) {
-    const me = result.midlifeEvent;
+  _showNextYearEvent();
+}
+
+function _showNextYearEvent() {
+  if (_yearEventQueue.length === 0) {
+    _endYearLock = false;
+    if (btnEndYear) btnEndYear.disabled = false;
+    return;
+  }
+  const ev = _yearEventQueue.shift();
+  if (ev.type === 'seasonal') {
+    const s = ev.data;
+    eventTitle.textContent = s.icon + ' ' + s.name;
+    eventDesc.textContent = s.desc;
+    eventImpact.textContent = `EFFECTS: Seasonal event applied.`;
+    logToConsole(`Seasonal Event: ${s.icon} ${s.name} - ${s.desc}`, 'event');
+  } else if (ev.type === 'midlife') {
+    const me = ev.data;
     eventTitle.textContent = me.icon + ' ' + me.title;
     eventDesc.textContent = me.desc;
     eventImpact.textContent = `EFFECTS: ${me.impactText}`;
-    eventModal.classList.remove('hidden');
     logToConsole(`Midlife Crisis: ${me.title}`, 'event');
-    return; // wait for modal close before random event
-  }
-
-  // Show rival result
-  if (result.rivalResult) {
-    const r = result.rivalResult;
+  } else if (ev.type === 'rival') {
+    const r = ev.data;
     const won = r.playerWon;
     eventTitle.textContent = `${won ? '✅' : '❌'} RIVAL CHECK-IN: ${r.milestone.title}`;
     eventDesc.innerHTML = `Your rival <strong>${r.rivalName}</strong> at age ${r.milestone.age}.
       <br/><br/>Their SMV: <strong>${r.rivalSMV}</strong> | Your SMV: <strong>${game.smv}</strong>
       <br/>${won ? 'You crushed them. Confidence boosted!' : 'They\'re pulling ahead. Stay focused.'}`;
     eventImpact.textContent = won ? 'EFFECTS: +20% Confidence, Rival milestone passed!' : 'EFFECTS: -15% Confidence';
-    eventModal.classList.remove('hidden');
     logToConsole(`Rival Check: ${r.rivalName} (SMV ${r.rivalSMV}) — ${won ? 'WON' : 'LOST'}`, won ? 'success' : 'error');
-    return;
+  } else if (ev.type === 'random') {
+    const re = ev.data;
+    eventTitle.textContent = re.icon + ' ' + re.title;
+    eventDesc.textContent = re.desc;
+    eventImpact.textContent = `EFFECTS: ${re.impactText}`;
+    logToConsole(`Advanced to Age ${game.age}. Random Event triggered: ${re.title}`, 'event');
   }
-
-  // Show random event
-  if (result.event) {
-    const event = result.event;
-    eventTitle.textContent = event.icon + ' ' + event.title;
-    eventDesc.textContent = event.desc;
-    eventImpact.textContent = `EFFECTS: ${event.impactText}`;
-    eventModal.classList.remove('hidden');
-    logToConsole(`Advanced to Age ${game.age}. Random Event triggered: ${event.title}`, 'event');
-    return;
-  }
-
-  // If no events at all (shouldn't happen), release lock
-  _endYearLock = false;
-  if (btnEndYear) btnEndYear.disabled = false;
+  eventModal.classList.remove('hidden');
 }
 
 function checkGameOver() {
@@ -1965,7 +2002,10 @@ function checkGameOver() {
   }
 }
 
+let _gameOverTriggered = false;
 function triggerGameOver(reasonText) {
+  if (_gameOverTriggered) return;
+  _gameOverTriggered = true;
   // Check achievements before game over screen
   const achs = game.checkAchievements();
   achs.forEach(ach => showAchievementToast(ach));
@@ -2239,7 +2279,7 @@ function renderSurgeries() {
     card.className = 'surgery-item';
     
     // Clinic prices
-    const costTurkey = Math.round(s.cost * 0.5);
+    const costTurkey = Math.round(s.cost * game._getTurkeySurgeryMult());
     const costLocal = s.cost;
     const costBeverly = s.cost * 2;
     
@@ -2456,6 +2496,7 @@ function renderDatingTab() {
       card.classList.add('swiped-right');
       setTimeout(() => {
         const res = dating.swipeRight();
+        if (!res) return;
         if (res.status === 'no_ap') {
           playSound('error');
           logToConsole(res.message, 'error');
@@ -2584,16 +2625,38 @@ function renderRelationshipDashboard(container) {
       ${renderQuestSection(p)}
     </div>
 
+    <div class="rel-relationship-details">
+      ${renderRelationshipDetails(p)}
+    </div>
+
     <div class="rel-interactions">
       <div class="rel-section-title">ACTIVITIES</div>
-      ${interactions.length === 0 ? '<div class="rel-no-actions">No activities available (check AP/cash/level)</div>' :
-        interactions.map(i => `
+      ${interactions.length === 0 ? '<div class="rel-no-actions">No activities available (check AP/cash/level)</div>' : (() => {
+        const locs = interactions.filter(i => i.id.startsWith('loc_'));
+        const others = interactions.filter(i => !i.id.startsWith('loc_'));
+        let html = others.map(i => `
           <button class="rel-action-btn" data-action="${i.id}">
             <span class="rel-action-label">${i.label}</span>
             <span class="rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
             <span class="rel-action-sat">+${i.satGain} ❤️</span>
           </button>
-        `).join('')}
+        `).join('');
+        if (locs.length > 0) {
+          html += `<button class="rel-action-btn" id="btn-toggle-locations" data-action="__toggle_locations__" style="border-color:var(--accent-cyan);color:var(--accent-cyan);font-size:9px;">
+            📍 Date Locations (${locs.length}) <span id="loc-toggle-arrow">▶</span>
+          </button>
+          <div id="loc-collapse" style="display:none;flex-direction:column;gap:4px;">
+            ${locs.map(i => `
+              <button class="rel-action-btn" data-action="${i.id}" style="padding:6px 10px;font-size:9px;">
+                <span class="rel-action-label">${i.label}</span>
+                <span class="rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
+                <span class="rel-action-sat">+${i.satGain} ❤️</span>
+              </button>
+            `).join('')}
+          </div>`;
+        }
+        return html;
+      })()}
     </div>
 
     <div class="rel-footer">
@@ -2607,7 +2670,40 @@ function renderRelationshipDashboard(container) {
   dashboard.querySelectorAll('.rel-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-action');
+      if (id === '__toggle_locations__') {
+        const collapse = document.getElementById('loc-collapse');
+        if (!collapse) return;
+        const isHidden = collapse.style.display === 'none';
+        collapse.style.display = isHidden ? 'flex' : 'none';
+        document.getElementById('loc-toggle-arrow').textContent = isHidden ? '▼' : '▶';
+        return;
+      }
       playSound('click');
+      if (id === 'plan_wedding') {
+        showChoiceModal('💒 Choose Wedding Venue', 'Pick a venue for your wedding:', [
+          { value: 'beach', label: '🏖️ Beach — $0 · Romantic sunset ceremony' },
+          { value: 'church', label: '⛪ Church — $0 · Traditional elegance' },
+          { value: 'garden', label: '🌿 Garden — $0 · Natural beauty' },
+          { value: 'city_hall', label: '🏛️ City Hall — $0 · Quick and practical' }
+        ], (venue) => {
+          dating.planWedding(venue);
+          renderDatingTab();
+          updateDashboard();
+        });
+        return;
+      }
+      if (id === 'adopt_pet') {
+        showChoiceModal('🐾 Adopt a Pet', 'What kind of pet would you like?', [
+          { value: 'dog', label: '🐕 Dog — $300 · Loyal companion' },
+          { value: 'cat', label: '🐈 Cat — $300 · Independent friend' }
+        ], (type) => {
+          const name = prompt('Name your pet:', type === 'dog' ? 'Buddy' : 'Whiskers') || (type === 'dog' ? 'Buddy' : 'Whiskers');
+          dating.adoptPet(type, name.trim());
+          renderDatingTab();
+          updateDashboard();
+        });
+        return;
+      }
       const result = dating.doInteraction(id);
       if (result.status === 'error') {
         logToConsole(result.msg, 'error');
@@ -2670,6 +2766,40 @@ function renderRelationshipDashboard(container) {
       updateDashboard();
     });
   });
+
+  // Conflict resolution
+  dashboard.querySelectorAll('.conflict-choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      const idx = parseInt(btn.getAttribute('data-idx'));
+      dating.resolveConflict(idx);
+      renderDatingTab();
+      updateDashboard();
+    });
+  });
+
+  // Rival handling
+  dashboard.querySelectorAll('.rival-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      const choice = btn.getAttribute('data-choice');
+      const result = dating.handleRival(choice);
+      logToConsole(result.msg || '', result.status === 'success' ? 'success' : 'error');
+      renderDatingTab();
+      updateDashboard();
+    });
+  });
+
+  // Couple goals
+  dashboard.querySelectorAll('.goal-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playSound('click');
+      const goalId = btn.getAttribute('data-goal');
+      dating.startGoal(goalId);
+      renderDatingTab();
+      updateDashboard();
+    });
+  });
 }
 
 function renderQuestSection(p) {
@@ -2714,6 +2844,109 @@ function renderQuestSection(p) {
     </div>`;
 }
 
+function renderRelationshipDetails(p) {
+  if (!p.hasDatingPartner) return '';
+
+  const parts = [];
+
+  // Conflict
+  if (p.hasActiveConflict) {
+    const conflict = dating.getActiveConflict();
+    if (conflict) {
+      parts.push(`<div style="background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);border-radius:8px;padding:8px;margin-bottom:6px;">
+        <div style="font-size:9px;color:#ff4444;font-weight:600;margin-bottom:4px;">${conflict.title}</div>
+        <div style="font-size:8px;color:var(--text);margin-bottom:4px;">${conflict.desc(p.partnerProfile?.name || '')}</div>
+        ${conflict.choices.map((c, i) => `
+          <button class="conflict-choice-btn" data-idx="${i}" style="font-size:8px;padding:3px 8px;margin:2px;border:1px solid rgba(255,68,68,0.3);border-radius:4px;background:rgba(255,68,68,0.05);color:var(--text);cursor:pointer;">${c.text}</button>
+        `).join('')}
+      </div>`);
+    }
+  }
+
+  // Rival
+  if (p.rivalActive) {
+    const rival = dating.getRivalStatus();
+    parts.push(`<div style="background:rgba(255,165,0,0.1);border:1px solid rgba(255,165,0,0.3);border-radius:8px;padding:8px;margin-bottom:6px;">
+      <div style="font-size:9px;color:orange;font-weight:600;">⚠️ Rival Detected</div>
+      <div style="font-size:8px;color:var(--text);margin:2px 0;">${rival?.name || 'Someone'} is pursuing your partner (${rival?.yearsActive || 0} yr)</div>
+      <button class="rival-btn" data-choice="confront" style="font-size:8px;padding:3px 8px;border:1px solid rgba(255,165,0,0.3);border-radius:4px;background:rgba(255,165,0,0.1);cursor:pointer;">⚔️ Confront</button>
+      <button class="rival-btn" data-choice="ignore" style="font-size:8px;padding:3px 8px;border:1px solid rgba(255,165,0,0.3);border-radius:4px;background:rgba(255,165,0,0.05);cursor:pointer;">👀 Ignore</button>
+      <button class="rival-btn" data-choice="let_go" style="font-size:8px;padding:3px 8px;border:1px solid rgba(255,165,0,0.3);border-radius:4px;background:rgba(255,165,0,0.05);cursor:pointer;">💔 Let go</button>
+    </div>`);
+  }
+
+  // Jealousy meter
+  parts.push(`
+    <div style="margin-bottom:4px;">
+      <div style="display:flex;justify-content:space-between;font-size:8px;">
+        <span>😤 Jealousy</span>
+        <span class="${p.jealousyMeter >= 60 ? 'text-pink' : p.jealousyMeter >= 30 ? 'text-yellow' : 'text-green'}">${p.jealousyMeter}%</span>
+      </div>
+      <div class="progress-bar-container" style="height:4px;"><div class="progress-fill ${p.jealousyMeter >= 60 ? 'bg-pink' : p.jealousyMeter >= 30 ? 'bg-yellow' : 'bg-green'}" style="width:${p.jealousyMeter}%;"></div></div>
+    </div>`);
+
+  // Partner stats
+  parts.push(`
+    <div style="font-size:8px;color:var(--text-muted);margin-bottom:2px;">Partner Stats — Style ${p.partnerStyle || 50} | Rizz ${p.partnerRizz || 50} | Confidence ${p.partnerConfidence || 50}</div>`);
+
+  // Family approval
+  parts.push(`
+    <div style="margin-bottom:4px;">
+      <div style="display:flex;justify-content:space-between;font-size:8px;">
+        <span>👨‍👩‍👧 Family Approval</span>
+        <span class="${p.familyApproval >= 60 ? 'text-green' : p.familyApproval >= 30 ? 'text-yellow' : 'text-pink'}">${p.familyApproval}%</span>
+      </div>
+      <div class="progress-bar-container" style="height:4px;"><div class="progress-fill ${p.familyApproval >= 60 ? 'bg-green' : p.familyApproval >= 30 ? 'bg-yellow' : 'bg-pink'}" style="width:${p.familyApproval}%;"></div></div>
+    </div>`);
+
+  // Love language
+  if (p.partnerLoveLanguage) {
+    const ll = DatingSimulator.LOVE_LANG_LABELS[p.partnerLoveLanguage] || p.partnerLoveLanguage;
+    parts.push(`<div style="font-size:8px;color:var(--accent-purple);margin-bottom:4px;">💕 Love language: ${ll}</div>`);
+  }
+
+  // Pet
+  if (p.petType) {
+    parts.push(`<div style="font-size:8px;color:var(--text-muted);margin-bottom:2px;">🐾 ${p.petName || 'Pet'} the ${p.petType}</div>`);
+  }
+
+  // Living together
+  if (p.livingTogether) {
+    parts.push(`<div style="font-size:8px;color:var(--accent-cyan);margin-bottom:2px;">🏠 Living together${p.homeType ? ` (${p.homeType})` : ''}</div>`);
+  }
+
+  // Wedding planned
+  if (p.weddingPlanned && p.relationshipLevel < 4) {
+    parts.push(`<div style="font-size:8px;color:var(--accent-pink);margin-bottom:2px;">💒 Wedding planned at ${p.weddingVenue} — propose to seal it!</div>`);
+  }
+
+  // Couple goal
+  if (p.coupleGoalId) {
+    const goal = DatingSimulator.GOALS.find(g => g.id === p.coupleGoalId);
+    if (goal) {
+      const pct = Math.round((p.coupleGoalProgress || 0) / p.coupleGoalTarget * 100);
+      parts.push(`
+        <div style="margin-bottom:2px;">
+          <div style="display:flex;justify-content:space-between;font-size:8px;">
+            <span>🎯 ${goal.label}</span>
+            <span>${Math.min(p.coupleGoalTarget, p.coupleGoalProgress || 0)}/${p.coupleGoalTarget}</span>
+          </div>
+          <div class="progress-bar-container" style="height:4px;"><div class="progress-fill bg-purple" style="width:${pct}%;"></div></div>
+        </div>`);
+    }
+  }
+
+  // Start goal button
+  const availGoals = dating.getAvailableGoals();
+  if (availGoals.length > 0 && !p.coupleGoalId) {
+    parts.push(`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+      ${availGoals.map(g => `<button class="goal-btn" data-goal="${g.id}" style="font-size:7px;padding:3px 6px;border:1px solid rgba(139,92,246,0.3);border-radius:4px;background:rgba(139,92,246,0.05);color:var(--text);cursor:pointer;">🎯 ${g.label}</button>`).join('')}
+    </div>`);
+  }
+
+  return parts.join('');
+}
+
 function renderTextingSection(p) {
   if (!p.hasDatingPartner) return '';
   const texts = dating.getAvailableTexts();
@@ -2731,6 +2964,7 @@ function renderTextingSection(p) {
 }
 
 function renderCanvasAvatar(profile, size = 80) {
+  if (!profile) return `<div style="width:${size}px;height:${size}px;background:var(--bg-card);border-radius:50%;"></div>`;
   const seed = encodeURIComponent(profile.name || profile.avatarType || 'default');
   const isMale = profile.gender === 'male';
   const featuresProb = isMale ? '' : '&featuresProbability=0';
@@ -2974,9 +3208,14 @@ function triggerCardAnimation(cardName, arena) {
   
   let startTime = performance.now();
   
+  function getCanvasFont(size, weight) {
+    const ff = getComputedStyle(document.body).getPropertyValue('--font-display').trim().replace(/"/g, '') || 'Outfit, sans-serif';
+    return `${weight || 'normal'} ${size || '16px'} ${ff}`;
+  }
+
   function drawFloatingText(ctx, text, progress, color, x, y) {
     ctx.save();
-    ctx.font = 'bold 24px var(--font-display)';
+    ctx.font = getCanvasFont('24px', 'bold');
     ctx.fillStyle = color;
     ctx.textAlign = 'center';
     ctx.globalAlpha = 1 - progress;
@@ -3146,7 +3385,7 @@ function triggerUltimateAnimation(arena) {
     
     // Text
     ctx.save();
-    ctx.font = 'bold 36px var(--font-display)';
+    ctx.font = getCanvasFont('36px', 'bold');
     ctx.fillStyle = '#ffea00';
     ctx.textAlign = 'center';
     ctx.globalAlpha = 1 - progress;
@@ -3582,7 +3821,8 @@ function showAdModal() {
 
 function closeAdModal() {
   document.getElementById('ad-modal').classList.add('hidden');
-  setTimeout(() => { _adCooldown = false; }, 30000);
+  if (_adCooldownTimer) clearTimeout(_adCooldownTimer);
+  _adCooldownTimer = setTimeout(() => { _adCooldown = false; _adCooldownTimer = null; }, 30000);
 }
 
 function renderAchievementsFinal() {

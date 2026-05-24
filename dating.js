@@ -227,7 +227,7 @@ export class DatingSimulator {
     }
 
     // Standard (normie / egirl) - existing formula
-    let smvDiff = this.player.smv - profile.reqSMV;
+    let smvDiff = this.player.smv - (profile.reqSMV || 5.0);
     let prob = 30 + smvDiff * 15;
 
     if (profile.reqHeight && this.player.height < profile.reqHeight) {
@@ -547,6 +547,7 @@ export class DatingSimulator {
           this.player.hasDatingPartner = true;
           this.player.partnerName = this.currentProfile.name;
           this.player.partnerProfile = { ...this.currentProfile };
+          this.player.partnerLoveLanguage = DatingSimulator.LOVE_LANGUAGES[this.currentProfile.archetype || 'normie'] || 'quality_time';
           this.player.relationshipLevel = 1;
           this.player.relationshipSatisfaction = 60;
           this.player.yearsWithPartner = 0;
@@ -605,8 +606,28 @@ export class DatingSimulator {
       });
     });
 
-    interactions.push({ id: 'gift', label: 'Buy a Gift', desc: 'A thoughtful present', costAP: 0, costCash: 500, satGain: 25, minLevel: 1 });
+    // Gift catalog
+    DatingSimulator.GIFTS.forEach(g => {
+      interactions.push({ id: g.id, label: g.label, desc: `$${g.cost}`, costAP: 0, costCash: g.cost, satGain: g.satGain, minLevel: 1 });
+    });
+
     interactions.push({ id: 'deep_talk', label: 'Deep Talk', desc: 'A heartfelt conversation', costAP: 1, costCash: 0, satGain: 15, minLevel: 1, requiresRizz: 50 });
+
+    // Living together (engaged+)
+    if (lvl >= 3 && !p.livingTogether) {
+      interactions.push({ id: 'living_together', label: '🏠 Move In Together', desc: '$8,000 down payment', costAP: 0, costCash: 8000, satGain: 25, minLevel: 3 });
+    }
+
+    // Pet adoption (exclusive+)
+    if (lvl >= 2 && !p.petType) {
+      interactions.push({ id: 'adopt_pet', label: '🐾 Adopt a Pet', desc: '$300 adoption fee', costAP: 0, costCash: 300, satGain: 15, minLevel: 2 });
+    }
+
+    // Wedding planner (engaged, not planned)
+    if (lvl >= 3 && !p.weddingPlanned) {
+      interactions.push({ id: 'plan_wedding', label: '💒 Plan Wedding', desc: 'Choose venue', costAP: 0, costCash: 0, satGain: 20, minLevel: 3 });
+    }
+
     if (lvl >= 3) {
       interactions.push({ id: 'propose', label: 'Propose Marriage 💍', desc: 'Take the next step', costAP: 0, costCash: 5000, satGain: 0, minLevel: 3 });
     }
@@ -636,7 +657,7 @@ export class DatingSimulator {
   isLocationAvailable(location) {
     const entry = this.player.visitedLocations.find(v => v.id === location.id);
     if (!entry) return true;
-    return this.player.age - entry.lastYear > location.cooldown;
+    return this.player.age - entry.lastYear >= location.cooldown;
   }
 
   _visitLocation(locationId) {
@@ -657,31 +678,49 @@ export class DatingSimulator {
     if (id.startsWith('loc_')) {
       const loc = DatingSimulator.DATE_LOCATIONS.find(l => l.id === id);
       if (!loc) return { status: 'error', msg: 'Unknown location.' };
+      if (p.cash < loc.costCash || p.ap < loc.costAP) return { status: 'error', msg: 'Insufficient resources for this location.' };
       p.cash -= loc.costCash;
       p.ap -= loc.costAP;
       let bonus = 0;
       if (loc.bonus && loc.bonus[archetype]) bonus = loc.bonus[archetype];
-      satGain = loc.satGain + bonus;
+      const llMult = this._getLoveLangBonus(id);
+      satGain = Math.floor((loc.satGain + bonus) * llMult);
       this._visitLocation(id);
-      msg = `You took ${profile.name} on ${loc.label.toLowerCase()}. +${satGain} satisfaction.${bonus > 0 ? ' (Archetype bonus!)' : ''}`;
-    } else if (id === 'gift') {
-      p.cash -= 500;
-      satGain = 25;
-      if (archetype === 'gold_digger') satGain += 15;
-      if (p.cash >= 20000) satGain += 5;
-      msg = `You gave ${profile.name} a thoughtful gift. +${satGain} satisfaction.`;
+      this._growPartnerStats(satGain);
+      msg = `You took ${profile.name} on ${loc.label.toLowerCase()}. +${satGain} satisfaction.${bonus > 0 ? ' (Archetype bonus!)' : ''}${llMult > 1 ? ' 💕 Love language match!' : ''}`;
+    } else if (id.startsWith('gift_')) {
+      const g = DatingSimulator.GIFTS.find(x => x.id === id);
+      if (!g) return { status: 'error', msg: 'Unknown gift.' };
+      if (p.cash < g.cost) return { status: 'error', msg: 'Insufficient cash for this gift.' };
+      p.cash -= g.cost;
+      let bonus = 0;
+      if (g.bonus && g.bonus[archetype]) bonus = g.bonus[archetype];
+      const llMult = this._getLoveLangBonus(id);
+      satGain = Math.floor((g.satGain + bonus) * llMult);
+      this._growPartnerStats(satGain);
+      msg = `You gave ${profile.name} ${g.label.toLowerCase()}. +${satGain} satisfaction.${bonus > 0 ? ' (Archetype bonus!)' : ''}${llMult > 1 ? ' 💕 Love language match!' : ''}`;
+    } else if (id === 'living_together') {
+      return this.moveInTogether();
     } else if (id === 'deep_talk') {
+      if (p.ap < 1) return { status: 'error', msg: 'Not enough AP for a deep talk.' };
       p.ap -= 1;
-      satGain = 15 + Math.floor(p.rizz / 20);
+      const llMult = this._getLoveLangBonus(id);
+      satGain = Math.floor((15 + Math.floor(p.rizz / 20)) * llMult);
       if (archetype === 'normie') satGain += 5;
-      msg = `You shared a deep conversation with ${profile.name}. +${satGain} satisfaction.`;
+      this._growPartnerStats(satGain);
+      msg = `You shared a deep conversation with ${profile.name}. +${satGain} satisfaction.${llMult > 1 ? ' 💕 Love language match!' : ''}`;
+    } else if (id === 'adopt_pet') {
+      return this.adoptPet('dog', 'Pet');
+    } else if (id === 'plan_wedding') {
+      return { status: 'plan_wedding' };
     } else if (id === 'propose') {
       if (p.relationshipLevel < 3) return { status: 'error', msg: 'You must be Engaged first.' };
       if (p.cash < 5000) return { status: 'error', msg: 'A ring costs $5,000!' };
       p.cash -= 5000;
       p.relationshipLevel = 4;
-      p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 30);
+      p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + (p.weddingPlanned ? 45 : 30));
       p.confidence = Math.min(100, p.confidence + 20);
+      if (p.weddingPlanned) this.logCallback(`💒 The wedding was beautiful! ${p.weddingVenue} venue was perfect.`, 'success');
       this.logCallback(`💍 You married ${profile.name}! Massive confidence boost!`, 'success');
       return { status: 'married' };
     } else {
@@ -694,12 +733,20 @@ export class DatingSimulator {
       msg += ' (Your appearance disappointed them — less effective.)';
     }
 
+    // Couple goal progress
+    if (p.coupleGoalId === 'goal_save' && (id.startsWith('loc_') || id.startsWith('gift_'))) {
+      const spent = DatingSimulator.DATE_LOCATIONS.find(l => l.id === id)?.costCash || DatingSimulator.GIFTS.find(g => g.id === id)?.cost || 0;
+      this.advanceGoal(spent);
+    }
+    if (p.coupleGoalId === 'goal_locations' && id.startsWith('loc_')) {
+      this.advanceGoal(1);
+    }
+
     p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + satGain);
     p.confidence = Math.min(100, p.confidence + 5);
     this.logCallback(msg, 'success');
 
     // Check level-up
-    const oldLevel = p.relationshipLevel;
     if (p.relationshipLevel === 1 && p.yearsWithPartner >= 2 && p.relationshipSatisfaction >= 60) {
       p.relationshipLevel = 2;
       p.confidence = Math.min(100, p.confidence + 10);
@@ -718,10 +765,38 @@ export class DatingSimulator {
     if (!this.player.hasDatingPartner) return;
     this.player.hasDatingPartner = false;
     this.player.partnerProfile = null;
+    this.player.partnerName = '';
     this.player.relationshipLevel = 1;
     this.player.relationshipSatisfaction = 0;
     this.player.yearsWithPartner = 0;
     this.player.lastTextedYear = 0;
+    this.player.jealousyMeter = 0;
+    this.player.hasActiveConflict = false;
+    this.player._conflictIndex = 0;
+    this.player.rivalActive = false;
+    this.player.rivalYearsActive = 0;
+    this.player._rivalName = null;
+    this.player.livingTogether = false;
+    this.player.homeType = null;
+    this.player.petType = null;
+    this.player.petName = null;
+    this.player.partnerStyle = 50;
+    this.player.partnerRizz = 50;
+    this.player.partnerConfidence = 50;
+    this.player.familyApproval = 50;
+    this.player.partnerLoveLanguage = 'quality_time';
+    this.player.coupleGoalId = null;
+    this.player.coupleGoalProgress = 0;
+    this.player.coupleGoalTarget = 0;
+    this.player.lastAnniversaryYear = 0;
+    this.player.weddingVenue = null;
+    this.player.weddingPlanned = false;
+    this.player.questStage = 0;
+    this.player.questCompleted = false;
+    this.player.questSatDecayReduction = 0;
+    this.player.questPassiveIncome = 0;
+    this.player.questIncomeMult = 1;
+    this.player.datingScore = 0;
     this.player.confidence = Math.max(0, this.player.confidence - 20);
     this.logCallback(`💔 You broke up with your partner. -20% Confidence.`, 'error');
   }
@@ -748,7 +823,9 @@ export class DatingSimulator {
     if (!tone) return { status: 'error', msg: 'Unknown tone.' };
 
     p.lastTextedYear = p.age;
-    p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + tone.satGain));
+    const llMult = this._getLoveLangBonus(toneId);
+    const effectiveSatGain = Math.floor(tone.satGain * llMult);
+    p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + effectiveSatGain));
     p.rizz = Math.min(100, Math.max(0, p.rizz + (tone.rizzGain || 0)));
     p.confidence = Math.min(100, Math.max(0, p.confidence + (tone.confGain || 0)));
 
@@ -756,9 +833,10 @@ export class DatingSimulator {
     const responses = this._getTextResponses(archetype, tone.id);
     const reply = responses[Math.floor(Math.random() * responses.length)];
 
+    const llLabel = llMult > 1 ? ' 💕 Love language match!' : '';
     this.logCallback(`📱 You: ${tone.text}`, 'action');
-    this.logCallback(`💬 ${p.partnerProfile.name}: ${reply}`, 'success');
-    return { status: 'success', reply, satGain: tone.satGain };
+    this.logCallback(`💬 ${p.partnerProfile.name}: ${reply}${llLabel}`, 'success');
+    return { status: 'success', reply, satGain: effectiveSatGain };
   }
 
   _getTextResponses(archetype, toneId) {
@@ -1032,7 +1110,10 @@ export class DatingSimulator {
     const p = this.player;
 
     if (choice.satGain) p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + choice.satGain));
-    if (choice.cash) p.cash = Math.max(0, p.cash + choice.cash);
+    if (choice.cash) {
+      if (choice.cash < 0 && p.cash < Math.abs(choice.cash)) return { status: 'error', msg: 'Insufficient cash for this choice.' };
+      p.cash = Math.max(0, p.cash + choice.cash);
+    }
     if (choice.confidence) p.confidence = Math.min(100, Math.max(0, p.confidence + choice.confidence));
     if (choice.style) p.style = Math.min(100, p.style + choice.style);
     if (choice.skin) p.skin = Math.min(100, p.skin + choice.skin);
@@ -1062,5 +1143,265 @@ export class DatingSimulator {
     if (this.player.questStage <= 0) return;
     this.player.questStage = 0;
     this.logCallback('Quest cancelled.', 'error');
+  }
+
+  // === GIFT CATALOG ===
+  static GIFTS = [
+    { id: 'gift_flowers', label: '💐 Flowers', cost: 150, satGain: 15, bonus: { lookist: 5, normie: 5 } },
+    { id: 'gift_perfume', label: '🍾 Perfume', cost: 400, satGain: 22, bonus: { gold_digger: 10, egirl: 5 } },
+    { id: 'gift_jewelry', label: '💎 Jewelry', cost: 2000, satGain: 35, bonus: { gold_digger: 15, lookist: 10 } }
+  ];
+
+  // === LOVE LANGUAGE MAPPING ===
+  static LOVE_LANGUAGES = {
+    lookist: 'words_of_affirmation', egirl: 'quality_time', normie: 'quality_time',
+    gold_digger: 'gifts', corporate: 'acts_of_service'
+  };
+
+  static LOVE_LANG_LABELS = {
+    words_of_affirmation: 'Words of Affirmation', quality_time: 'Quality Time',
+    gifts: 'Gifts', acts_of_service: 'Acts of Service'
+  };
+
+  static LOVE_LANG_ACTIONS = {
+    sweet: 'words_of_affirmation', caring: 'words_of_affirmation', funny: 'quality_time',
+    gift_flowers: 'gifts', gift_perfume: 'gifts', gift_jewelry: 'gifts',
+    loc_restaurant: 'quality_time', loc_park: 'quality_time', loc_movies: 'quality_time',
+    loc_beach: 'quality_time', loc_concert: 'quality_time', loc_rooftop: 'quality_time',
+    loc_escape: 'quality_time', loc_cooking: 'acts_of_service', loc_spa: 'acts_of_service',
+    deep_talk: 'words_of_affirmation'
+  };
+
+  _getLoveLangBonus(actionId) {
+    const p = this.player;
+    if (!p.partnerLoveLanguage) return 1;
+    const actionLang = DatingSimulator.LOVE_LANG_ACTIONS[actionId];
+    return actionLang === p.partnerLoveLanguage ? 2 : 1;
+  }
+
+  // === CONFLICT SYSTEM ===
+  static CONFLICTS = [
+    { title: '👿 Jealousy Flare', desc: (n) => `${n} snaps: "You're always at the gym/work. Do you even care about us?"`,
+      choices: [
+        { text: 'Apologize and promise to do better', satGain: 20, jealousy: -30 },
+        { text: 'Defend yourself — you need to grind', satGain: -10, jealousy: 20 },
+        { text: 'Compromise — schedule more us time', satGain: 10, jealousy: -15 }
+      ] },
+    { title: '💔 Trust Issue', desc: (n) => `${n} says: "I saw you liked someone else's photo... who is that?"`,
+      choices: [
+        { text: 'Reassure them it\'s nothing', satGain: 15, jealousy: -20 },
+        { text: 'Get defensive', satGain: -15, jealousy: 25 },
+        { text: 'Show them your phone', satGain: 20, jealousy: -35 }
+      ] },
+    { title: '🗣️ Communication Breakdown', desc: (n) => `${n}: "You never listen to me anymore."`,
+      choices: [
+        { text: 'Sit down and really listen', satGain: 20, rizz: 2 },
+        { text: 'Say they\'re overreacting', satGain: -15, confidence: -3 },
+        { text: 'Suggest couple\'s counseling', satGain: 10, familyApproval: 5 }
+      ] }
+  ];
+
+  getActiveConflict() {
+    if (!this.player.hasActiveConflict) return null;
+    const conflict = DatingSimulator.CONFLICTS[this.player._conflictIndex || 0];
+    return conflict;
+  }
+
+  resolveConflict(choiceIndex) {
+    const p = this.player;
+    if (!p.hasActiveConflict) return { status: 'error', msg: 'No active conflict.' };
+    const conflict = DatingSimulator.CONFLICTS[p._conflictIndex || 0];
+    if (!conflict || choiceIndex < 0 || choiceIndex >= conflict.choices.length) return { status: 'error', msg: 'Invalid choice.' };
+    const choice = conflict.choices[choiceIndex];
+    p.hasActiveConflict = false;
+    p._conflictIndex = 0;
+    if (choice.satGain) p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + choice.satGain));
+    if (choice.jealousy) p.jealousyMeter = Math.min(100, Math.max(0, p.jealousyMeter + choice.jealousy));
+    if (choice.rizz) p.rizz = Math.min(100, p.rizz + choice.rizz);
+    if (choice.confidence) p.confidence = Math.min(100, Math.max(0, p.confidence + choice.confidence));
+    if (choice.familyApproval) p.familyApproval = Math.min(100, Math.max(0, p.familyApproval + choice.familyApproval));
+    return { status: 'resolved', msg: `Conflict resolved!` };
+  }
+
+  // === RIVAL SYSTEM ===
+  getRivalStatus() {
+    const p = this.player;
+    if (!p.rivalActive) return null;
+    return { name: p._rivalName || 'Unknown', yearsActive: p.rivalYearsActive };
+  }
+
+  handleRival(choice) {
+    const p = this.player;
+    if (!p.rivalActive) return { status: 'error', msg: 'No rival.' };
+    if (choice === 'confront') {
+      p.rivalActive = false;
+      p.rivalYearsActive = 0;
+      p._rivalName = null;
+      p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 15);
+      p.confidence = Math.min(100, p.confidence + 10);
+      return { status: 'success', msg: 'You confronted the rival and saved your relationship!' };
+    }
+    if (choice === 'ignore') {
+      p.rivalYearsActive++;
+      p.relationshipSatisfaction = Math.max(0, p.relationshipSatisfaction - 10);
+      if (p.rivalYearsActive >= 3) {
+        this.breakUp();
+        p.rivalActive = false;
+        p.rivalYearsActive = 0;
+        p._rivalName = null;
+        return { status: 'lost', msg: 'Your partner left you for the rival.' };
+      }
+      return { status: 'warning', msg: 'The rival is still around...' };
+    }
+    if (choice === 'let_go') {
+      this.breakUp();
+      p.rivalActive = false;
+      p.rivalYearsActive = 0;
+      p._rivalName = null;
+      return { status: 'breakup', msg: 'You let your partner go. It hurts but it\'s done.' };
+    }
+    return { status: 'error', msg: 'Unknown choice.' };
+  }
+
+  // === LIVING TOGETHER ===
+  moveInTogether(venue) {
+    const p = this.player;
+    if (p.relationshipLevel < 3) return { status: 'error', msg: 'Need to be engaged first.' };
+    if (p.cash < 8000) return { status: 'error', msg: 'Need $8,000 for a down payment.' };
+    if (p.livingTogether) return { status: 'error', msg: 'Already living together.' };
+    p.cash -= 8000;
+    p.livingTogether = true;
+    p.homeType = venue || 'apartment';
+    p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 25);
+    p.confidence = Math.min(100, p.confidence + 15);
+    this.logCallback(`🏠 You moved in together! +25 satisfaction, +15 confidence.`, 'success');
+    return { status: 'success' };
+  }
+
+  // === PET ADOPTION ===
+  adoptPet(petType, petName) {
+    const p = this.player;
+    if (p.relationshipLevel < 2) return { status: 'error', msg: 'Need exclusive relationship.' };
+    if (p.cash < 300) return { status: 'error', msg: 'Adoption costs $300.' };
+    if (p.petType) return { status: 'error', msg: 'You already have a pet!' };
+    p.cash -= 300;
+    p.petType = petType;
+    p.petName = petName;
+    p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 15);
+    p.confidence = Math.min(100, p.confidence + 10);
+    this.logCallback(`🐾 You adopted ${petName} the ${petType}!`, 'success');
+    return { status: 'success' };
+  }
+
+  // === WEDDING PLANNER ===
+  planWedding(venue) {
+    const p = this.player;
+    if (p.relationshipLevel < 3) return { status: 'error', msg: 'Need to be engaged.' };
+    if (p.weddingPlanned) return { status: 'error', msg: 'Wedding already planned.' };
+    const validVenues = ['beach', 'church', 'city_hall', 'garden'];
+    if (!validVenues.includes(venue)) return { status: 'error', msg: 'Invalid venue.' };
+    p.weddingVenue = venue;
+    p.weddingPlanned = true;
+    const bonuses = { beach: 20, church: 25, city_hall: 10, garden: 30 };
+    const bonus = bonuses[venue] || 15;
+    p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + bonus);
+    this.logCallback(`💒 Wedding planned at the ${venue}! +${bonus} satisfaction.`, 'success');
+    return { status: 'success' };
+  }
+
+  // === PARTNER STATS GROWTH ===
+  _growPartnerStats(amount = 1) {
+    const p = this.player;
+    if (!p.hasDatingPartner) return;
+    p.partnerStyle = Math.min(100, (p.partnerStyle || 50) + Math.floor(amount * 0.3));
+    p.partnerRizz = Math.min(100, (p.partnerRizz || 50) + Math.floor(amount * 0.3));
+    p.partnerConfidence = Math.min(100, (p.partnerConfidence || 50) + Math.floor(amount * 0.4));
+  }
+
+  // === ANNIVERSARY EVENTS ===
+  static ANNIVERSARIES = {
+    lookist: [
+      'bought matching designer outfits for the occasion 🕶️',
+      'booked a luxury photoshoot to capture the moment 📸',
+      'posted a perfect couple selfie with a heartfelt caption 💕'
+    ],
+    egirl: [
+      'made you a custom playlist to celebrate 🎧',
+      'planned a private gaming session with your favorite snacks 🎮',
+      'took you to a underground concert venue you\'d never find alone 🎵'
+    ],
+    normie: [
+      'cooked your favorite meal and set up a candlelit dinner 🕯️',
+      'recreated your first date down to the smallest detail 🥹',
+      'wrote you a long, heartfelt letter 📝'
+    ],
+    gold_digger: [
+      'booked a surprise weekend at a 5-star resort 🏨',
+      'bought you something from your wishlist you mentioned months ago 🎁',
+      'took you on a hot air balloon ride at sunset 🎈'
+    ],
+    corporate: [
+      'reserved the entire top floor of a restaurant for just the two of you 🌃',
+      'planned a sophisticated wine tasting event 🍷',
+      'arranged a surprise weekend itinerary — spreadsheet included 📊'
+    ]
+  };
+
+  checkAnniversary() {
+    const p = this.player;
+    if (!p.hasDatingPartner || p.lastAnniversaryYear >= p.yearsWithPartner) return null;
+    p.lastAnniversaryYear = p.yearsWithPartner;
+    const archetype = p.partnerProfile?.archetype || 'normie';
+    const events = DatingSimulator.ANNIVERSARIES[archetype] || DatingSimulator.ANNIVERSARIES.normie;
+    const event = events[Math.floor(Math.random() * events.length)];
+    p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 20);
+    p.confidence = Math.min(100, p.confidence + 5);
+    return { year: p.yearsWithPartner, event };
+  }
+
+  // === COUPLE GOALS ===
+  static GOALS = [
+    { id: 'goal_save', label: '💰 Save $5,000 Together', target: 5000, progressType: 'cash', reward: { desc: 'Financial trust bonus: +$200/yr passive income', passiveIncome: 200 } },
+    { id: 'goal_locations', label: '📍 Visit 5 Different Date Spots', target: 5, progressType: 'locations', reward: { desc: 'Adventurous couple: +10 Rizz, +10 Style', rizz: 10, style: 10 } },
+    { id: 'goal_years', label: '💕 Stay Together 5 Years', target: 5, progressType: 'years', reward: { desc: 'Enduring love: satisfaction decay -1/yr permanently', satDecayReduction: 1 } }
+  ];
+
+  getAvailableGoals() {
+    if (!this.player.hasDatingPartner) return [];
+    return DatingSimulator.GOALS.filter(g => !this.player.coupleGoalId || this.player.coupleGoalId !== g.id);
+  }
+
+  startGoal(goalId) {
+    const p = this.player;
+    if (p.coupleGoalId) return { status: 'error', msg: 'Already working on a goal.' };
+    const goal = DatingSimulator.GOALS.find(g => g.id === goalId);
+    if (!goal) return { status: 'error', msg: 'Unknown goal.' };
+    p.coupleGoalId = goalId;
+    p.coupleGoalProgress = 0;
+    p.coupleGoalTarget = goal.target;
+    this.logCallback(`🎯 New couple goal: ${goal.label}`, 'success');
+    return { status: 'started' };
+  }
+
+  advanceGoal(amount = 1) {
+    const p = this.player;
+    if (!p.coupleGoalId) return { status: 'error', msg: 'No active goal.' };
+    p.coupleGoalProgress = Math.min(p.coupleGoalTarget, (p.coupleGoalProgress || 0) + amount);
+    if (p.coupleGoalProgress >= p.coupleGoalTarget) {
+      const goal = DatingSimulator.GOALS.find(g => g.id === p.coupleGoalId);
+      if (goal?.reward) {
+        const r = goal.reward;
+        if (r.passiveIncome) p.questPassiveIncome = (p.questPassiveIncome || 0) + r.passiveIncome;
+        if (r.rizz) p.rizz = Math.min(100, (p.rizz || 0) + r.rizz);
+        if (r.style) p.style = Math.min(100, (p.style || 0) + r.style);
+        if (r.satDecayReduction) p.questSatDecayReduction = (p.questSatDecayReduction || 0) + r.satDecayReduction;
+        p.relationshipSatisfaction = Math.min(100, p.relationshipSatisfaction + 20);
+        this.logCallback(`🏆 Goal complete! ${r.desc}`, 'success');
+      }
+      p.coupleGoalId = null;
+      p.coupleGoalProgress = 0;
+      return { status: 'completed' };
+    }
+    return { status: 'progress', progress: p.coupleGoalProgress, target: p.coupleGoalTarget };
   }
 }
