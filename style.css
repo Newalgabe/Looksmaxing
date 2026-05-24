@@ -1415,6 +1415,564 @@ body {
   color: #fff;
 }
 
+/* ==================== VISUAL NOVEL DATE MODE ==================== */
+.vn-mode {
+  border-color: transparent !important;
+  box-shadow: 0 0 30px rgba(0,0,0,0.8) !important;
+}
+
+.vn-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 470px;
+}
+
+.vn-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+/* Particle effect backgrounds */
+.vn-particles.stars { background: radial-gradient(2px 2px at 20% 30%, #fff, transparent), radial-gradient(2px 2px at 40% 70%, #fff, transparent), radial-gradient(1px 1px at 90% 10%, #fff, transparent), radial-gradient(1px 1px at 70% 40%, #fff, transparent), radial-gradient(1px 1px at 10% 80%, #fff, transparent); }
+.vn-particles.candles { background: radial-gradient(8px 8px at 30% 90%, #ffa50033, transparent), radial-gradient(8px 8px at 70% 90%, #ffa50033, transparent); }
+.vn-particles.sparkles { background: radial-gradient(3px 3px at 15% 20%, #ff79c6, transparent), radial-gradient(2px 2px at 60% 40%, #ff79c6, transparent), radial-gradient(3px 3px at 85% 60%, #ff79c6, transparent); }
+.vn-particles.waves { background: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(100,200,255,0.05) 40px, rgba(100,200,255,0.05) 42px); }
+.vn-particles.lights { background: radial-gradient(15px 15px at 20% 10%, #f1fa8c33, transparent), radial-gradient(12px 12px at 80% 15%, #ff79c633, transparent), radial-gradient(10px 10px at 50% 5%, #50fa7b33, transparent); }
+.vn-particles.city { background: radial-gradient(2px 2px at 10% 20%, #f8f8f2, transparent), radial-gradient(2px 2px at 30% 40%, #f8f8f2, transparent), radial-gradient(2px 2px at 50% 25%, #f8f8f2, transparent), radial-gradient(2px 2px at 70% 35%, #f8f8f2, transparent), radial-gradient(2px 2px at 90% 20%, #f8f8f2, transparent); }
+.vn-particles.neon { background: radial-gradient(4px 4px at 25% 30%, #ff79c644, transparent), radial-gradient(4px 4px at 65% 50%, #50fa7b44, transparent), radial-gradient(4px 4px at 45% 80%, #8be9fd44, transparent); }
+.vn-particles.gold { background: radial-gradient(3px 3px at 20% 30%, #f1fa8c44, transparent), radial-gradient(3px 3px at 60% 50%, #ffb86c44, transparent), radial-gradient(3px 3px at 80% 70%, #f1fa8c44, transparent); }
+.vn-particles.glitter { background: radial-gradient(2px 2px at 15% 25%, #ff79c6, transparent), radial-gradient(2px 2px at 45% 60%, #bd93f9, transparent), radial-gradient(2px 2px at 75% 35%, #ff79c6, transparent), radial-gradient(2px 2px at 55% 80%, #bd93f9, transparent); }
+.vn-particles.incense { background: repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(200,200,255,0.03) 20px, rgba(200,200,255,0.03) 21px); }
+.vn-particles.gears { background: repeating-linear-gradient(45deg, transparent, transparent 30px, rgba(100,200,255,0.04) 30px, rgba(100,200,255,0.04) 31px); }
+.vn-particles.steam { background: radial-gradient(10px 10px at 30% 85%, rgba(255,255,255,0.05), transparent), radial-gradient(12px 12px at 60% 80%, rgba(255,255,255,0.04), transparent); }
+.vn-particles.leaves { background: radial-gradient(4px 4px at 20% 40%, #50fa7b33, transparent), radial-gradient(3px 3px at 70% 60%, #50fa7b55, transparent); }
+
+/* Round progress dots */
+.vn-round-dots {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  z-index: 10;
+}
+
+.vn-round-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+
+.vn-round-dot.done {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 6px rgba(80, 250, 123, 0.4);
+}
+
+.vn-round-dot.current {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+  transform: scale(1.2);
+}
+
+.vn-round-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: rgba(255,255,255,0.4);
+  margin-left: 4px;
+}
+
+/* Character display area */
+.vn-character-area {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 20px 10px 10px;
+}
+
+.vn-character-frame {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: vn-character-enter 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vn-character-frame img,
+.vn-character-frame svg {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: drop-shadow(0 0 20px var(--mood-color, #8892b0)) drop-shadow(0 4px 15px rgba(0,0,0,0.5));
+  transition: filter 0.5s ease;
+}
+
+@keyframes vn-character-enter {
+  from { opacity: 0; transform: translateY(30px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Mood badge */
+.vn-mood-badge {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  font-size: 24px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+  animation: vn-mood-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes vn-mood-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* Text area (bottom panel) */
+.vn-text-area {
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 60%, transparent 100%);
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 110px;
+  position: relative;
+  z-index: 5;
+}
+
+.vn-speaker-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  letter-spacing: 0.5px;
+}
+
+.vn-speaker-age {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.vn-dialogue {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #f8f8f2;
+  min-height: 20px;
+  animation: vn-text-reveal 0.3s ease;
+}
+
+@keyframes vn-text-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vn-system-line {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--accent-green);
+  opacity: 0.8;
+}
+
+/* Typing indicator */
+.vn-typing-dots span {
+  animation: vn-typing-bounce 1.4s infinite;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--accent-cyan);
+}
+
+.vn-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.vn-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes vn-typing-bounce {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* VN Choice buttons */
+.vn-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  animation: vn-choices-appear 0.4s ease;
+}
+
+@keyframes vn-choices-appear {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vn-choice-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  animation: vn-choice-slide 0.3s ease backwards;
+}
+
+.vn-choice-btn:nth-child(1) { animation-delay: 0.05s; }
+.vn-choice-btn:nth-child(2) { animation-delay: 0.12s; }
+.vn-choice-btn:nth-child(3) { animation-delay: 0.19s; }
+
+@keyframes vn-choice-slide {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.vn-choice-btn:hover {
+  background: rgba(255, 0, 127, 0.15);
+  border-color: var(--accent-magenta);
+  transform: translateX(4px);
+  box-shadow: 0 2px 12px rgba(255, 0, 127, 0.15);
+}
+
+.vn-choice-text {
+  font-size: 11px;
+  color: #f8f8f2;
+  line-height: 1.3;
+  font-family: var(--font-display);
+}
+
+.vn-choice-btn:hover .vn-choice-text {
+  color: #fff;
+}
+
+/* Transition overlay for round changes */
+.vn-transition-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 100;
+  animation: vn-flash 0.6s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes vn-flash {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0; display: none; }
+}
+
+/* ==================== VN RELATIONSHIP DASHBOARD ==================== */
+.vn-rel-dashboard {
+  width: 320px;
+  background: #0d0e12;
+  border: 6px solid #282a36;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+}
+
+.vn-rel-scene {
+  position: relative;
+  padding: 20px 16px 16px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.vn-rel-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(2px 2px at 15% 30%, rgba(255,255,255,0.12), transparent),
+    radial-gradient(2px 2px at 45% 60%, rgba(255,255,255,0.08), transparent),
+    radial-gradient(2px 2px at 75% 25%, rgba(255,255,255,0.10), transparent),
+    radial-gradient(2px 2px at 60% 80%, rgba(255,255,255,0.06), transparent),
+    radial-gradient(2px 2px at 85% 45%, rgba(255,255,255,0.09), transparent);
+}
+
+.vn-rel-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+  animation: vn-rel-header-in 0.6s ease;
+}
+
+@keyframes vn-rel-header-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vn-rel-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.vn-rel-avatar-wrap img,
+.vn-rel-avatar-wrap svg {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: drop-shadow(0 0 16px var(--mood-color, #8892b0)) drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+  transition: filter 0.5s ease;
+}
+
+.vn-rel-mood-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  font-size: 18px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  animation: vn-mood-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vn-rel-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vn-rel-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8f8f2;
+}
+
+.vn-rel-level-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-cyan);
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  padding: 1px 8px;
+  border-radius: 8px;
+  align-self: flex-start;
+}
+
+.vn-rel-years {
+  font-size: 9px;
+  color: rgba(255,255,255,0.5);
+  font-family: var(--font-mono);
+}
+
+.vn-rel-greeting {
+  position: relative;
+  z-index: 2;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.7);
+  font-family: var(--font-display);
+  font-style: italic;
+  animation: vn-text-reveal 0.5s ease 0.3s backwards;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 8px;
+  border-left: 2px solid var(--accent-cyan);
+}
+
+/* Scrollable body */
+.vn-rel-body {
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: #0d0e12;
+}
+
+/* VN relationship cards */
+.vn-rel-card {
+  background: #15161e;
+  border: 1px solid #282a36;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s ease;
+}
+
+.vn-rel-card:hover {
+  border-color: #44475a;
+}
+
+.vn-rel-card-title {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-purple);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.vn-rel-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.vn-rel-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: var(--font-mono);
+  border-style: dashed;
+}
+
+.vn-rel-muted {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px;
+}
+
+/* Action buttons */
+.vn-rel-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  animation: vn-choice-slide 0.3s ease backwards;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.vn-rel-action:hover {
+  background: rgba(255, 0, 127, 0.08);
+  border-color: var(--accent-magenta);
+  transform: translateX(3px);
+}
+
+.vn-rel-action-label {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vn-rel-action-cost {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+}
+
+.vn-rel-action-sat {
+  font-size: 9px;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.vn-rel-loc-toggle {
+  border-color: rgba(0, 240, 255, 0.2);
+  color: var(--accent-cyan);
+  font-size: 10px;
+}
+
+.vn-rel-loc-toggle:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 240, 255, 0.06);
+}
+
+.vn-loc-arrow {
+  margin-left: auto;
+  font-size: 8px;
+  transition: transform 0.2s ease;
+}
+
+.vn-loc-collapse {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 8px;
+}
+
+.vn-rel-loc-item {
+  font-size: 10px;
+  padding: 6px 10px;
+}
+
+/* Details panel (conflict, rival, stats) */
+.vn-rel-details-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vn-rel-details-panel > div {
+  background: #15161e;
+  border: 1px solid #282a36;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+/* Footer */
+.vn-rel-footer {
+  padding: 10px 12px;
+  background: #0a0b0f;
+  border-top: 1px solid #282a36;
+}
+
+.vn-rel-breakup {
+  width: 100%;
+  padding: 10px;
+  background: rgba(255,68,68,0.08);
+  border: 1px solid rgba(255,68,68,0.25);
+  border-radius: 8px;
+  color: #ff5555;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.vn-rel-breakup:hover {
+  background: rgba(255,68,68,0.18);
+  border-color: #ff5555;
+}
+
+/* Scrollbar styling for the dashboard body */
+.vn-rel-body::-webkit-scrollbar {
+  width: 4px;
+}
+.vn-rel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vn-rel-body::-webkit-scrollbar-thumb {
+  background: #282a36;
+  border-radius: 2px;
+}
+
 /* ==================== TAB: SOCIAL ENCOUNTERS (CARD BATTLES) ==================== */
 #social-encounter-view {
   height: 100%;

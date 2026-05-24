@@ -407,6 +407,9 @@ export class DatingSimulator {
     this.activeChat = null;
     this.activeDateRound = 0;
     this.dateRoundsCompleted = 0;
+    this.partnerMood = 'neutral';
+    this.isPartnerTyping = false;
+    this.lastSceneBackground = null;
   }
 
   swipeLeft() {
@@ -447,7 +450,10 @@ export class DatingSimulator {
       profile: this.currentProfile,
       isCatfish: false,
       chatLog: [{ sender: 'partner', text: this.currentProfile.dialogues.match }],
-      resolved: false
+      resolved: false,
+      mood: 'neutral',
+      isTyping: false,
+      sceneBg: null
     };
     this.activeDateRound = 0;
     this.dateRoundsCompleted = 0;
@@ -501,6 +507,7 @@ export class DatingSimulator {
       this.activeChat.chatLog.push({ sender: 'partner', text: `"Did you just say '${this.extractLooksmaxxingTerm(choice.text)}'? What is wrong with you?"` });
       this.activeChat.chatLog.push({ sender: 'system-chat', text: `${this.currentProfile.name} stands up and walks out. The date is over.` });
       this.player.confidence = Math.max(0, this.player.confidence - 25);
+      this.activeChat.mood = 'angry';
       this.activeChat.resolved = true;
       this.logCallback(`Your date with ${this.currentProfile.name} walked out after you used looksmaxxing terminology. -25% Confidence.`, 'error');
       this.rollProfile();
@@ -529,6 +536,7 @@ export class DatingSimulator {
 
       if (this.activeDateRound >= rounds.length) {
         // All rounds complete — DATE SUCCESS
+        this.activeChat.mood = 'excited';
         this.activeChat.chatLog.push({ sender: 'partner', text: this.currentProfile.dialogues.success });
         // Sugar partner logic
         if (this.currentProfile.name === 'Gertrude' || this.currentProfile.name === 'Richard') {
@@ -560,6 +568,7 @@ export class DatingSimulator {
       } else {
         // Move to next round
         const nextRound = rounds[this.activeDateRound];
+        this.activeChat.mood = ['happy', 'flirty', 'excited'][Math.floor(Math.random() * 3)];
         this.activeChat.chatLog.push({ sender: 'system-chat', text: `✔ ${this.currentProfile.name} seems interested. Round ${this.activeDateRound + 1}...` });
         this.activeChat.chatLog.push({ sender: 'partner', text: nextRound.prompt });
         return { status: 'date_continue', currentRound: this.activeDateRound, totalRounds: rounds.length };
@@ -567,6 +576,7 @@ export class DatingSimulator {
     } else {
       // Failed this round
       this.activeChat.chatLog.push({ sender: 'partner', text: this.currentProfile.dialogues.reject });
+      this.activeChat.mood = 'sad';
       this.player.confidence = Math.max(0, this.player.confidence - 15);
       this.activeChat.resolved = true;
       this.logCallback(`Rejected by ${this.currentProfile.name} mid-date. -15% Confidence.`, "error");
@@ -575,6 +585,58 @@ export class DatingSimulator {
       return { status: 'date_failed' };
     }
   }
+
+  getMoodEmoji() {
+    const moods = {
+      happy: '😊', flirty: '😏', neutral: '😐', sad: '😢', angry: '😠', shy: '🥺', excited: '🤩'
+    };
+    const mood = this.activeChat?.mood || this.partnerMood || 'neutral';
+    return moods[mood] || '😐';
+  }
+
+  getMoodColor() {
+    const colors = {
+      happy: '#50fa7b', flirty: '#ff79c6', neutral: '#8892b0',
+      sad: '#6272a4', angry: '#ff5555', shy: '#ffb86c', excited: '#f1fa8c'
+    };
+    const mood = this.activeChat?.mood || this.partnerMood || 'neutral';
+    return colors[mood] || '#8892b0';
+  }
+
+  getSceneBackground(locationId) {
+    const scenes = DatingSimulator.SCENES;
+    if (locationId && scenes[locationId]) return scenes[locationId];
+    const arch = this.currentProfile?.archetype || 'normie';
+    if (scenes[arch]) return scenes[arch];
+    return scenes.default;
+  }
+
+  static SCENES = {
+    default: { label: 'Date Night', gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', particles: 'stars' },
+    loc_park: { label: 'Park Picnic', gradient: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 50%, #40916c 100%)', particles: 'leaves' },
+    loc_restaurant: { label: 'Dinner Date', gradient: 'linear-gradient(135deg, #2d0a0a 0%, #4a1212 50%, #6b1a1a 100%)', particles: 'candles' },
+    loc_movies: { label: 'Movie Night', gradient: 'linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a2e 100%)', particles: 'sparkles' },
+    loc_beach: { label: 'Beach Walk', gradient: 'linear-gradient(135deg, #0e1a2b 0%, #1a3a4a 50%, #2a5a6a 100%)', particles: 'waves' },
+    loc_concert: { label: 'Concert', gradient: 'linear-gradient(135deg, #1a002a 0%, #3a005a 50%, #5a0080 100%)', particles: 'lights' },
+    loc_rooftop: { label: 'Rooftop Bar', gradient: 'linear-gradient(135deg, #1a1a2e 0%, #2a1a3e 50%, #3a1a4e 100%)', particles: 'city' },
+    loc_escape: { label: 'Escape Room', gradient: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)', particles: 'gears' },
+    loc_cooking: { label: 'Cooking Class', gradient: 'linear-gradient(135deg, #2a1a0a 0%, #4a3a1a 50%, #3a2a0a 100%)', particles: 'steam' },
+    loc_spa: { label: 'Spa Day', gradient: 'linear-gradient(135deg, #1a2a3a 0%, #2a4a5a 50%, #1a3a4a 100%)', particles: 'incense' },
+    normie: { label: 'Cozy Café', gradient: 'linear-gradient(135deg, #2a1a0a 0%, #3a2a1a 50%, #2a1a0a 100%)', particles: 'none' },
+    lookist: { label: 'High-End Lounge', gradient: 'linear-gradient(135deg, #1a0a2a 0%, #2a1a4a 50%, #1a0a2a 100%)', particles: 'glitter' },
+    egirl: { label: 'Arcade Bar', gradient: 'linear-gradient(135deg, #0a002a 0%, #2a0a4a 50%, #1a003a 100%)', particles: 'neon' },
+    gold_digger: { label: 'Fine Dining', gradient: 'linear-gradient(135deg, #1a1a00 0%, #3a3a00 50%, #1a1a00 100%)', particles: 'gold' },
+    corporate: { label: 'Business Lounge', gradient: 'linear-gradient(135deg, #0a1a2a 0%, #1a2a3a 50%, #0a1a2a 100%)', particles: 'none' }
+  };
+
+  static MOOD_TRANSITIONS = {
+    date_continue: (old) => ['happy', 'flirty', 'excited'][Math.floor(Math.random() * 3)],
+    date_success: () => 'excited',
+    date_failed: () => 'sad',
+    reject_offended: () => 'angry',
+    good_choice: () => 'happy',
+    bad_choice: () => 'sad'
+  };
 
   extractLooksmaxxingTerm(text) {
     const lower = text.toLowerCase();

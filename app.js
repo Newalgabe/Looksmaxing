@@ -2375,72 +2375,111 @@ function renderDatingTab() {
   phoneFrame.className = 'dating-phone-frame';
   
   let screenContent = '';
+  let isVNMode = false;
   
   if (dating.activeChat) {
-    // RENDER CHAT / DATE SCREEN
     const chat = dating.activeChat;
-    const historyHtml = chat.chatLog.map(c => `
-      <div class="chat-bubble ${c.sender}">${c.text}</div>
-    `).join('');
 
-    let inputHtml = '';
-    let catfishWarning = '';
+    // Visual Novel mode for dates (not catfish)
+    if (!chat.isCatfish && chat.chatLog.length > 0) {
+      const scene = dating.getSceneBackground(null);
+      const moodEmoji = dating.getMoodEmoji();
+      const moodColor = dating.getMoodColor();
+      const lastMsg = chat.chatLog[chat.chatLog.length - 1];
+      const showChoices = !chat.resolved;
+      const isPartnerTyping = chat.isTyping;
 
-    if (chat.isCatfish) {
-      catfishWarning = `<div style="background:#3a0000;border:1px solid #ff4444;border-radius:4px;padding:6px 10px;margin:4px 0;text-align:center;">
-        <span style="color:#ff4444;font-size:9px;font-weight:700;">⚠️ CATFISH DETECTED</span>
-        <p style="color:#aa6666;font-size:8px;margin-top:2px;">The profile was fake. What do you do?</p>
-      </div>`;
-      if (!chat.resolved) {
-        inputHtml = `
-          <button class="chat-choice-btn catfish-fight-btn" style="flex:1;background:#2a552a;border-color:#50fa7b;">💪 Confront</button>
-          <button class="chat-choice-btn catfish-retreat-btn" style="flex:1;background:#552a2a;border-color:#ff4444;">🏃 Retreat</button>
-        `;
-      } else {
-        inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
-      }
-    } else if (!chat.resolved) {
-      const dateChoices = dating.getDateChoices();
-      if (dateChoices) {
-        inputHtml = dateChoices.choices.map((opt, idx) => `
-          <button class="chat-choice-btn" data-idx="${idx}" style="font-size:8px;padding:5px 6px;">${opt.text}</button>
-        `).join('');
-      } else {
-        inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
-      }
+      const dateChoices = showChoices ? dating.getDateChoices() : null;
+      const avatarHtml = renderCanvasAvatar(chat.profile, 140);
+
+      // Round progress dots
+      const totalRounds = 3;
+      const roundDots = !chat.resolved && chat.chatLog.length > 1
+        ? `<div class="vn-round-dots">
+            ${Array.from({ length: totalRounds }, (_, i) =>
+              `<div class="vn-round-dot ${i < dating.dateRoundsCompleted ? 'done' : i === dating.dateRoundsCompleted ? 'current' : ''}"></div>`
+            ).join('')}
+            <span class="vn-round-label">${Math.min(dating.activeDateRound + 1, totalRounds)}/${totalRounds}</span>
+          </div>`
+        : '';
+
+      const choicesHtml = dateChoices
+        ? `<div class="vn-choices">${dateChoices.choices.map((opt, idx) =>
+            `<button class="vn-choice-btn" data-idx="${idx}"><span class="vn-choice-text">${opt.text}</span></button>`
+          ).join('')}</div>`
+        : chat.resolved
+          ? `<button class="vn-choice-btn close-chat-btn" style="width:auto;margin:0 auto;"><span class="vn-choice-text">Continue</span></button>`
+          : '';
+
+      // Build chat log preview (last partner message shown in VN text box)
+      const partnerLastMsg = chat.chatLog.filter(m => m.sender === 'partner');
+      const displayMsg = partnerLastMsg.length > 0 ? partnerLastMsg[partnerLastMsg.length - 1].text : '...';
+      const systemLastMsg = chat.chatLog.filter(m => m.sender === 'system-chat');
+      const displaySystemMsg = systemLastMsg.length > 0 ? systemLastMsg[systemLastMsg.length - 1].text : '';
+      const showSystem = displaySystemMsg && chat.chatLog.length > 1;
+
+      isVNMode = true;
+      screenContent = `
+        <div class="vn-container" style="background: ${scene.gradient};">
+          <div class="vn-particles ${scene.particles}"></div>
+          ${roundDots}
+          <div class="vn-character-area">
+            <div class="vn-character-frame" style="--mood-color: ${moodColor};">
+              ${avatarHtml}
+              <div class="vn-mood-badge">${moodEmoji}</div>
+            </div>
+          </div>
+          <div class="vn-text-area">
+            <div class="vn-speaker-name">${chat.profile.name} <span class="vn-speaker-age">(${chat.profile.age})</span></div>
+            ${displaySystemMsg && !showChoices ? `<div class="vn-system-line">${displaySystemMsg}</div>` : ''}
+            <div class="vn-dialogue">${isPartnerTyping ? '<span class="vn-typing-dots"><span>.</span><span>.</span><span>.</span></span>' : displayMsg}</div>
+            ${showChoices ? choicesHtml : `<div class="vn-choices">${choicesHtml || ''}</div>`}
+          </div>
+        </div>
+      `;
     } else {
-      inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
+      // Legacy phone chat for catfish / fallback
+      const historyHtml = chat.chatLog.map(c => `
+        <div class="chat-bubble ${c.sender}">${c.text}</div>
+      `).join('');
+
+      let inputHtml = '';
+      let catfishWarning = '';
+
+      if (chat.isCatfish) {
+        catfishWarning = `<div style="background:#3a0000;border:1px solid #ff4444;border-radius:4px;padding:6px 10px;margin:4px 0;text-align:center;">
+          <span style="color:#ff4444;font-size:9px;font-weight:700;">⚠️ CATFISH DETECTED</span>
+          <p style="color:#aa6666;font-size:8px;margin-top:2px;">The profile was fake. What do you do?</p>
+        </div>`;
+        if (!chat.resolved) {
+          inputHtml = `
+            <button class="chat-choice-btn catfish-fight-btn" style="flex:1;background:#2a552a;border-color:#50fa7b;">💪 Confront</button>
+            <button class="chat-choice-btn catfish-retreat-btn" style="flex:1;background:#552a2a;border-color:#ff4444;">🏃 Retreat</button>
+          `;
+        } else {
+          inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
+        }
+      } else {
+        inputHtml = `<button class="chat-choice-btn close-chat-btn" style="flex:1;">Return to Swiping</button>`;
+      }
+
+      screenContent = `
+        <div class="dating-chat-screen">
+          <div class="chat-partner-bar">
+            <div class="chat-partner-avatar" style="background: ${chat.profile.avatarColor};"></div>
+            <span class="chat-partner-name">${chat.profile.name} (${chat.profile.age})</span>
+            ${chat.isCatfish ? '<span style="color:#ff4444;font-size:8px;margin-left:auto;">⚠️ CATFISH</span>' : ''}
+          </div>
+          ${catfishWarning}
+          <div class="chat-history" id="chat-scroller">
+            ${historyHtml}
+          </div>
+          <div class="chat-input-bar">
+            ${inputHtml}
+          </div>
+        </div>
+      `;
     }
-
-    // Calculate round progress
-    const totalRounds = 3;
-    const currentRound = dating.activeDateRound + 1;
-    const roundBar = !chat.isCatfish && !chat.resolved && chat.chatLog.length > 1
-      ? `<div style="display:flex;gap:4px;justify-content:center;padding:4px 0;">
-          ${Array.from({ length: totalRounds }, (_, i) =>
-            `<div style="width:20px;height:3px;border-radius:2px;${i < dating.dateRoundsCompleted ? 'background:var(--accent-green)' : i === dating.dateRoundsCompleted ? 'background:var(--accent-cyan)' : 'background:#333'}"></div>`
-          ).join('')}
-          <span style="font-size:7px;color:#666;margin-left:4px;">${Math.min(currentRound, totalRounds)}/${totalRounds}</span>
-        </div>`
-      : '';
-
-    screenContent = `
-      <div class="dating-chat-screen">
-        <div class="chat-partner-bar">
-          <div class="chat-partner-avatar" style="background: ${chat.profile.avatarColor};"></div>
-          <span class="chat-partner-name">${chat.profile.name} (${chat.profile.age})</span>
-          ${chat.isCatfish ? '<span style="color:#ff4444;font-size:8px;margin-left:auto;">⚠️ CATFISH</span>' : ''}
-        </div>
-        ${roundBar}
-        ${catfishWarning}
-        <div class="chat-history" id="chat-scroller">
-          ${historyHtml}
-        </div>
-        <div class="chat-input-bar">
-          ${inputHtml}
-        </div>
-      </div>
-    `;
   } else {
     // RENDER SWIPER SCREEN
     const prof = dating.currentProfile;
@@ -2475,6 +2514,7 @@ function renderDatingTab() {
     `;
   }
 
+  if (isVNMode) phoneFrame.classList.add('vn-mode');
   phoneFrame.innerHTML = screenContent;
   container.appendChild(phoneFrame);
 
@@ -2508,13 +2548,28 @@ function renderDatingTab() {
       }, 250);
     });
   } else {
-    // Scroll chat to bottom
-    const scroller = document.getElementById('chat-scroller');
-    scroller.scrollTop = scroller.scrollHeight;
+    // VN buttons
+    const vnButtons = container.querySelectorAll('.vn-choice-btn');
+    vnButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        playSound('click');
+        if (btn.classList.contains('close-chat-btn')) {
+          dating.rollProfile();
+          renderDatingTab();
+          return;
+        }
+        const idx = parseInt(btn.getAttribute('data-idx'));
+        if (!isNaN(idx)) {
+          const res = dating.makeDateChoice(idx);
+          renderDatingTab();
+          updateDashboard();
+        }
+      });
+    });
 
-    // Attach Chat choice event listeners
-    const choices = container.querySelectorAll('.chat-choice-btn');
-    choices.forEach(btn => {
+    // Legacy chat buttons (catfish / fallback)
+    const legacyButtons = container.querySelectorAll('.chat-choice-btn');
+    legacyButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         playSound('click');
         if (btn.classList.contains('close-chat-btn')) {
@@ -2540,6 +2595,10 @@ function renderDatingTab() {
         updateDashboard();
       });
     });
+
+    // Legacy chat scroll
+    const scroller = document.getElementById('chat-scroller');
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
   }
 
   // Premium Gold purchase option at top of tab
@@ -2572,110 +2631,148 @@ function renderDatingTab() {
   }
 }
 
-// === RELATIONSHIP DASHBOARD ===
+// === RELATIONSHIP DASHBOARD (VN STYLE) ===
 function renderRelationshipDashboard(container) {
   const p = game;
   const profile = p.partnerProfile;
   if (!profile) return;
 
   const satPct = p.relationshipSatisfaction;
-  const lvlNames = { 1: '💕 Dating', 2: '💗 Exclusive', 3: '💍 Engaged', 4: '💒 Married' };
+  const lvlNames = { 1: 'Dating', 2: 'Exclusive', 3: 'Engaged', 4: 'Married' };
   const lvlName = lvlNames[p.relationshipLevel] || 'Dating';
+  const lvlIcons = { 1: '💕', 2: '💗', 3: '💍', 4: '💒' };
+  const lvlIcon = lvlIcons[p.relationshipLevel] || '💕';
+
   const levelUpHint = p.relationshipLevel === 1 ? `Needs: 2+ yrs together & 60%+ satisfaction` :
                       p.relationshipLevel === 2 ? `Needs: 3+ yrs together & 80%+ satisfaction` :
                       p.relationshipLevel === 3 ? `Propose with a ring ($5,000)` : '';
 
+  // Mood based on satisfaction
+  const mood = satPct >= 80 ? 'excited' : satPct >= 60 ? 'happy' : satPct >= 40 ? 'neutral' : satPct >= 20 ? 'sad' : 'angry';
+  const moodColors = { excited: '#f1fa8c', happy: '#50fa7b', neutral: '#8892b0', sad: '#6272a4', angry: '#ff5555' };
+  const moodEmojis = { excited: '🤩', happy: '😊', neutral: '😐', sad: '😢', angry: '😠' };
+  const moodColor = moodColors[mood] || '#8892b0';
+  const moodEmoji = moodEmojis[mood] || '😐';
+
+  // Scene background per relationship level
+  const sceneGradients = {
+    1: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%)',
+    2: 'linear-gradient(180deg, #2a1a3e 0%, #3a1a5e 40%, #2a1a4e 100%)',
+    3: 'linear-gradient(180deg, #1a2a1a 0%, #2a4a2a 40%, #1a3a1a 100%)',
+    4: 'linear-gradient(180deg, #2a1a0a 0%, #4a2a1a 40%, #3a1a0a 100%)'
+  };
+  const sceneGradient = sceneGradients[p.relationshipLevel] || sceneGradients[1];
+
   const interactions = dating.getAvailableInteractions();
 
+  // Build the story greeting text
+  const greetingTexts = {
+    1: `You and ${profile.name} have been dating for ${p.yearsWithPartner} year${p.yearsWithPartner !== 1 ? 's' : ''}. Things are still fresh.`,
+    2: `${profile.name} and you are exclusive. The connection is growing stronger. ${satPct >= 80 ? "It feels like something real." : satPct >= 60 ? "There's a comfortable rhythm." : "But you should invest more time."}`,
+    3: `Engaged to ${profile.name}! ${satPct >= 80 ? "The wedding planning is exciting." : satPct >= 60 ? "You're building toward the big day." : "Make sure to nurture this bond before the wedding."}`,
+    4: `Married to ${profile.name}. ${satPct >= 80 ? "Life is beautiful together." : satPct >= 60 ? "The marriage is solid." : "You need to reconnect."}`
+  };
+  const greeting = greetingTexts[p.relationshipLevel] || greetingTexts[1];
+
   const dashboard = document.createElement('div');
-  dashboard.className = 'relationship-dashboard';
+  dashboard.className = 'vn-rel-dashboard';
   dashboard.innerHTML = `
-    <div class="rel-header">
-      <div class="rel-avatar-box">
-        ${renderCanvasAvatar(profile)}
+    <div class="vn-rel-scene" style="background: ${sceneGradient};">
+      <div class="vn-rel-particles"></div>
+      <div class="vn-rel-header">
+        <div class="vn-rel-avatar-wrap" style="--mood-color: ${moodColor};">
+          ${renderCanvasAvatar(profile, 120)}
+          <span class="vn-rel-mood-badge">${moodEmoji}</span>
+        </div>
+        <div class="vn-rel-title-group">
+          <div class="vn-rel-name">${profile.name}</div>
+          <div class="vn-rel-level-tag">${lvlIcon} ${lvlName}</div>
+          <div class="vn-rel-years">${p.yearsWithPartner} yr${p.yearsWithPartner !== 1 ? 's' : ''} · ${profile.age}yo</div>
+        </div>
       </div>
-      <div class="rel-info">
-        <div class="rel-name">${profile.name} <span class="rel-age">(${profile.age})</span></div>
-        <div class="rel-level-badge">${lvlName}</div>
-        <div class="rel-years">${p.yearsWithPartner} ${p.yearsWithPartner === 1 ? 'year' : 'years'} together</div>
+      <div class="vn-rel-greeting">${greeting}</div>
+    </div>
+
+    <div class="vn-rel-body">
+      <!-- Satisfaction -->
+      <div class="vn-rel-card">
+        <div class="vn-rel-card-row">
+          <span>❤️ Satisfaction</span>
+          <span class="${satPct >= 60 ? 'text-green' : satPct >= 30 ? 'text-yellow' : 'text-pink'}">${satPct}%</span>
+        </div>
+        <div class="progress-bar-container"><div class="progress-fill ${satPct >= 60 ? 'bg-green' : satPct >= 30 ? 'bg-yellow' : 'bg-pink'}" style="width:${satPct}%;"></div></div>
+      </div>
+
+      <!-- Level-up hint -->
+      ${levelUpHint ? `<div class="vn-rel-card vn-rel-hint">⬆ ${levelUpHint}</div>` : ''}
+
+      <!-- Texting -->
+      <div class="vn-rel-card">
+        <div class="vn-rel-card-title">📱 Text Your Partner</div>
+        ${renderTextingSection(p)}
+      </div>
+
+      <!-- Quest -->
+      <div class="vn-rel-card">
+        <div class="vn-rel-card-title">📜 Quest: ${p.questCompleted ? 'Complete!' : dating.getQuestChain()?.name || 'Not Started'}</div>
+        ${renderQuestSection(p)}
+      </div>
+
+      <!-- Relationship Details (conflict, rival, jealousy, stats, etc.) -->
+      <div class="vn-rel-details-panel">
+        ${renderRelationshipDetails(p)}
+      </div>
+
+      <!-- Activities -->
+      <div class="vn-rel-card">
+        <div class="vn-rel-card-title">🎯 Activities</div>
+        ${interactions.length === 0 ? '<div class="vn-rel-muted">No activities available (check AP/cash/level)</div>' : (() => {
+          const locs = interactions.filter(i => i.id.startsWith('loc_'));
+          const others = interactions.filter(i => !i.id.startsWith('loc_'));
+          let html = others.map(i => `
+            <button class="vn-rel-action" data-action="${i.id}">
+              <span class="vn-rel-action-label">${i.label}</span>
+              <span class="vn-rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
+              <span class="vn-rel-action-sat">+${i.satGain} ❤️</span>
+            </button>
+          `).join('');
+          if (locs.length > 0) {
+            html += `<button class="vn-rel-action vn-rel-loc-toggle" data-action="__toggle_locations__">
+              📍 Date Locations (${locs.length}) <span class="vn-loc-arrow">▶</span>
+            </button>
+            <div class="vn-loc-collapse" style="display:none;">
+              ${locs.map(i => `
+                <button class="vn-rel-action vn-rel-loc-item" data-action="${i.id}">
+                  <span class="vn-rel-action-label">${i.label}</span>
+                  <span class="vn-rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
+                  <span class="vn-rel-action-sat">+${i.satGain} ❤️</span>
+                </button>
+              `).join('')}
+            </div>`;
+          }
+          return html;
+        })()}
       </div>
     </div>
 
-    <div class="rel-bio">${profile.bio}</div>
-
-    <div class="rel-stat-section">
-      <div class="rel-stat-label">
-        <span>❤️ Satisfaction</span>
-        <span class="${satPct >= 60 ? 'text-green' : satPct >= 30 ? 'text-yellow' : 'text-pink'}">${satPct}%</span>
-      </div>
-      <div class="progress-bar-container">
-        <div class="progress-fill ${satPct >= 60 ? 'bg-green' : satPct >= 30 ? 'bg-yellow' : 'bg-pink'}" style="width:${satPct}%;"></div>
-      </div>
-    </div>
-
-    <div class="rel-texting-section">
-      <div class="rel-section-title">📱 TEXT YOUR PARTNER</div>
-      ${renderTextingSection(p)}
-    </div>
-
-    ${levelUpHint ? `<div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:4px;">⬆ ${levelUpHint}</div>` : ''}
-
-    <div class="rel-quest-section">
-      <div class="rel-section-title">📜 PARTNER QUEST</div>
-      ${renderQuestSection(p)}
-    </div>
-
-    <div class="rel-relationship-details">
-      ${renderRelationshipDetails(p)}
-    </div>
-
-    <div class="rel-interactions">
-      <div class="rel-section-title">ACTIVITIES</div>
-      ${interactions.length === 0 ? '<div class="rel-no-actions">No activities available (check AP/cash/level)</div>' : (() => {
-        const locs = interactions.filter(i => i.id.startsWith('loc_'));
-        const others = interactions.filter(i => !i.id.startsWith('loc_'));
-        let html = others.map(i => `
-          <button class="rel-action-btn" data-action="${i.id}">
-            <span class="rel-action-label">${i.label}</span>
-            <span class="rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
-            <span class="rel-action-sat">+${i.satGain} ❤️</span>
-          </button>
-        `).join('');
-        if (locs.length > 0) {
-          html += `<button class="rel-action-btn" id="btn-toggle-locations" data-action="__toggle_locations__" style="border-color:var(--accent-cyan);color:var(--accent-cyan);font-size:9px;">
-            📍 Date Locations (${locs.length}) <span id="loc-toggle-arrow">▶</span>
-          </button>
-          <div id="loc-collapse" style="display:none;flex-direction:column;gap:4px;">
-            ${locs.map(i => `
-              <button class="rel-action-btn" data-action="${i.id}" style="padding:6px 10px;font-size:9px;">
-                <span class="rel-action-label">${i.label}</span>
-                <span class="rel-action-cost">${i.costAP > 0 ? i.costAP + ' AP' : ''}${i.costAP > 0 && i.costCash > 0 ? ' + ' : ''}${i.costCash > 0 ? '$' + i.costCash : ''}</span>
-                <span class="rel-action-sat">+${i.satGain} ❤️</span>
-              </button>
-            `).join('')}
-          </div>`;
-        }
-        return html;
-      })()}
-    </div>
-
-    <div class="rel-footer">
-      <button class="btn secondary-btn" id="btn-breakup" style="width:100%;font-size:10px;border-color:#ff4444;color:#ff4444;">💔 BREAK UP</button>
+    <div class="vn-rel-footer">
+      <button class="vn-rel-breakup" id="btn-breakup">💔 Break Up</button>
     </div>
   `;
 
   container.appendChild(dashboard);
 
-  // Interaction listeners
-  dashboard.querySelectorAll('.rel-action-btn').forEach(btn => {
+  // Interaction listeners (VN rel-action)
+  dashboard.querySelectorAll('.vn-rel-action').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-action');
       if (id === '__toggle_locations__') {
-        const collapse = document.getElementById('loc-collapse');
+        const collapse = btn.parentElement.querySelector('.vn-loc-collapse');
+        const arrow = btn.querySelector('.vn-loc-arrow');
         if (!collapse) return;
         const isHidden = collapse.style.display === 'none';
         collapse.style.display = isHidden ? 'flex' : 'none';
-        document.getElementById('loc-toggle-arrow').textContent = isHidden ? '▼' : '▶';
+        if (arrow) arrow.textContent = isHidden ? '▼' : '▶';
         return;
       }
       playSound('click');
@@ -2741,18 +2838,21 @@ function renderRelationshipDashboard(container) {
     btn.addEventListener('click', () => {
       playSound('click');
       const idx = parseInt(btn.getAttribute('data-choice'));
-      dating.advanceQuest(idx);
-      renderDatingTab();
-      updateDashboard();
+      if (!isNaN(idx)) {
+        dating.makeQuestChoice(idx);
+        renderDatingTab();
+        updateDashboard();
+      }
     });
   });
   const cancelQuestBtn = document.getElementById('btn-cancel-quest');
   if (cancelQuestBtn) {
     cancelQuestBtn.addEventListener('click', () => {
-      playSound('error');
-      dating.cancelQuest();
-      renderDatingTab();
-      updateDashboard();
+      if (confirm('Cancel the quest?')) {
+        dating.cancelQuest();
+        renderDatingTab();
+        updateDashboard();
+      }
     });
   }
 
@@ -2767,7 +2867,7 @@ function renderRelationshipDashboard(container) {
     });
   });
 
-  // Conflict resolution
+  // Conflict listeners
   dashboard.querySelectorAll('.conflict-choice-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       playSound('click');
@@ -2778,19 +2878,18 @@ function renderRelationshipDashboard(container) {
     });
   });
 
-  // Rival handling
+  // Rival listeners
   dashboard.querySelectorAll('.rival-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       playSound('click');
       const choice = btn.getAttribute('data-choice');
-      const result = dating.handleRival(choice);
-      logToConsole(result.msg || '', result.status === 'success' ? 'success' : 'error');
+      dating.handleRival(choice);
       renderDatingTab();
       updateDashboard();
     });
   });
 
-  // Couple goals
+  // Goal listeners
   dashboard.querySelectorAll('.goal-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       playSound('click');
