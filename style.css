@@ -1973,6 +1973,153 @@ body {
   border-radius: 2px;
 }
 
+/* ==================== VN THREADED TEXTING ==================== */
+.vn-text-rapport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vn-text-rapport-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.vn-text-rapport-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+.vn-text-rapport-label {
+  font-size: 8px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vn-text-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.vn-text-msg {
+  font-size: 9px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  max-width: 85%;
+  line-height: 1.3;
+  animation: vn-text-reveal 0.25s ease;
+}
+
+.vn-text-sent {
+  background: rgba(255, 0, 127, 0.12);
+  border: 1px solid rgba(255, 0, 127, 0.2);
+  align-self: flex-end;
+  color: #f8f8f2;
+  border-bottom-right-radius: 2px;
+}
+
+.vn-text-reply {
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  align-self: flex-start;
+  color: #f8f8f2;
+  border-bottom-left-radius: 2px;
+}
+
+.vn-text-follow {
+  margin-top: 2px;
+  background: rgba(0, 240, 255, 0.05);
+  border-color: rgba(0, 240, 255, 0.1);
+  font-style: italic;
+}
+
+.vn-text-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vn-text-slots {
+  font-size: 8px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.vn-text-tone-row {
+  display: flex;
+  gap: 4px;
+}
+
+.vn-text-tone-btn {
+  flex: 1;
+  font-size: 8px;
+  padding: 5px 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  color: #f8f8f2;
+  cursor: pointer;
+  font-family: var(--font-display);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.vn-text-tone-btn:hover {
+  background: rgba(255, 0, 127, 0.1);
+  border-color: var(--accent-magenta);
+  transform: translateY(-1px);
+}
+
+.vn-text-tone-btn.active {
+  background: rgba(255, 0, 127, 0.2);
+  border-color: var(--accent-magenta);
+  box-shadow: 0 0 8px rgba(255, 0, 127, 0.2);
+}
+
+.vn-text-media-row {
+  display: flex;
+  gap: 4px;
+  animation: vn-choices-appear 0.3s ease;
+}
+
+.vn-text-media-btn {
+  flex: 1;
+  font-size: 7px;
+  padding: 4px 3px;
+  border: 1px solid rgba(80, 250, 123, 0.2);
+  border-radius: 6px;
+  background: rgba(80, 250, 123, 0.04);
+  color: #f8f8f2;
+  cursor: pointer;
+  font-family: var(--font-display);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.vn-text-media-btn:hover {
+  background: rgba(80, 250, 123, 0.12);
+  border-color: var(--accent-green);
+}
+
+.vn-text-done {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px;
+  background: rgba(80,250,123,0.04);
+  border: 1px dashed rgba(80,250,123,0.15);
+  border-radius: 6px;
+}
+
 /* ==================== TAB: SOCIAL ENCOUNTERS (CARD BATTLES) ==================== */
 #social-encounter-view {
   height: 100%;

@@ -237,6 +237,9 @@ export class GameState {
 
     // Texting
     this.lastTextedYear = 0;
+    this.textsRemainingThisYear = 3;
+    this.textHistory = [];
+    this.textRapport = 50;
 
     // Date locations
     this.visitedLocations = [];
@@ -1214,6 +1217,10 @@ export class GameState {
     }
     const g = new GameState(data.activePerks || {});
     Object.assign(g, data);
+    // Old save migration
+    if (g.textsRemainingThisYear === undefined) g.textsRemainingThisYear = 3;
+    if (!g.textHistory) g.textHistory = [];
+    if (g.textRapport === undefined) g.textRapport = 50;
     g._protectProperties();
     return g;
   }
@@ -1344,6 +1351,9 @@ export class GameState {
       questPassiveIncome: this.questPassiveIncome,
       questIncomeMult: this.questIncomeMult,
       lastTextedYear: this.lastTextedYear,
+      textsRemainingThisYear: this.textsRemainingThisYear,
+      textHistory: this.textHistory,
+      textRapport: this.textRapport,
       visitedLocations: this.visitedLocations,
       jealousyMeter: this.jealousyMeter,
       hasActiveConflict: this.hasActiveConflict,
@@ -1607,6 +1617,21 @@ export class GameState {
     }
 
     this.ap = isHard ? 8 : 10;
+
+    // Reset text slots for the new year
+    const maxTexts = this.relationshipLevel === 1 ? 3 : this.relationshipLevel === 2 ? 5 : this.relationshipLevel === 3 ? 7 : 10;
+    this.textsRemainingThisYear = maxTexts;
+
+    // Text rapport decay if you barely texted last year
+    if (this.hasDatingPartner) {
+      const lastYearTextCount = (this.textHistory || []).filter(t => t.year === this.age - 1).length;
+      if (lastYearTextCount === 0) {
+        this.textRapport = Math.max(0, (this.textRapport || 50) - 10);
+        this.log.push(`You didn't text your partner at all last year. Rapport declined.`);
+      } else if (lastYearTextCount < 3) {
+        this.textRapport = Math.max(0, (this.textRapport || 50) - 3);
+      }
+    }
 
     this.validateIntegrity();
 

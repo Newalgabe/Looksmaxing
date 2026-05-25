@@ -2839,7 +2839,7 @@ function renderRelationshipDashboard(container) {
       playSound('click');
       const idx = parseInt(btn.getAttribute('data-choice'));
       if (!isNaN(idx)) {
-        dating.makeQuestChoice(idx);
+        dating.advanceQuest(idx);
         renderDatingTab();
         updateDashboard();
       }
@@ -2856,12 +2856,34 @@ function renderRelationshipDashboard(container) {
     });
   }
 
-  // Texting listeners
-  dashboard.querySelectorAll('.text-btn').forEach(btn => {
+  // Texting listeners (VN threaded)
+  let selectedTone = null;
+  dashboard.querySelectorAll('.vn-text-tone-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       playSound('click');
       const tone = btn.getAttribute('data-tone');
-      dating.textPartner(tone);
+      // Highlight selected tone
+      document.querySelectorAll('.vn-text-tone-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedTone = tone;
+      // Show media row
+      const mediaRow = document.getElementById('vn-media-row');
+      if (mediaRow) mediaRow.style.display = 'flex';
+    });
+  });
+  dashboard.querySelectorAll('.vn-text-media-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!selectedTone) {
+        logToConsole('Pick a tone first!', 'error');
+        return;
+      }
+      playSound('click');
+      const media = btn.getAttribute('data-media');
+      dating.textPartner(selectedTone, media);
+      selectedTone = null;
+      document.querySelectorAll('.vn-text-tone-btn').forEach(b => b.classList.remove('active'));
+      const mediaRow = document.getElementById('vn-media-row');
+      if (mediaRow) mediaRow.style.display = 'none';
       renderDatingTab();
       updateDashboard();
     });
@@ -3049,22 +3071,62 @@ function renderRelationshipDetails(p) {
 function renderTextingSection(p) {
   if (!p.hasDatingPartner) return '';
   const texts = dating.getAvailableTexts();
-  if (texts.length === 0) {
-    return `<div style="font-size:9px;color:var(--text-muted);text-align:center;padding:4px;">✅ Texted for this year</div>`;
+  const history = dating.getTextHistory();
+  const rapport = dating.getTextRapportLabel();
+  const remaining = p.textsRemainingThisYear;
+
+  // Show last 3 text exchanges
+  const recentHistory = history.slice(-3).reverse();
+
+  let html = '';
+
+  // Rapport bar
+  html += `<div class="vn-text-rapport">
+    <div class="vn-text-rapport-bar">
+      <div class="vn-text-rapport-fill" style="width:${p.textRapport || 50}%;background:${rapport.color};"></div>
+    </div>
+    <span class="vn-text-rapport-label" style="color:${rapport.color};">${rapport.label}</span>
+  </div>`;
+
+  // Recent history bubbles
+  if (recentHistory.length > 0) {
+    html += `<div class="vn-text-history">`;
+    for (const entry of recentHistory) {
+      const mediaIcon = entry.media && entry.media !== 'none' ? DatingSimulator.TEXT_MEDIA?.find(m => m.id === entry.media)?.icon + ' ' : '';
+      html += `<div class="vn-text-msg vn-text-sent">${mediaIcon}${entry.sentText}</div>`;
+      html += `<div class="vn-text-msg vn-text-reply">${entry.reply}</div>`;
+      if (entry.followUp) {
+        html += `<div class="vn-text-msg vn-text-reply vn-text-follow">${entry.followUp}</div>`;
+      }
+    }
+    html += `</div>`;
   }
-  return `
-    <div style="display:flex;gap:4px;flex-wrap:wrap;">
-      ${texts.map(t => `
-        <button class="text-btn" data-tone="${t.id}" style="flex:1;min-width:60px;font-size:8px;padding:4px 6px;border:1px solid rgba(0,240,255,0.3);border-radius:4px;background:rgba(0,240,255,0.05);color:var(--text);cursor:pointer;">
-          ${t.label}
-        </button>
-      `).join('')}
+
+  // Text input area (if texts remaining)
+  if (texts.length > 0) {
+    html += `<div class="vn-text-compose">
+      <div class="vn-text-slots">${remaining} text${remaining !== 1 ? 's' : ''} remaining this year</div>
+      <div class="vn-text-tone-row">
+        ${texts.map(t => `
+          <button class="vn-text-tone-btn" data-tone="${t.id}">${t.label}</button>
+        `).join('')}
+      </div>
+      <div class="vn-text-media-row" id="vn-media-row" style="display:none;">
+        ${DatingSimulator.TEXT_MEDIA.map(m => `
+          <button class="vn-text-media-btn" data-media="${m.id}">${m.icon} ${m.label}</button>
+        `).join('')}
+      </div>
     </div>`;
+  } else {
+    html += `<div class="vn-text-done">✅ All texts used for this year (${dating.getMaxTextsPerYear()}/${dating.getMaxTextsPerYear()})</div>`;
+  }
+
+  return html;
 }
 
 function renderCanvasAvatar(profile, size = 80) {
   if (!profile) return `<div style="width:${size}px;height:${size}px;background:var(--bg-card);border-radius:50%;"></div>`;
-  const seed = encodeURIComponent(profile.name || profile.avatarType || 'default');
+  const seed = encodeURIComponent(profile.avatarSeed || profile.name || profile.avatarType || 'default');
   const isMale = profile.gender === 'male';
   const featuresProb = isMale ? '' : '&featuresProbability=0';
   const url = `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=${size * 2}${featuresProb}`;

@@ -380,7 +380,7 @@ export class DatingSimulator {
     {
       name: 'Valentina', age: 25, archetype: 'normie',
       bio: 'Rizz queen. Looking for a guy with actual game. 🎯',
-      avatarColor: '#00f0ff', avatarType: 'goth', gender: 'female',
+      avatarColor: '#ff79c6', avatarType: 'baddie', avatarSeed: 'valentina_baddie', gender: 'female',
         reqSMV: 4.5, reqRizz: 40,
         dialogues: {
           match: "Hey, you seem interesting. Try to keep up.",
@@ -832,6 +832,9 @@ export class DatingSimulator {
     this.player.relationshipSatisfaction = 0;
     this.player.yearsWithPartner = 0;
     this.player.lastTextedYear = 0;
+    this.player.textsRemainingThisYear = 0;
+    this.player.textHistory = [];
+    this.player.textRapport = 50;
     this.player.jealousyMeter = 0;
     this.player.hasActiveConflict = false;
     this.player._conflictIndex = 0;
@@ -863,69 +866,156 @@ export class DatingSimulator {
     this.logCallback(`💔 You broke up with your partner. -20% Confidence.`, 'error');
   }
 
-  // === TEXTING SYSTEM ===
-  static TEXTS = [
+  // === TEXTING SYSTEM (THREADED, MULTI-SLOT) ===
+  static TEXT_TONES = [
     { id: 'sweet', label: '💕 Sweet', text: '"Good morning, thinking of you"', satGain: 5, rizzGain: 0, confGain: 2 },
     { id: 'caring', label: '💬 Check in', text: '"How was your day?"', satGain: 3, rizzGain: 2, confGain: 0 },
     { id: 'funny', label: '😂 Meme', text: 'Sent a funny meme', satGain: 4, rizzGain: 0, confGain: 3 }
   ];
 
-  getAvailableTexts() {
-    if (!this.player.hasDatingPartner) return [];
-    if (this.player.lastTextedYear === this.player.age) return [];
-    return DatingSimulator.TEXTS;
+  static TEXT_MEDIA = [
+    { id: 'none', label: 'Just text', icon: '💬', satMult: 1.0, rizzMult: 1.0 },
+    { id: 'meme', label: 'Send a meme', icon: '📱', satMult: 1.15, rizzMult: 1.2 },
+    { id: 'photo', label: 'Send a photo', icon: '📸', satMult: 1.2, rizzMult: 1.0 },
+    { id: 'voice', label: 'Send voice note', icon: '🎤', satMult: 1.1, rizzMult: 1.3 }
+  ];
+
+  getMaxTextsPerYear() {
+    const lvl = this.player.relationshipLevel || 1;
+    return lvl === 1 ? 3 : lvl === 2 ? 5 : lvl === 3 ? 7 : 10;
   }
 
-  textPartner(toneId) {
+  getAvailableTexts() {
+    if (!this.player.hasDatingPartner) return [];
+    const remaining = this.player.textsRemainingThisYear;
+    if (remaining <= 0) return [];
+    return DatingSimulator.TEXT_TONES.map(t => ({ ...t, remaining }));
+  }
+
+  getTextHistory() {
+    return this.player.textHistory || [];
+  }
+
+  getTextRapportLabel() {
+    const r = this.player.textRapport || 50;
+    if (r >= 90) return { label: 'Soulmates 💞', color: '#ff79c6' };
+    if (r >= 70) return { label: 'Close 💕', color: '#50fa7b' };
+    if (r >= 50) return { label: 'Comfortable 😊', color: '#f1fa8c' };
+    if (r >= 30) return { label: 'Distant 🫤', color: '#ffb86c' };
+    return { label: 'Cold 🥶', color: '#6272a4' };
+  }
+
+  textPartner(toneId, mediaId = 'none') {
     const p = this.player;
     if (!p.hasDatingPartner || !p.partnerProfile) return { status: 'error', msg: 'No partner.' };
-    if (p.lastTextedYear === p.age) return { status: 'error', msg: 'Already texted this year.' };
+    if (p.textsRemainingThisYear <= 0) return { status: 'error', msg: 'No texts remaining this year.' };
 
-    const tone = DatingSimulator.TEXTS.find(t => t.id === toneId);
+    const tone = DatingSimulator.TEXT_TONES.find(t => t.id === toneId);
     if (!tone) return { status: 'error', msg: 'Unknown tone.' };
+    const media = DatingSimulator.TEXT_MEDIA.find(m => m.id === mediaId) || DatingSimulator.TEXT_MEDIA[0];
 
-    p.lastTextedYear = p.age;
+    p.textsRemainingThisYear--;
+
     const llMult = this._getLoveLangBonus(toneId);
-    const effectiveSatGain = Math.floor(tone.satGain * llMult);
+    const rapportMult = 1 + ((p.textRapport || 50) - 50) / 200; // 0.75-1.25x based on rapport
+    const baseSat = Math.floor(tone.satGain * media.satMult * llMult * rapportMult);
+    const effectiveSatGain = Math.max(1, baseSat);
     p.relationshipSatisfaction = Math.min(100, Math.max(0, p.relationshipSatisfaction + effectiveSatGain));
-    p.rizz = Math.min(100, Math.max(0, p.rizz + (tone.rizzGain || 0)));
+    p.rizz = Math.min(100, Math.max(0, p.rizz + Math.floor((tone.rizzGain || 0) * media.rizzMult)));
     p.confidence = Math.min(100, Math.max(0, p.confidence + (tone.confGain || 0)));
+
+    // Rapport increases on successful texts, bonus for media
+    p.textRapport = Math.min(100, (p.textRapport || 50) + 2 + (mediaId !== 'none' ? 1 : 0));
 
     const archetype = p.partnerProfile.archetype || 'normie';
     const responses = this._getTextResponses(archetype, tone.id);
     const reply = responses[Math.floor(Math.random() * responses.length)];
 
+    // Maybe get a follow-up (higher rapport = more back-and-forth)
+    let followUp = '';
+    if (mediaId !== 'none' && Math.random() < 0.4 + (p.textRapport || 50) / 200) {
+      const mediaReactions = this._getMediaReactions(archetype, mediaId);
+      followUp = mediaReactions[Math.floor(Math.random() * mediaReactions.length)];
+    }
+
+    // Store in history
+    const entry = {
+      year: p.age,
+      tone: toneId,
+      media: mediaId,
+      sentText: tone.text,
+      reply,
+      followUp,
+      satGain: effectiveSatGain
+    };
+    if (!p.textHistory) p.textHistory = [];
+    p.textHistory.push(entry);
+    if (p.textHistory.length > 20) p.textHistory = p.textHistory.slice(-20);
+
+    const mediaIcon = mediaId !== 'none' ? media.icon + ' ' : '';
     const llLabel = llMult > 1 ? ' 💕 Love language match!' : '';
-    this.logCallback(`📱 You: ${tone.text}`, 'action');
-    this.logCallback(`💬 ${p.partnerProfile.name}: ${reply}${llLabel}`, 'success');
-    return { status: 'success', reply, satGain: effectiveSatGain };
+    const rapportChange = rapportMult > 1 ? ` (Rapport bonus!)` : rapportMult < 1 ? ` (Low rapport...)` : '';
+    this.logCallback(`📱 You ${mediaIcon}${tone.text}`, 'action');
+    this.logCallback(`💬 ${p.partnerProfile.name}: ${reply}${llLabel}${rapportChange}`, 'success');
+    if (followUp) {
+      this.logCallback(`💬 ${p.partnerProfile.name}: ${followUp}`, 'success');
+    }
+
+    return { status: 'success', reply, followUp, satGain: effectiveSatGain, remaining: p.textsRemainingThisYear };
   }
 
   _getTextResponses(archetype, toneId) {
     const all = {
       sweet: {
-        lookist: ['"You\'re the only 10/10 I need 💕"', '"Aww, you look cute today too"', '"Missing you too babe 💋"'],
-        egirl: ['"Ugh you\'re so soft 🥺"', '"This is why you\'re my favorite person"', '"🤍"'],
-        normie: ['"You\'re so sweet 🥹"', '"Best morning ever. How did I get so lucky?"', '"Can\'t stop smiling 😊"'],
-        gold_digger: ['"Thinking about you too... and that trip we should take 💎"', '"You\'re the best thing in my life 💕"', '"My friends are so jealous of us ❤️"'],
-        corporate: ['"Sweet of you to say. Let\'s have dinner tonight."', '"Noted. You\'re growing on me."', '"That\'s... nice. Busy day ahead?"']
+        lookist: ['"You\'re the only 10/10 I need 💕"', '"Aww, you look cute today too"', '"Missing you too babe 💋"', '"Keep talking like that and I\'ll be yours forever 😘"'],
+        egirl: ['"Ugh you\'re so soft 🥺"', '"This is why you\'re my favorite person"', '"🤍"', '"You\'re actually adorable stop 🥹"'],
+        normie: ['"You\'re so sweet 🥹"', '"Best morning ever. How did I get so lucky?"', '"Can\'t stop smiling 😊"', '"This made my whole day ❤️"'],
+        gold_digger: ['"Thinking about you too... and that trip we should take 💎"', '"You\'re the best thing in my life 💕"', '"My friends are so jealous of us ❤️"', '"Sweet talker. I like it 😏"'],
+        corporate: ['"Sweet of you to say. Let\'s have dinner tonight."', '"Noted. You\'re growing on me."', '"That\'s... nice. Busy day ahead?"', '"You have a way with words. Dinner?"']
       },
       caring: {
-        lookist: ['"Work was fine, but I\'d rather be with you"', '"Just did a killer workout. Wish you were here 💪"', '"Busy but better now that you texted ✨"'],
-        egirl: ['"Meh, same old. Let\'s play something later?"', '"Stressful. Send memes."', '"Actually had a good day. Wanna hear about it?"'],
-        normie: ['"It was okay. Better now that you asked 🥰"', '"You\'re so thoughtful. Let\'s cook together soon!"', '"Rough day but this helps ❤️"'],
-        gold_digger: ['"Exhausting. But I saw the cutest bag today..."', '"Work work work. Take me somewhere nice?"', '"Better now. Let\'s plan our next trip 💅"'],
-        corporate: ['"Productive day. Closed two deals."', '"Long meetings. Your text was a good break."', '"Busy but thriving. How about you?"']
+        lookist: ['"Work was fine, but I\'d rather be with you"', '"Just did a killer workout. Wish you were here 💪"', '"Busy but better now that you texted ✨"', '"Stressful week. Your text helped 💕"'],
+        egirl: ['"Meh, same old. Let\'s play something later?"', '"Stressful. Send memes."', '"Actually had a good day. Wanna hear about it?"', '"Ugh today was rough. Thanks for checking 🥺"'],
+        normie: ['"It was okay. Better now that you asked 🥰"', '"You\'re so thoughtful. Let\'s cook together soon!"', '"Rough day but this helps ❤️"', '"Just what I needed. You always know 💕"'],
+        gold_digger: ['"Exhausting. But I saw the cutest bag today..."', '"Work work work. Take me somewhere nice?"', '"Better now. Let\'s plan our next trip 💅"', '"Long day. A spa weekend would fix everything 💆"'],
+        corporate: ['"Productive day. Closed two deals."', '"Long meetings. Your text was a good break."', '"Busy but thriving. How about you?"', '"Just wrapped a big project. Celebrating soon."']
       },
       funny: {
-        lookist: ['"LMAOOO stop 💀"', '"I sent this to my group chat 😂"', '"You\'re actually funny. Lucky me 😏"'],
-        egirl: ['"SCREAMING 💀💀💀"', '"This is exactly my humor 😭"', '"Okay you win the internet today"'],
-        normie: ['"HAHAHA I\'m saving this 📱"', '"This is so us 🤣"', '"You know exactly how to cheer me up 😂"'],
-        gold_digger: ['"Lol cute. Send me the one with the cat 💅"', '"Okay that was actually funny 😂"', '"You\'re lucky you\'re funny *and* cute 💕"'],
-        corporate: ['"...I chuckled. Well played."', '"Not bad. You\'ve earned bonus points."', '"Sending this to my assistant. Enjoy your win."']
+        lookist: ['"LMAOOO stop 💀"', '"I sent this to my group chat 😂"', '"You\'re actually funny. Lucky me 😏"', '"Okay that was actually hilarious 😭"'],
+        egirl: ['"SCREAMING 💀💀💀"', '"This is exactly my humor 😭"', '"Okay you win the internet today"', '"I\'m stealing this for my story 💀"'],
+        normie: ['"HAHAHA I\'m saving this 📱"', '"This is so us 🤣"', '"You know exactly how to cheer me up 😂"', '"Stop I\'m at work 😭💀"'],
+        gold_digger: ['"Lol cute. Send me the one with the cat 💅"', '"Okay that was actually funny 😂"', '"You\'re lucky you\'re funny *and* cute 💕"', '"Gotta say, your humor is an asset 💎"'],
+        corporate: ['"...I chuckled. Well played."', '"Not bad. You\'ve earned bonus points."', '"Sending this to my assistant. Enjoy your win."', '"Fine. That was funny. Take the W."']
       }
     };
     return (all[toneId] && all[toneId][archetype]) || ['"Thanks baby ❤️"', '"You\'re the best 💕"', '"Made me smile 😊"'];
+  }
+
+  _getMediaReactions(archetype, mediaId) {
+    const reactions = {
+      meme: {
+        lookist: ['"LMAOO accurate 💀"', '"This is so unserious 😂"', '"Okay that\'s a good one"'],
+        egirl: ['"SCREAMING why is this us 😭"', '"I\'m posting this on my story"', '"Perfect timing I needed this 💀"'],
+        normie: ['"Stoppp 🤣🤣🤣"', '"How do you always find the perfect ones?"', '"I snorted 😂"'],
+        gold_digger: ['"Lol okay that was good 💅"', '"Send me more of these"', '"You have good taste in memes 😏"'],
+        corporate: ['"...Accurate. Forwarding to my team."', '"Saving this. Well done."', '"Hmm. Not bad."']
+      },
+      photo: {
+        lookist: ['"You look amazing 🔥"', '"Did you just wake up looking like that? 😍"', '"This is my new favorite photo 📸"'],
+        egirl: ['"Aesthetic 📸"', '"Okay you\'re cute I guess 😏"', '"This is going in my camera roll 📱"'],
+        normie: ['"You\'re so beautiful/handsome 🥰"', '"Made my day seeing your face ❤️"', '"😍😍😍"'],
+        gold_digger: ['"Looking like a million bucks 💎"', '"That outfit 👀🔥"', '"Take me there next time 💅"'],
+        corporate: ['"Sharp. I approve."', '"Good lighting. Professional."', '"Not bad. You clean up well."']
+      },
+      voice: {
+        lookist: ['"Your voice is so calming 🥺"', '"I could listen to you all day 💕"', '"Send more voice notes 😍"'],
+        egirl: ['"Omg your voiceee 🥹"', '"This is so intimate I love it 💕"', '"Voice notes > texting forever"'],
+        normie: ['"I love hearing your voice 🥰"', '"This is so sweet 😭"', '"Saved it. Listening on repeat ❤️"'],
+        gold_digger: ['"Mmm I like the sound of that 💕"', '"Confident. I like it."', '"That\'s... actually really nice 😏"'],
+        corporate: ['"Good articulation. Well spoken."', '"I appreciate the efficiency of voice."', '"Noted. You have a good speaking voice."']
+      }
+    };
+    return (reactions[mediaId] && reactions[mediaId][archetype]) || ['"Nice! 💕"', '"Love it 😊"', '"Thanks for sending ❤️"'];
   }
 
   // === QUEST SYSTEM ===
