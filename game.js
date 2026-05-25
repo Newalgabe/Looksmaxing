@@ -186,6 +186,7 @@ export class GameState {
     // New Perk: Alpha Mentality — free talent points
     this.talentPoints = (this.activePerks && this.activePerks.alpha_mentality) ? 2 : 0;
     this.talents = {};
+    this.rizzLockTurns = 0;
 
     this.smv = 4.0;
     this.socialTier = 'NORMIE';
@@ -1383,6 +1384,7 @@ export class GameState {
       substancesUsed: this.substancesUsed, activeSubstances: this.activeSubstances,
       addictionLevel: this.addictionLevel, hasProcreated: this.hasProcreated,
       children: this.children, statTimeline: this.statTimeline,
+      rizzLockTurns: this.rizzLockTurns || 0,
       activePerks: this.activePerks,
       difficulty: this.difficulty,
       _depressionYears: this._depressionYears,

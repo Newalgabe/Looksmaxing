@@ -19,13 +19,85 @@ export class DatingSimulator {
       'giga', 'gigachad', 'stacylite', 'normie', 'truecel'
     ];
 
-    if (this.player.gender === 'female') {
-      this.profiles = this.getFemaleProfiles();
-    } else {
-      this.profiles = this.getMaleProfiles();
-    }
+    // Build app-specific profile pools
+    this.profiles = this.player.gender === 'female' ? this.getFemaleProfiles() : this.getMaleProfiles();
+    this._buildAppPools();
 
+    this.activeApp = 'slidr';
+    this.showAppHome = true;
+    this.ghostedProfiles = [];
+    this.banWarning = false;
+    this.bannedApps = [];
+
+    this.dateBattle = null;
+    this.activeEvent = null;
     this.rollProfile();
+  }
+
+  // === MULTI-APP ECOSYSTEM ===
+  static APPS = [
+    {
+      id: 'slidr', name: 'Slidr', icon: '🔥',
+      color: '#ff007f', desc: 'The wild west of dating. High variance, free to swipe.',
+      unlock: () => true,
+      matchMult: 0.8, ghostChance: 0.25,
+      bioBonus: false, instantMatch: false, cashDrain: 0
+    },
+    {
+      id: 'hinged', name: 'Hinged', icon: '💎',
+      color: '#00f0ff', desc: 'Career-minded connection. Bio matters here.',
+      unlock: (p) => (p.careerLevel || 0) >= 3 || (p.status || 0) > 30,
+      matchMult: 1.0, ghostChance: 0.1,
+      bioBonus: true, instantMatch: false, cashDrain: 0
+    },
+    {
+      id: 'luxymog', name: 'LuxyMog', icon: '👑',
+      color: '#f1fa8c', desc: 'Elite only. Beauty is the entry fee.',
+      unlock: (p) => p.smv >= 7.0 || (p.style || 0) >= 80,
+      matchMult: 1.5, ghostChance: 0.05,
+      bioBonus: false, instantMatch: true, cashDrain: 0
+    },
+    {
+      id: 'sugargrind', name: 'SugarGrind', icon: '💰',
+      color: '#50fa7b', desc: 'Wealth is the only currency. Bypasses looks entirely.',
+      unlock: (p) => p.cash >= 50000,
+      matchMult: 2.0, ghostChance: 0,
+      bioBonus: false, instantMatch: false, cashDrain: 500
+    }
+  ];
+
+  _buildAppPools() {
+    this.appPools = { slidr: [], hinged: [], luxymog: [], sugargrind: [] };
+    for (const prof of this.profiles) {
+      // Auto-assign apps based on archetype + profile traits
+      let app = 'slidr';
+      if (prof.archetype === 'gold_digger') app = 'sugargrind';
+      else if (prof.archetype === 'corporate') app = 'hinged';
+      else if (prof.archetype === 'lookist') app = 'luxymog';
+      else if (prof.name === 'Tyrone' || prof.name === 'Chloe') app = 'luxymog'; // alt/lookist crossover
+      this.appPools[app].push(prof);
+    }
+  }
+
+  getUnlockedApps() {
+    const p = this.player;
+    return DatingSimulator.APPS.filter(a => a.unlock(p) && !this.bannedApps.includes(a.id)).map(a => a.id);
+  }
+
+  getActiveAppDef() {
+    return DatingSimulator.APPS.find(a => a.id === this.activeApp) || DatingSimulator.APPS[0];
+  }
+
+  switchApp(appId) {
+    if (!this.getUnlockedApps().includes(appId)) return false;
+    if (this.bannedApps.includes(appId)) {
+      this.logCallback(`🚫 You've been banned from ${appId}!`, 'error');
+      return false;
+    }
+    this.activeApp = appId;
+    this.banWarning = false;
+    this.rollProfile();
+    return true;
   }
 
   // === LOOKSMAXXING TERM DETECTION ===
@@ -34,214 +106,616 @@ export class DatingSimulator {
     return this.looksmaxxingTerms.some(term => lower.includes(term));
   }
 
-  // === MULTI-ROUND DATE GENERATION ===
-  generateDateRounds(profile) {
-    const rounds = [];
-    const archetype = profile.archetype || 'normie';
-    const name = profile.name;
-    const isEgirl = archetype === 'egirl';
+  // === INTERACTIVE CHAT SIMULATOR ===
+  static CHAT_TREES = {
+    normie: [
+      {
+        id: 'opener', prompt: (n) => `Hey! Saw your profile. What's up?`,
+        choices: [
+          { text: '"Not much, just working and hitting the gym. You?"', stat: null, statVal: 0, interest: 15, ghostCost: 0, next: 'deep' },
+          { text: '"Honestly? Kinda nervous. Your pics are really cute though."', stat: 'rizz', statVal: 30, interest: 20, ghostCost: 0, next: 'deep' },
+          { text: '"You have a great smile. Let\'s skip the small talk?"', stat: null, statVal: 0, interest: 5, ghostCost: 1, next: 'deep' },
+          { text: '"Your canthal tilt is immaculate. Very PSL."', stat: null, statVal: 0, interest: -30, ghostCost: 0, next: null, fail: 'creep' }
+        ]
+      },
+      {
+        id: 'deep', prompt: (n) => `That's sweet! So what do you actually do for fun?`,
+        choices: [
+          { text: '"Travel, try new restaurants, the usual. But I\'d rather hear about you."', stat: 'rizz', statVal: 40, interest: 20, ghostCost: 0, next: 'closer' },
+          { text: '"Work keeps me busy but I make time for what matters."', stat: 'careerLevel', statVal: 2, interest: 15, ghostCost: 0, next: 'closer' },
+          { text: '"Mostly gaming and hanging with friends."', stat: null, statVal: 0, interest: 5, ghostCost: 1, next: 'closer' },
+          { text: '"I\'ve been really focused on looksmaxxing my zygos."', stat: null, statVal: 0, interest: -25, ghostCost: 0, next: null, fail: 'creep' }
+        ]
+      },
+      {
+        id: 'closer', prompt: (n) => `Okay you seem cool. What are you looking for on here?`,
+        choices: [
+          { text: '"Someone genuine to explore the city with. You free this weekend?"', stat: null, statVal: 0, interest: 25, ghostCost: 0, next: 'secured' },
+          { text: '"Honestly? I\'d rather show you in person. Drinks?"', stat: 'rizz', statVal: 50, interest: 30, ghostCost: 0, next: 'secured' },
+          { text: '"Not sure yet, seeing where things go."', stat: null, statVal: 0, interest: 0, ghostCost: 1, next: 'closer' },
+          { text: '"I\'m looking for someone who appreciates good bone structure."', stat: null, statVal: 0, interest: -20, ghostCost: 0, next: null, fail: 'creep' }
+        ]
+      }
+    ],
+    lookist: [
+      {
+        id: 'opener', prompt: (n) => `${n} studies your profile silently. "Alright, talk to me."`,
+        choices: [
+          { text: '"Your aesthetic is incredible. Where do you train?"', stat: 'frame', statVal: 50, interest: 25, ghostCost: 0, next: 'deep' },
+          { text: '"I\'ve been working on my jawline. Mind if I pick your brain?"', stat: 'smv', statVal: 5.5, interest: 20, ghostCost: 0, next: 'deep' },
+          { text: '"Honestly, your profile is one of the best I\'ve seen."', stat: null, statVal: 0, interest: 5, ghostCost: 1, next: 'deep' },
+          { text: '"Great PSL. I\'d rate you a solid 8."', stat: null, statVal: 0, interest: -15, ghostCost: 0, next: null, fail: 'creep' }
+        ]
+      },
+      {
+        id: 'deep', prompt: (n) => `"Interesting. You clearly take care of yourself. What's your routine?"`,
+        choices: [
+          { text: '"Gym 5x a week, strict diet, good sleep. The basics but I\'m consistent."', stat: 'frame', statVal: 60, interest: 25, ghostCost: 0, next: 'closer' },
+          { text: '"I invest in skincare, treatments, the works. Looking good takes effort."', stat: 'skin', statVal: 60, interest: 20, ghostCost: 0, next: 'closer' },
+          { text: '"I just try to stay active. Nothing crazy."', stat: null, statVal: 0, interest: 0, ghostCost: 1, next: 'closer' },
+          { text: '"Mewing, bonesmashing, the whole PSL protocol."', stat: null, statVal: 0, interest: -25, ghostCost: 0, next: null, fail: 'creep' }
+        ]
+      },
+      {
+        id: 'closer', prompt: (n) => `"Good answer. I like someone with discipline. So... what now?"`,
+        choices: [
+          { text: '"Let\'s grab a drink and see if the chemistry matches the profiles."', stat: null, statVal: 0, interest: 30, ghostCost: 0, next: 'secured' },
+          { text: '"I know a great spot with amazing lighting. Trust me."', stat: 'rizz', statVal: 45, interest: 35, ghostCost: 0, next: 'secured' },
+          { text: '"Up to you — I\'m flexible."', stat: null, statVal: 0, interest: 5, ghostCost: 1, next: 'closer' }
+        ]
+      }
+    ],
+    egirl: [
+      {
+        id: 'opener', prompt: (n) => `"omg your vibe is immaculate. talk to me."`,
+        choices: [
+          { text: '"Your aesthetic is everything. Where\'d you get that fit?"', stat: 'style', statVal: 50, interest: 25, ghostCost: 0, next: 'deep' },
+          { text: '"Honestly I was hoping you\'d match. Your playlist profile is fire."', stat: null, statVal: 0, interest: 20, ghostCost: 0, next: 'deep' },
+          { text: '"Hey, what\'s up?"', stat: null, statVal: 0, interest: 0, ghostCost: 1, next: 'deep' },
+          { text: '"Your canthal tilt is insane. True Hunter eyes."', stat: null, statVal: 0, interest: 15, ghostCost: 0, next: 'deep' }
+        ]
+      },
+      {
+        id: 'deep', prompt: (n) => `"u get it. finally someone w taste. so what r u into?"`,
+        choices: [
+          { text: '"Music, art, getting lost in the city. I go where the vibe takes me."', stat: 'rizz', statVal: 40, interest: 25, ghostCost: 0, next: 'closer' },
+          { text: '"Honestly? I\'m just tryna find someone to send memes to at 2am."', stat: null, statVal: 0, interest: 20, ghostCost: 0, next: 'closer' },
+          { text: '"Work and gym mostly. Pretty basic."', stat: null, statVal: 0, interest: -5, ghostCost: 1, next: 'closer' }
+        ]
+      },
+      {
+        id: 'closer', prompt: (n) => `"ok i fw the vibe. let's do something fr fr."`,
+        choices: [
+          { text: '"Let\'s hit a show this weekend. I know a spot."', stat: null, statVal: 0, interest: 30, ghostCost: 0, next: 'secured' },
+          { text: '"Send me your location, I\'m coming to get you."', stat: 'rizz', statVal: 55, interest: 35, ghostCost: 0, next: 'secured' },
+          { text: '"Yeah maybe, we\'ll see."', stat: null, statVal: 0, interest: -10, ghostCost: 2, next: 'closer' }
+        ]
+      }
+    ],
+    gold_digger: [
+      {
+        id: 'opener', prompt: (n) => `"So. What do you do for a living?"`,
+        choices: [
+          { text: '"I run my own business. Keeps me busy but the upside is real."', stat: 'careerLevel', statVal: 3, interest: 30, ghostCost: 0, next: 'deep' },
+          { text: '"I\'m in finance. Let\'s just say the portfolio is healthy."', stat: 'cash', statVal: 30000, interest: 25, ghostCost: 0, next: 'deep' },
+          { text: '"I have a job. It pays the bills."', stat: null, statVal: 0, interest: -5, ghostCost: 1, next: 'deep' },
+          { text: '"I\'m between things right now, but I have big plans."', stat: null, statVal: 0, interest: -20, ghostCost: 0, next: null, fail: 'ghost' }
+        ]
+      },
+      {
+        id: 'deep', prompt: (n) => `"Interesting. And what do you like to spend your money on?"`,
+        choices: [
+          { text: '"Experiences. Travel, fine dining, the occasional splurge."', stat: 'cash', statVal: 20000, interest: 25, ghostCost: 0, next: 'closer' },
+          { text: '"I invest mostly. But I know how to treat someone special."', stat: null, statVal: 0, interest: 20, ghostCost: 0, next: 'closer' },
+          { text: '"I don\'t really spend much. Saving for a rainy day."', stat: null, statVal: 0, interest: -10, ghostCost: 1, next: 'closer' }
+        ]
+      },
+      {
+        id: 'closer', prompt: (n) => `"I like someone ambitious. So, what's your plan for us?"`,
+        choices: [
+          { text: '"Let me take you somewhere unforgettable. My treat."', stat: 'cash', statVal: 10000, interest: 35, ghostCost: 0, next: 'secured' },
+          { text: '"I think we could build something great together. Let\'s start with dinner."', stat: null, statVal: 0, interest: 25, ghostCost: 0, next: 'secured' },
+          { text: '"Whatever you\'re comfortable with."', stat: null, statVal: 0, interest: -5, ghostCost: 1, next: 'closer' }
+        ]
+      }
+    ],
+    corporate: [
+      {
+        id: 'opener', prompt: (n) => `"Your profile stood out. Let's see if the conversation matches."`,
+        choices: [
+          { text: '"I appreciate directness. What caught your eye?"', stat: 'rizz', statVal: 35, interest: 20, ghostCost: 0, next: 'deep' },
+          { text: '"I like your approach. Most people just say hey."', stat: null, statVal: 0, interest: 15, ghostCost: 0, next: 'deep' },
+          { text: '"Hey, how\'s your week going?"', stat: null, statVal: 0, interest: 0, ghostCost: 1, next: 'deep' }
+        ]
+      },
+      {
+        id: 'deep', prompt: (n) => `"I'm curious — what drives you?"`,
+        choices: [
+          { text: '"Growth. I\'m always trying to level up in every area."', stat: 'careerLevel', statVal: 2, interest: 25, ghostCost: 0, next: 'closer' },
+          { text: '"Building something meaningful. What about you?"', stat: null, statVal: 0, interest: 20, ghostCost: 0, next: 'closer' },
+          { text: '"Honestly? A comfortable life."', stat: null, statVal: 0, interest: 0, ghostCost: 1, next: 'closer' }
+        ]
+      },
+      {
+        id: 'closer', prompt: (n) => `"Good answer. I value ambition. Let's not waste time."`,
+        choices: [
+          { text: '"Drinks this week? I know a place with the right atmosphere."', stat: null, statVal: 0, interest: 30, ghostCost: 0, next: 'secured' },
+          { text: '"Let me schedule something. I\'ll make it worth your time."', stat: 'cash', statVal: 5000, interest: 35, ghostCost: 0, next: 'secured' },
+          { text: '"Yeah, we should do something sometime."', stat: null, statVal: 0, interest: 0, ghostCost: 2, next: 'closer' }
+        ]
+      }
+    ]
+  };
 
-    // Round 1: Icebreaker
-    rounds.push({
-      prompt: `${name} breaks the ice.`,
-      choices: [
-        {
-          text: `"You look great tonight."`,
-          looksmaxxing: false,
-          cashCost: 0,
-          weight: 0.7
-        },
-        {
-          text: `"Nice canthal tilt, honestly."`,
-          looksmaxxing: true,
-          cashCost: 0,
-          weight: isEgirl ? 0.9 : 0
-        },
-        {
-          text: `"So what do you do for fun?"`,
-          looksmaxxing: false,
-          cashCost: 0,
-          weight: 0.5
-        }
-      ]
-    });
+  getChatNode(archetype, nodeId) {
+    const tree = DatingSimulator.CHAT_TREES[archetype] || DatingSimulator.CHAT_TREES.normie;
+    return tree.find(n => n.id === nodeId) || tree[0];
+  }
 
-    // Round 2: Getting deeper
-    if (archetype === 'gold_digger') {
-      rounds.push({
-        prompt: `${name} glances at your watch.`,
-        choices: [
-          {
-            text: `Flex your expensive watch (or invent one). (-$200)`,
-            looksmaxxing: false,
-            cashCost: 200,
-            weight: 0.9
-          },
-          {
-            text: `Talk about your investment portfolio.`,
-            looksmaxxing: false,
-            cashCost: 50,
-            weight: 0.7
-          },
-          {
-            text: `Explain the importance of positive canthal tilts in mate selection.`,
-            looksmaxxing: true,
-            cashCost: 0,
-            weight: 0
-          }
-        ]
-      });
-    } else if (archetype === 'lookist') {
-      rounds.push({
-        prompt: `${name} examines your face carefully.`,
-        choices: [
-          {
-            text: `"I've been working on my jawline. You?"`,
-            looksmaxxing: false,
-            cashCost: 0,
-            weight: 0.6
-          },
-          {
-            text: `"Your PSL rating must be at least a 6."`,
-            looksmaxxing: true,
-            cashCost: 0,
-            weight: isEgirl ? 0.9 : 0
-          },
-          {
-            text: `Order something impressive. (-$150)`,
-            looksmaxxing: false,
-            cashCost: 150,
-            weight: 0.8
-          }
-        ]
-      });
-    } else if (archetype === 'egirl') {
-      rounds.push({
-        prompt: `${name} tilts her head and smirks.`,
-        choices: [
-          {
-            text: `"I can tell you've been mewing. Great maxilla."`,
-            looksmaxxing: true,
-            cashCost: 0,
-            weight: 0.9
-          },
-          {
-            text: `"Your zygomatic structure is insane."`,
-            looksmaxxing: true,
-            cashCost: 0,
-            weight: 0.85
-          },
-          {
-            text: `"Wanna take a selfie for the 'gram?"`,
-            looksmaxxing: false,
-            cashCost: 0,
-            weight: 0.5
-          }
-        ]
-      });
-    } else {
-      rounds.push({
-        prompt: `${name} asks about your hobbies.`,
-        choices: [
-          {
-            text: `"I work out, travel, the usual."`,
-            looksmaxxing: false,
-            cashCost: 0,
-            weight: 0.7
-          },
-          {
-            text: `"I'm really into looksmaxxing and optimizing my SMV."`,
-            looksmaxxing: true,
-            cashCost: 0,
-            weight: 0
-          },
-          {
-            text: `Suggest doing something fun together. (-$80)`,
-            looksmaxxing: false,
-            cashCost: 80,
-            weight: 0.8
-          }
-        ]
-      });
+  getChatChoices() {
+    if (!this.activeChat || this.activeChat.resolved) return null;
+    return this.activeChat.currentChoices || null;
+  }
+
+  makeChatChoice(choiceIndex) {
+    if (!this.activeChat || this.activeChat.resolved) return { status: 'error', msg: 'No active chat.' };
+    const choices = this.activeChat.currentChoices;
+    if (!choices || choiceIndex < 0 || choiceIndex >= choices.length) return { status: 'error', msg: 'Invalid choice.' };
+    const choice = choices[choiceIndex];
+    const p = this.player;
+    const profile = this.currentProfile;
+
+    // Check stat gate
+    let statPassed = true;
+    if (choice.stat && choice.statVal > 0) {
+      const playerVal = p[choice.stat] || 0;
+      statPassed = playerVal >= choice.statVal;
     }
 
-    // Round 3: The closer
-    rounds.push({
-      prompt: `The night is winding down. ${name} looks at you expectantly.`,
-      choices: [
-        {
-          text: `"I had a great time. Let's do this again."`,
-          looksmaxxing: false,
-          cashCost: 0,
-          weight: 0.6
-        },
-        {
-          text: `"Based on our SMV alignment, this seems viable."`,
-          looksmaxxing: true,
-          cashCost: 0,
-          weight: isEgirl ? 0.7 : 0
-        },
-        {
-          text: `Pay for the whole bill. (-$200)`,
-          looksmaxxing: false,
-          cashCost: 200,
-          weight: 0.9
-        }
-      ]
-    });
+    if (!statPassed) {
+      this.activeChat.chatLog.push({ sender: 'player', text: choice.text });
+      this.activeChat.chatLog.push({ sender: 'partner', text: `"Uh... that's not really working for me."` });
+      this.activeChat.chatLog.push({ sender: 'system-chat', text: `❌ Your ${choice.stat} is too low (need ${choice.statVal}). They're losing interest.` });
+      this.activeChat.ghostTimer -= 1;
+      this.activeChat.interest = Math.max(0, this.activeChat.interest - 10);
 
-    return rounds;
+      if (this.activeChat.ghostTimer <= 0 || this.activeChat.interest <= 0) {
+        return this._ghostOut();
+      }
+
+      this.activeChat.currentChoices = this._filterChoices(this.activeChat.currentNodeId, profile.archetype);
+      return { status: 'chat_continue', ghostTimer: this.activeChat.ghostTimer, interest: this.activeChat.interest };
+    }
+
+    // Handle creep/ghost fails
+    if (choice.fail === 'creep') {
+      this.activeChat.chatLog.push({ sender: 'player', text: choice.text });
+      this.activeChat.chatLog.push({ sender: 'partner', text: `"...Did you just say that? I'm out."` });
+      this.activeChat.chatLog.push({ sender: 'system-chat', text: `💀 You creeped them out with looksmaxxing terminology. Date destroyed.` });
+      this.player.confidence = Math.max(0, this.player.confidence - 25);
+      this.activeChat.resolved = true;
+      // 10% chance viral screenshot
+      if (Math.random() < 0.1) {
+        this._triggerViralScreenshot();
+      }
+      this.rollProfile();
+      this.player.updateSMV();
+      return { status: 'creeped_out' };
+    }
+
+    if (choice.fail === 'ghost') {
+      return this._ghostOut();
+    }
+
+    // Spend cash if required
+    if (choice.cashCost && choice.cashCost > 0) {
+      if (p.cash < choice.cashCost) {
+        this.activeChat.chatLog.push({ sender: 'system-chat', text: `Not enough cash for this option!` });
+        return { status: 'chat_continue', ghostTimer: this.activeChat.ghostTimer, interest: this.activeChat.interest };
+      }
+      p.cash -= choice.cashCost;
+    }
+
+    // Success — add player message
+    this.activeChat.chatLog.push({ sender: 'player', text: choice.text });
+
+    // Apply interest change
+    this.activeChat.interest = Math.min(100, this.activeChat.interest + (choice.interest || 0));
+
+    // Apply ghost timer cost
+    this.activeChat.ghostTimer -= (choice.ghostCost || 0);
+    if (this.activeChat.ghostTimer <= 0) {
+      return this._ghostOut();
+    }
+
+    // Check if secured — transition to Date Night
+    if (choice.next === 'secured') {
+      this.activeChat.chatLog.push({ sender: 'system-chat', text: `💘 ${this.currentProfile.name} agreed to meet you! Pick a venue.` });
+      this.activeChat.resolved = true;
+      return this.startDateNight();
+    }
+
+    // Advance to next node
+    if (choice.next) {
+      const nextNode = this.getChatNode(profile.archetype, choice.next);
+      if (nextNode) {
+        this.activeChat.currentNodeId = nextNode.id;
+        const filtered = this._filterChoices(nextNode.id, profile.archetype);
+        this.activeChat.currentChoices = filtered;
+        this.activeChat.chatLog.push({ sender: 'partner', text: nextNode.prompt(profile.name) });
+        this.activeChat.mood = 'happy';
+        return { status: 'chat_continue', ghostTimer: this.activeChat.ghostTimer, interest: this.activeChat.interest };
+      }
+    }
+
+    // Fallback — same node
+    this.activeChat.currentChoices = this._filterChoices(this.activeChat.currentNodeId, profile.archetype);
+    return { status: 'chat_continue', ghostTimer: this.activeChat.ghostTimer, interest: this.activeChat.interest };
+  }
+
+  _filterChoices(nodeId, archetype) {
+    const node = this.getChatNode(archetype, nodeId);
+    if (!node) return [];
+    const p = this.player;
+    return node.choices.filter(c => {
+      if (c.stat && c.statVal > 0) {
+        return (p[c.stat] || 0) >= c.statVal;
+      }
+      return true;
+    });
+  }
+
+  _ghostOut() {
+    this.activeChat.chatLog.push({ sender: 'system-chat', text: `💨 ${this.currentProfile.name} stopped responding. You got ghosted.` });
+    this.player.confidence = Math.max(0, this.player.confidence - 10);
+    this.activeChat.resolved = true;
+    this.rollProfile();
+    this.player.updateSMV();
+    return { status: 'ghosted' };
+  }
+
+  _secureDate() {
+    this.activeChat.chatLog.push({ sender: 'partner', text: this.currentProfile.dialogues.success || `"Okay, you've convinced me. Let's meet up."` });
+    this.activeChat.chatLog.push({ sender: 'system-chat', text: `✅ Date secured with ${this.currentProfile.name}!` });
+    this.player.confidence = Math.min(100, this.player.confidence + 20);
+    this.player.datingScore += 25;
+    this.player.hasDatingPartner = true;
+    this.player.partnerName = this.currentProfile.name;
+    this.player.partnerProfile = { ...this.currentProfile };
+    this.player.partnerLoveLanguage = DatingSimulator.LOVE_LANGUAGES[this.currentProfile.archetype || 'normie'] || 'quality_time';
+    this.player.relationshipLevel = 1;
+    this.player.relationshipSatisfaction = 60;
+    this.player.yearsWithPartner = 0;
+
+    // Sugar partner bonus
+    if (this.currentProfile.name === 'Gertrude' || this.currentProfile.name === 'Richard') {
+      this.player.cash += 5000;
+      if (this.player.freak >= 70) {
+        this.player.confidence = Math.min(100, this.player.confidence + 10);
+        this.logCallback(`You have an unexpected talent for this arrangement. +$5,000 cash.`, "success");
+      } else {
+        this.player.confidence = Math.max(0, this.player.confidence - 45);
+        this.logCallback(`You traded your essence for ${this.currentProfile.name}'s fortune. -45% Confidence, +$5,000 cash.`, "success");
+      }
+    } else {
+      this.logCallback(`Date secured with ${this.currentProfile.name}! Confidence boosted.`, "success");
+    }
+
+    this.activeChat.resolved = true;
+    this.rollProfile();
+    this.player.updateSMV();
+    return { status: 'date_success' };
+  }
+
+  // === DATE NIGHT SYSTEM ===
+  static VENUES = [
+    { id: 'fast_food', name: 'Local Fast Food', icon: '🍔', cost: 10, difficulty: 0.3, minLevel: 0, desc: 'Cheap and cheerful. Low expectations.' },
+    { id: 'coffee',    name: 'Artisan Coffee Shop', icon: '☕', cost: 25, difficulty: 0.4, minLevel: 0, desc: 'Casual vibe. Easy conversation.' },
+    { id: 'arcade',    name: 'Mid-tier Arcade', icon: '🕹️', cost: 50, difficulty: 0.5, minLevel: 1, desc: 'Fun and low-pressure.' },
+    { id: 'rooftop',   name: 'Rooftop Bar', icon: '🍸', cost: 100, difficulty: 0.65, minLevel: 2, desc: 'Classy but not overbearing.' },
+    { id: 'sushi',     name: 'Luxury Sushi Bar', icon: '🍣', cost: 200, difficulty: 0.8, minLevel: 3, desc: 'High stakes. Impresses the elite.' },
+  ];
+
+  static DATE_CARDS = [
+    { id: 'compliment', name: 'Smooth Compliment', type: 'charisma', cost: 1, baseImpact: 15, stat: 'rizz', statMult: 0.3, desc: '"You look amazing tonight." +rizz bonus' },
+    { id: 'story', name: 'Engaging Story', type: 'charisma', cost: 1, baseImpact: 12, stat: 'rizz', statMult: 0.4, desc: 'Share a funny anecdote. +rizz bonus' },
+    { id: 'listen', name: 'Active Listening', type: 'etiquette', cost: 1, baseImpact: 10, stat: 'style', statMult: 0.3, desc: 'Ask about their day. +style bonus' },
+    { id: 'manners', name: 'Impeccable Manners', type: 'etiquette', cost: 2, baseImpact: 20, stat: 'style', statMult: 0.3, desc: 'Pull out their chair, hold the door. +style bonus' },
+    { id: 'treat', name: 'Generous Gesture', type: 'wealth', cost: 2, baseImpact: 18, stat: 'cash', statMult: 0.0003, desc: 'Order something special. +cash bonus' },
+    { id: 'flex', name: 'Subtle Flex', type: 'wealth', cost: 2, baseImpact: 15, stat: 'cash', statMult: 0.0004, desc: 'Mention your recent success. +cash bonus' },
+    { id: 'charm', name: 'Charisma Bomb', type: 'charisma', cost: 3, baseImpact: 25, stat: 'rizz', statMult: 0.5, desc: 'Turn on the charm. Big rizz bonus' },
+    { id: 'grace', name: 'Poise Under Pressure', type: 'etiquette', cost: 3, baseImpact: 22, stat: 'frame', statMult: 0.3, desc: 'Stay cool when things get awkward. +frame bonus' },
+    { id: 'splurge', name: 'Big Splurge', type: 'wealth', cost: 3, baseImpact: 30, stat: 'cash', statMult: 0.0005, desc: 'Order the expensive bottle. +cash bonus' },
+  ];
+
+  static VENUE_PREF = {
+    lookist:      { fast_food: -2, coffee: -1, arcade: -1, rooftop: 1, sushi: 2 },
+    gold_digger:  { fast_food: -2, coffee: 0,  arcade: -1, rooftop: 1, sushi: 2 },
+    corporate:    { fast_food: -1, coffee: 1,  arcade: -1, rooftop: 1, sushi: 1 },
+    egirl:        { fast_food: 1,  coffee: 1,  arcade: 2,  rooftop: 0, sushi: -1 },
+    normie:       { fast_food: 0,  coffee: 0,  arcade: 0,  rooftop: 0, sushi: 0 },
+  };
+
+  startDateNight() {
+    if (!this.currentProfile) return null;
+    // Clear the chat so render falls through to date night logic
+    this.activeChat = null;
+    this.showAppHome = false;
+    this.dateBattle = {
+      phase: 'select_venue',
+      venue: null,
+      skepticism: 100,
+      maxSkepticism: 100,
+      playerEnergy: 4,
+      maxEnergy: 4,
+      cardsPlayed: 0,
+      hand: [],
+      turn: 1,
+      billPaid: false,
+      outcome: null,
+      archetypeMult: 1.0,
+      venuePrefMod: 0,
+    };
+    return { status: 'select_venue', venues: DatingSimulator.VENUES.filter(v => v.minLevel <= (this.player.careerLevel || 0)) };
+  }
+
+  selectVenue(venueId) {
+    if (!this.dateBattle || this.dateBattle.phase !== 'select_venue') return null;
+    const venue = DatingSimulator.VENUES.find(v => v.id === venueId);
+    if (!venue) return null;
+    if (this.player.cash < venue.cost) return { status: 'error', msg: `Not enough cash for ${venue.name}!` };
+
+    this.player.cash -= venue.cost;
+    this.dateBattle.venue = venue;
+    this.dateBattle.phase = 'battle';
+
+    const archetype = this.currentProfile.archetype || 'normie';
+    const pref = (DatingSimulator.VENUE_PREF[archetype] || DatingSimulator.VENUE_PREF.normie)[venueId] || 0;
+    this.dateBattle.venuePrefMod = pref;
+
+    // Starting skepticism: 60 base + venue difficulty * 40, adjusted by preference
+    let starting = 30 + venue.difficulty * 70;
+    if (pref <= -2) starting = Math.min(95, starting + 30); // they hate it
+    else if (pref === -1) starting = Math.min(90, starting + 15);
+    else if (pref >= 2) starting = Math.max(20, starting - 20);
+    else if (pref === 1) starting = Math.max(20, starting - 10);
+
+    this.dateBattle.skepticism = Math.round(starting);
+    this.dateBattle.maxSkepticism = Math.round(starting);
+    this.dateBattle.hand = this._drawDateHand(4);
+
+    // 12% chance ex-boyfriend appears (skip for sugar profiles)
+    const isSugar = this.currentProfile.name === 'Gertrude' || this.currentProfile.name === 'Richard';
+    if (!isSugar && Math.random() < 0.12) {
+      this.activeEvent = {
+        type: 'ex_boss',
+        opponentId: 'mogger_ex',
+        resolved: false,
+      };
+    }
+
+    return { status: 'battle_start', venue, skepticism: this.dateBattle.skepticism, maxSkepticism: this.dateBattle.maxSkepticism };
+  }
+
+  _drawDateHand(count) {
+    const pool = [...DatingSimulator.DATE_CARDS];
+    const hand = [];
+    for (let i = 0; i < count && pool.length > 0; i++) {
+      const idx = Math.floor(Math.random() * pool.length);
+      hand.push({ ...pool.splice(idx, 1)[0], instanceId: `${Date.now()}-${i}` });
+    }
+    return hand;
+  }
+
+  endDateTurn() {
+    if (!this.dateBattle || this.dateBattle.phase !== 'battle') return;
+    this.dateBattle.turn++;
+    this.dateBattle.playerEnergy = this.dateBattle.maxEnergy;
+    if (this.dateBattle.hand.length < 4) {
+      const newCards = this._drawDateHand(4 - this.dateBattle.hand.length);
+      this.dateBattle.hand.push(...newCards);
+    }
+  }
+
+  playDateCard(instanceId) {
+    if (!this.dateBattle || this.dateBattle.phase !== 'battle') return null;
+    const idx = this.dateBattle.hand.findIndex(c => c.instanceId === instanceId);
+    if (idx === -1) return null;
+    const card = this.dateBattle.hand[idx];
+    if (this.dateBattle.playerEnergy < card.cost) return { status: 'error', msg: 'Not enough energy!' };
+
+    this.dateBattle.playerEnergy -= card.cost;
+    this.dateBattle.cardsPlayed++;
+
+    // Calculate impact
+    let impact = card.baseImpact;
+    if (card.stat && card.statMult) {
+      const playerVal = this.player[card.stat] || 0;
+      impact += playerVal * card.statMult;
+    }
+
+    // Venue preference modifier: -2 = 50% impact, +2 = 120% impact
+    const prefMod = this.dateBattle.venuePrefMod;
+    if (prefMod <= -2) impact *= 0.5;
+    else if (prefMod === -1) impact *= 0.7;
+    else if (prefMod >= 2) impact *= 1.2;
+    else if (prefMod === 1) impact *= 1.1;
+
+    impact = Math.round(impact);
+
+    this.dateBattle.skepticism = Math.max(0, this.dateBattle.skepticism - impact);
+
+    // Remove card from hand
+    this.dateBattle.hand.splice(idx, 1);
+
+    // Log
+    this.logCallback(`Played "${card.name}" -${impact} Skepticism! (${this.dateBattle.skepticism}% remaining)`, 'success');
+
+    // Check win
+    if (this.dateBattle.skepticism <= 0) {
+      this.dateBattle.phase = 'bill';
+      this.dateBattle.hand = [];
+      return { status: 'battle_won', skepticism: 0 };
+    }
+
+    return { status: 'card_played', impact, skepticism: this.dateBattle.skepticism, hand: this.dateBattle.hand, energy: this.dateBattle.playerEnergy, turn: this.dateBattle.turn };
+  }
+
+  handleBill(choice) {
+    if (!this.dateBattle || this.dateBattle.phase !== 'bill') return null;
+    const venue = this.dateBattle.venue;
+    const billCost = venue.cost * 3;
+
+    if (choice === 'pay') {
+      if (this.player.cash < billCost) return { status: 'error', msg: `Can't afford the bill ($${billCost})!` };
+      this.player.cash -= billCost;
+      this.dateBattle.billPaid = true;
+      this.dateBattle.phase = 'done';
+      this.dateBattle.outcome = 'success';
+      this._finalizeDateSuccess();
+      this.logCallback(`Paid $${billCost} bill at ${venue.name}. Relationship secured!`, 'success');
+      return { status: 'date_night_success', billCost };
+    }
+
+    if (choice === 'split') {
+      const rizz = this.player.rizz || 0;
+      if (rizz >= 35) {
+        const splitCost = Math.round(billCost / 2);
+        if (this.player.cash < splitCost) return { status: 'error', msg: `Can't afford your half ($${splitCost})!` };
+        this.player.cash -= splitCost;
+        this.dateBattle.billPaid = true;
+        this.dateBattle.phase = 'done';
+        this.dateBattle.outcome = 'success';
+        this._finalizeDateSuccess();
+        this.logCallback(`Split the bill $${splitCost}/${splitCost}. Smooth talk saved you cash!`, 'success');
+        return { status: 'date_night_success', billCost: splitCost };
+      } else {
+        this.dateBattle.phase = 'done';
+        this.dateBattle.outcome = 'split_fail';
+        this.player.confidence = Math.max(0, this.player.confidence - 20);
+        if (Math.random() < 0.1) this._triggerViralScreenshot();
+        this.logCallback(`Your rizz (${rizz}) wasn't enough. They walked out. -20% Confidence.`, 'error');
+        return { status: 'date_night_split_fail' };
+      }
+    }
+
+    if (choice === 'dash') {
+      const speed = this.player.speed || 0;
+      if (speed >= 40) {
+        this.player.cash -= Math.round(billCost * 0.1); // cover the drink you had
+        this.dateBattle.billPaid = true;
+        this.dateBattle.phase = 'done';
+        this.dateBattle.outcome = 'success';
+        this._finalizeDateSuccess();
+        this.logCallback(`Dined and dashed successfully! You're a ghost.`, 'success');
+        return { status: 'date_night_success', billCost: 0 };
+      } else {
+        // Caught! Lose followers
+        this.player.cash -= billCost;
+        const followerLoss = Math.round((this.player.followers || 0) * 0.5);
+        this.player.followers = Math.max(0, (this.player.followers || 0) - followerLoss);
+        this.player.confidence = Math.max(0, this.player.confidence - 35);
+        if (Math.random() < 0.1) this._triggerViralScreenshot();
+        this.dateBattle.phase = 'done';
+        this.dateBattle.outcome = 'dash_fail';
+        this.logCallback(`Caught dashing! Lost ${followerLoss} followers and paid $${billCost}. Public shame!`, 'error');
+        return { status: 'date_night_dash_fail', followerLoss, billCost };
+      }
+    }
+
+    return null;
+  }
+
+  _finalizeDateSuccess() {
+    const p = this.player;
+    p.confidence = Math.min(100, p.confidence + 15);
+    p.datingScore += 30;
+    p.hasDatingPartner = true;
+    p.partnerName = this.currentProfile.name;
+    p.partnerProfile = { ...this.currentProfile };
+    p.partnerLoveLanguage = DatingSimulator.LOVE_LANGUAGES[this.currentProfile.archetype || 'normie'] || 'quality_time';
+    p.relationshipLevel = 1;
+    p.relationshipSatisfaction = 60;
+    p.yearsWithPartner = 0;
+    p.updateSMV();
+  }
+
+  _triggerViralScreenshot() {
+    const p = this.player;
+    p.followers = (p.followers || 0) + 20000;
+    p.rizzLockTurns = 10;
+    this.activeEvent = {
+      type: 'viral_screenshot',
+      turnsRemaining: 10,
+    };
+    this.logCallback(`📱 VIRAL! Your conversation was posted online. +20,000 followers, but Rizz is locked for 10 turns!`, 'action');
+  }
+
+  resolveExBoss(battleWon) {
+    if (!this.activeEvent || this.activeEvent.type !== 'ex_boss') return;
+    this.activeEvent.resolved = true;
+    this.activeEvent.battleWon = battleWon;
+    const p = this.player;
+    if (battleWon) {
+      p.confidence = Math.min(100, p.confidence + 25);
+      p.status = (p.status || 0) + 10;
+      this.logCallback(`You defeated the ex! +25% Confidence, +10 Status. The date is impressed.`, 'success');
+    } else {
+      p.cash = Math.max(0, (p.cash || 0) - 2000);
+      p.confidence = Math.max(0, p.confidence - 20);
+      this.logCallback(`The ex beat you down. -$2,000 medical bills, -20% Confidence.`, 'error');
+    }
+    this.activeEvent = null;
+  }
+
+  isRizzLocked() {
+    return (this.player.rizzLockTurns || 0) > 0;
   }
 
   // === MATCH CALCULATION (updated with Gold Digger / Lookism) ===
   calculateMatchPercent(profile) {
     const archetype = profile.archetype || 'normie';
+    let prob;
 
     if (archetype === 'gold_digger') {
-      // Gold diggers care about cash much more than looks
-      let prob = 10 + (this.player.cash / 10000) * 30;
+      prob = 10 + (this.player.cash / 10000) * 30;
       if (this.player.cash >= 20000) prob += 25;
       if (this.player.cash >= 50000) prob += 20;
-      // They still have a minimum SMV floor
       if (this.player.smv < profile.reqSMV) prob -= 15;
-      // Smooth operator helps
       const smoRank = this.player.getTalentEffect('smooth_operator');
       if (smoRank > 0) prob += smoRank * 5;
-      return Math.max(0, Math.min(99, Math.round(prob)));
-    }
-
-    if (archetype === 'lookist') {
-      // Lookists care only about SMV, not cash
+    } else if (archetype === 'lookist') {
       let smvDiff = this.player.smv - (profile.reqSMV || 5.0);
-      let prob = 20 + smvDiff * 20;
-      if (this.player.smv >= 7.5) prob += 25; // GigaChad bonus
-      // Cash doesn't matter at all
-      // Strict requirements still apply
+      prob = 20 + smvDiff * 20;
+      if (this.player.smv >= 7.5) prob += 25;
       if (profile.reqHeight && this.player.height < profile.reqHeight) prob -= 30;
       if (profile.reqTilt && this.player.tilt !== profile.reqTilt) prob -= 35;
       if (profile.reqSkin && this.player.skin < profile.reqSkin) prob -= 20;
       if (this.player.rizz >= 60) prob += 10;
       const smoRank = this.player.getTalentEffect('smooth_operator');
       if (smoRank > 0) prob += smoRank * 5;
-      return Math.max(0, Math.min(99, Math.round(prob)));
+    } else {
+      // Standard (normie / egirl / corporate)
+      let smvDiff = this.player.smv - (profile.reqSMV || 5.0);
+      prob = 30 + smvDiff * 15;
+      if (profile.reqHeight && this.player.height < profile.reqHeight) {
+        const diff = profile.reqHeight - this.player.height;
+        prob -= (diff * 20);
+      }
+      if (profile.reqTilt && this.player.tilt !== profile.reqTilt) prob -= 30;
+      if (profile.reqHairline && this.player.hairline > profile.reqHairline) prob -= 40;
+      if (profile.reqSkin && this.player.skin < profile.reqSkin) prob -= 20;
+      if (profile.reqRizz && this.player.rizz < profile.reqRizz) prob -= 25;
+      if (this.player.rizz >= 60) prob += 10;
+      if (this.player.rizz >= 80) prob += 15;
+      const smoRank = this.player.getTalentEffect('smooth_operator');
+      if (smoRank > 0) prob += smoRank * 8;
     }
 
-    // Standard (normie / egirl) - existing formula
-    let smvDiff = this.player.smv - (profile.reqSMV || 5.0);
-    let prob = 30 + smvDiff * 15;
-
-    if (profile.reqHeight && this.player.height < profile.reqHeight) {
-      const diff = profile.reqHeight - this.player.height;
-      prob -= (diff * 20);
+    // Rizz lock penalty: viral screenshot destroys your dating rep
+    if (this.isRizzLocked()) {
+      prob = 0;
     }
-    if (profile.reqTilt && this.player.tilt !== profile.reqTilt) prob -= 30;
-    if (profile.reqHairline && this.player.hairline > profile.reqHairline) prob -= 40;
-    if (profile.reqSkin && this.player.skin < profile.reqSkin) prob -= 20;
-    if (profile.reqRizz && this.player.rizz < profile.reqRizz) prob -= 25;
-    if (this.player.rizz >= 60) prob += 10;
-    if (this.player.rizz >= 80) prob += 15;
-    const smoRank = this.player.getTalentEffect('smooth_operator');
-    if (smoRank > 0) prob += smoRank * 8;
 
     return Math.max(0, Math.min(99, Math.round(prob)));
   }
@@ -403,7 +877,8 @@ export class DatingSimulator {
   }
 
   rollProfile() {
-    this.currentProfile = this.player.randomElement(this.profiles);
+    const pool = this.appPools[this.activeApp] || this.profiles;
+    this.currentProfile = pool.length > 0 ? this.player.randomElement(pool) : this.player.randomElement(this.profiles);
     this.activeChat = null;
     this.activeDateRound = 0;
     this.dateRoundsCompleted = 0;
@@ -413,8 +888,10 @@ export class DatingSimulator {
   }
 
   swipeLeft() {
+    this.ghostedProfiles.push(this.currentProfile);
+    this._decayRizzLock();
     this.rollProfile();
-    return { status: 'pass' };
+    return { status: 'left' };
   }
 
   swipeRight() {
@@ -423,10 +900,38 @@ export class DatingSimulator {
     }
     if (!this.goldSubscription) this.player.ap -= 1;
 
-    const matchChance = this.calculateMatchPercent(this.currentProfile);
+    const appDef = this.getActiveAppDef();
+
+    // SugarGrind: guaranteed match but cash drain
+    if (appDef.cashDrain > 0) {
+      if (this.player.cash < appDef.cashDrain) {
+        return { status: 'no_ap', message: `Not enough cash for SugarGrind swipe (costs $${appDef.cashDrain})!` };
+      }
+      this.player.cash -= appDef.cashDrain;
+    }
+
+    // LuxyMog: instant match if stats are high enough
+    if (appDef.instantMatch && this.player.smv >= 7.0) {
+      return this._createMatch(100);
+    }
+
+    // Normal match calculation with app multiplier
+    let matchChance = this.calculateMatchPercent(this.currentProfile);
+    matchChance = Math.round(matchChance * appDef.matchMult);
+
+    // Hinged bio bonus
+    if (appDef.bioBonus && this._hasBrainmaxxBio()) {
+      matchChance = Math.min(99, matchChance * 4);
+    }
+
     const rolledMatch = (Math.random() * 100) < matchChance;
 
     if (!rolledMatch) {
+      // Slidr ghosting: profile vanishes with confidence hit
+      if (appDef.id === 'slidr' && Math.random() < 0.15) {
+        this.player.confidence = Math.max(0, this.player.confidence - 5);
+        this.logCallback(`💨 ${this.currentProfile.name} ghosted you mid-swipe. -5% Confidence.`, 'error');
+      }
       this.rollProfile();
       return { status: 'no_match', matchChance };
     }
@@ -445,20 +950,77 @@ export class DatingSimulator {
       return { status: 'catfish', chat: this.activeChat, catfish };
     }
 
-    // Normal match — start multi-round date
+    // Slidr ghosting on match too
+    if (appDef.id === 'slidr' && Math.random() < appDef.ghostChance) {
+      this.player.confidence = Math.max(0, this.player.confidence - 8);
+      this.rollProfile();
+      this.logCallback(`💀 ${this.currentProfile.name} unmatched you out of nowhere. -8% Confidence.`, 'error');
+      return { status: 'ghosted' };
+    }
+
+    // LuxyMog ban risk: if PSL dropped since entering app
+    if (appDef.id === 'luxymog' && this.player.smv < 7.0) {
+      if (this.banWarning) {
+        this.bannedApps.push('luxymog');
+        this.banWarning = false;
+        this.showAppHome = true;
+        this.logCallback(`🚫 LuxyMog has banned you for failing to maintain elite standards.`, 'error');
+        return { status: 'banned' };
+      }
+      this.banWarning = true;
+      this.logCallback(`⚠️ Your PSL dropped below LuxyMog threshold. One more violation and you're banned!`, 'error');
+    }
+
+    return this._createMatch(matchChance);
+  }
+
+  _decayRizzLock() {
+    if (this.player.rizzLockTurns > 0) {
+      this.player.rizzLockTurns--;
+      if (this.player.rizzLockTurns <= 0) {
+        this.activeEvent = null;
+        this.logCallback(`Your Rizz is no longer locked. The viral shame has faded.`, 'success');
+      }
+    }
+  }
+
+  _createMatch(matchChance) {
+    const archetype = this.currentProfile.archetype || 'normie';
+    const firstNode = this.getChatNode(archetype, 'opener');
+    const filteredChoices = this._filterChoices('opener', archetype);
     this.activeChat = {
       profile: this.currentProfile,
       isCatfish: false,
-      chatLog: [{ sender: 'partner', text: this.currentProfile.dialogues.match }],
+      chatLog: [
+        { sender: 'partner', text: this.currentProfile.dialogues.match || firstNode.prompt(this.currentProfile.name) }
+      ],
       resolved: false,
       mood: 'neutral',
       isTyping: false,
-      sceneBg: null
+      sceneBg: null,
+      ghostTimer: 3,
+      interest: 30,
+      currentNodeId: 'opener',
+      currentChoices: filteredChoices
     };
+    // Add the opener prompt after the match message
+    if (filteredChoices.length > 0) {
+      const opener = this.getChatNode(archetype, 'opener');
+      if (opener && this.activeChat.chatLog.length < 2) {
+        this.activeChat.chatLog.push({ sender: 'partner', text: opener.prompt(this.currentProfile.name) });
+      }
+    }
     this.activeDateRound = 0;
     this.dateRoundsCompleted = 0;
     this.logCallback(`Matched with ${this.currentProfile.name}! Match Rate: ${matchChance}%`, 'success');
     return { status: 'match', chat: this.activeChat };
+  }
+
+  _hasBrainmaxxBio() {
+    const bio = this.player.bio || '';
+    const terms = ['ceo', 'founder', 'startup', 'investor', 'engineering', 'finance', 'quant', 'consulting',
+                   'strategy', 'growth', 'product', 'portfolio', 'venture', 'angel', 'board'];
+    return terms.some(t => bio.toLowerCase().includes(t));
   }
 
   // Get current date round choices
@@ -862,6 +1424,9 @@ export class DatingSimulator {
     this.player.questPassiveIncome = 0;
     this.player.questIncomeMult = 1;
     this.player.datingScore = 0;
+    this.bannedApps = [];
+    this.showAppHome = true;
+    this.banWarning = false;
     this.player.confidence = Math.max(0, this.player.confidence - 20);
     this.logCallback(`💔 You broke up with your partner. -20% Confidence.`, 'error');
   }

@@ -125,6 +125,11 @@ export class BattleSystem {
         { name: 'Omega Gambit', baseDamage: 14, priority: 1, targetEffects: { weakened: { duration: 3 } }, dialog: "You fell for my trap. Predictable." },
         { name: 'Grandmaster Strike', baseDamage: 26, priority: 2, condition: b => b.turn >= 4, dialog: "I've calculated every possible outcome. You lose." },
         { name: 'Positional Play', baseDamage: 8, priority: 0, selfEffects: { shield: { value: 16 } }, dialog: "Safe move. Let's see how you respond." }
+      ],
+      mogger_ex: [
+        { name: 'Chest Puff', baseDamage: 10, priority: 0, dialog: "You think you can take my spot? Look at this physique." },
+        { name: 'Alleged Flex', baseDamage: 14, priority: 1, targetEffects: { vulnerable: { duration: 2 } }, dialog: "She told me everything. You're not him, pretty boy." },
+        { name: 'Parking Lot Shove', baseDamage: 18, priority: 2, condition: b => b.turn >= 3, dialog: "Let's settle this like men. Outside." }
       ]
     };
 
@@ -355,6 +360,13 @@ export class BattleSystem {
         avatar: '🗿', skepticism: 220, difficulty: 'Impossible', reqSMV: 7.5,
         dialogs: { start: "You've come far. But you haven't faced yourself yet.", hit: "Impressive. You've studied the meta. But I wrote it.", attack: "You rely on stats I optimized years ago. Predictable.", defeat: "You've transcended. Welcome to the 1%.", victory: "Back to the drawing board. You still have weaknesses." },
         rewards: { cash: 10000, confidence: 80, style: 30, frame: 20, log: "Legendary! You defeated The Oracle! +$10,000, +80% Confidence, +30 Style, +20 Frame!" }
+      },
+      {
+        id: 'mogger_ex', name: 'The Ex (Mogger)', title: 'The Gym Incel',
+        lore: "Your date's ex showed up outside the venue. He's been watching your every move on her story. He wants to prove he's still the alpha.",
+        avatar: '💪', skepticism: 100, difficulty: 'Medium', reqSMV: 0, eventOnly: true,
+        dialogs: { start: "You think you can take my girl? Let's see what you've got.", hit: "Not bad. But I've been doing this longer.", attack: "She told me about you. You're not him.", defeat: "Fine. She's yours. But I'll be back.", victory: "Stay in your lane, pretty boy." },
+        rewards: { cash: 0, confidence: 25, log: "You defeated the ex! Confidence surged!" }
       }
     ];
     this._attachMetadata(opps, moves, passives);
@@ -377,7 +389,8 @@ export class BattleSystem {
       ex_partner: "You've actually changed... but so have I.",
       fixer: "You think a pretty face scares me? Pay up.",
       influencer_agent: "Impressive. But can you handle fame?",
-      mastermind: "You've forced me to use 100% of my power."
+      mastermind: "You've forced me to use 100% of my power.",
+      mogger_ex: "This isn't over. I'll show you what real dominance looks like!"
     };
     opps.forEach(o => {
       o.passive = passives[o.id] || null;
@@ -388,6 +401,7 @@ export class BattleSystem {
 
   getEncounters() {
     return this.opponents
+      .filter(o => !o.eventOnly)
       .map(o => {
         const isLocked = this.player.smv < o.reqSMV;
         return { ...o, isLocked };

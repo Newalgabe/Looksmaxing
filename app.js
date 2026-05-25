@@ -2376,64 +2376,195 @@ function renderDatingTab() {
   
   let screenContent = '';
   let isVNMode = false;
-  
-  if (dating.activeChat) {
+
+  // === ACTIVE EVENTS ===
+  if (dating.activeEvent?.type === 'ex_boss' && !dating.activeEvent.resolved) {
+    screenContent = `
+      <div class="phone-screen">
+        <div class="phone-header">
+          <span class="phone-logo" style="color:#ff5555;">💪 An Ex Appears!</span>
+          <span class="phone-battery">⚔️</span>
+        </div>
+        <div class="phone-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;">
+          <div style="font-size:48px;">💪</div>
+          <div style="font-size:13px;font-weight:700;color:#ff5555;">${dating.currentProfile.name}'s Ex Showed Up!</div>
+          <div style="font-size:10px;color:var(--text-muted);">"You think you can take my spot? Let's settle this."</div>
+          <button class="dn-ex-fight-btn" id="btn-ex-fight" style="background:rgba(255,85,85,0.15);border:1px solid #ff5555;color:#ff5555;padding:10px 30px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;">⚔️ Fight the Ex</button>
+          <button class="dn-ex-flee-btn" id="btn-ex-flee" style="background:rgba(255,255,255,0.05);border:1px solid var(--border-color);color:var(--text-muted);padding:8px 20px;border-radius:6px;cursor:pointer;font-size:10px;">🏃 Back down (-20% Confidence, -$2K)</button>
+        </div>
+      </div>
+    `;
+  } else if (dating.dateBattle) {
+    const db = dating.dateBattle;
+    const profile = dating.currentProfile;
+
+    if (db.phase === 'select_venue') {
+      const available = DatingSimulator.VENUES.filter(v => v.minLevel <= (game.careerLevel || 0));
+      const hasAffordable = available.some(v => game.cash >= v.cost);
+      screenContent = `
+        <div class="phone-screen">
+          <div class="phone-header">
+            <span class="phone-logo text-pink">💘 Date Night</span>
+            <span class="phone-battery">99%</span>
+          </div>
+          <div class="phone-body" style="overflow-y:auto;">
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-size:9px;color:var(--text-muted);">Pick a venue for ${profile.name}</div>
+              <div style="font-size:8px;color:var(--text-muted);">Cash: $${game.cash}</div>
+            </div>
+            ${!hasAffordable ? '<div style="padding:20px;text-align:center;color:#ff5555;font-size:11px;">Not enough cash for any venue! Earn more money.</div>' : ''}
+            ${available.map(v => {
+              const locked = game.cash < v.cost;
+              const archetypePref = (DatingSimulator.VENUE_PREF[profile.archetype] || DatingSimulator.VENUE_PREF.normie)[v.id] || 0;
+              const prefStars = archetypePref >= 2 ? '⭐⭐' : archetypePref === 1 ? '⭐' : archetypePref <= -2 ? '💀' : archetypePref === -1 ? '👎' : '';
+              return `
+                <div class="dn-venue-card ${locked ? 'dn-venue-locked' : ''}" data-venue="${v.id}">
+                  <div class="dn-venue-icon">${v.icon}</div>
+                  <div class="dn-venue-info">
+                    <div class="dn-venue-name">${v.name} <span class="dn-venue-pref">${prefStars}</span></div>
+                    <div class="dn-venue-desc">${v.desc}</div>
+                    <div class="dn-venue-cost">$${v.cost} ${locked ? '❌' : '✅'}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } else if (db.phase === 'battle') {
+      const venue = db.venue;
+      const skepPct = Math.round((db.skepticism / db.maxSkepticism) * 100);
+      const handHtml = db.hand.length > 0
+        ? db.hand.map(c => {
+            const canAfford = db.playerEnergy >= c.cost;
+            return `
+              <div class="dn-card ${canAfford ? '' : 'dn-card-disabled'}" data-instance="${c.instanceId}">
+                <div class="dn-card-cost">${'⚡'.repeat(c.cost)}</div>
+                <div class="dn-card-name">${c.name}</div>
+                <div class="dn-card-type">${c.type}</div>
+                <div class="dn-card-desc">${c.desc}</div>
+              </div>
+            `;
+          }).join('')
+        : '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:10px;">No cards left — end turn to draw more</div>';
+
+      screenContent = `
+        <div class="phone-screen">
+          <div class="phone-header">
+            <span class="phone-logo" style="color:#ff79c6;">${venue.icon} ${venue.name}</span>
+            <span class="phone-battery">Turn ${db.turn}</span>
+          </div>
+          <div class="dn-battle-body">
+            <div class="dn-vibe-bar">
+              <div class="dn-vibe-label">${profile.name}'s Skepticism</div>
+              <div class="dn-vibe-track">
+                <div class="dn-vibe-fill" style="width:${skepPct}%;background:${skepPct > 60 ? '#ff5555' : skepPct > 30 ? '#ffb86c' : '#50fa7b'};"></div>
+              </div>
+              <div class="dn-vibe-pct">${db.skepticism}%</div>
+            </div>
+            <div class="dn-venue-note">${db.venuePrefMod <= -2 ? '💀 They hate this place. Cards deal 50% less.' : db.venuePrefMod === -1 ? '👎 Not their favorite. Cards deal 70%.' : db.venuePrefMod >= 2 ? '⭐ Perfect choice! Cards deal 120%.' : ''}</div>
+            <div class="dn-energy-bar">
+              <span class="dn-energy-label">Energy:</span>
+              <span class="dn-energy-dots">${'🔋'.repeat(db.playerEnergy)}${'🪫'.repeat(Math.max(0, db.maxEnergy - db.playerEnergy))}</span>
+            </div>
+            <div class="dn-hand" id="dn-hand">${handHtml}</div>
+            <div class="dn-end-turn">
+              <button class="dn-end-turn-btn">End Turn</button>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (db.phase === 'bill') {
+      const venue = db.venue;
+      const billCost = venue.cost * 3;
+      screenContent = `
+        <div class="phone-screen">
+          <div class="phone-header">
+            <span class="phone-logo text-pink">💵 The Bill</span>
+            <span class="phone-battery">$${billCost}</span>
+          </div>
+          <div class="phone-body" style="display:flex;flex-direction:column;gap:8px;padding:16px;justify-content:center;">
+            <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-bottom:8px;">
+              The bill arrives at ${venue.name}. Total: <strong style="color:#ffb86c;">$${billCost}</strong>
+            </div>
+            <button class="dn-bill-btn dn-bill-pay" data-choice="pay">💳 Pay Full $${billCost} — Guaranteed success</button>
+            <button class="dn-bill-btn dn-bill-split" data-choice="split">🤝 Split 50/50 (Rizz 35+) — Save cash</button>
+            <button class="dn-bill-btn dn-bill-dash" data-choice="dash">🏃 Dine & Dash (Speed 40+) — Free but risky</button>
+          </div>
+        </div>
+      `;
+    } else if (db.phase === 'done') {
+      const success = db.outcome === 'success';
+      screenContent = `
+        <div class="phone-screen">
+          <div class="phone-header">
+            <span class="phone-logo text-pink">${success ? '💞' : '💔'} Date Complete</span>
+            <span class="phone-battery">99%</span>
+          </div>
+          <div class="phone-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:10px;text-align:center;">
+            <div style="font-size:32px;">${success ? '💞' : '💔'}</div>
+            <div style="font-size:13px;font-weight:700;color:${success ? 'var(--accent-green)' : '#ff5555'};">
+              ${success ? 'Date Night Success!' : 'Date Night Failed'}
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);">
+              ${success ? `You and ${profile.name} are now a couple!` : db.outcome === 'split_fail' ? 'They walked out when you suggested splitting.' : 'You got caught! Lost followers.'}
+            </div>
+            <button class="dn-done-btn close-dn-btn">Continue</button>
+          </div>
+        </div>
+      `;
+    }
+
+  } else if (dating.activeChat) {
     const chat = dating.activeChat;
 
     // Visual Novel mode for dates (not catfish)
     if (!chat.isCatfish && chat.chatLog.length > 0) {
       const scene = dating.getSceneBackground(null);
-      const moodEmoji = dating.getMoodEmoji();
-      const moodColor = dating.getMoodColor();
-      const lastMsg = chat.chatLog[chat.chatLog.length - 1];
-      const showChoices = !chat.resolved;
       const isPartnerTyping = chat.isTyping;
 
-      const dateChoices = showChoices ? dating.getDateChoices() : null;
-      const avatarHtml = renderCanvasAvatar(chat.profile, 140);
+      const choices = chat.currentChoices || [];
 
-      // Round progress dots
-      const totalRounds = 3;
-      const roundDots = !chat.resolved && chat.chatLog.length > 1
-        ? `<div class="vn-round-dots">
-            ${Array.from({ length: totalRounds }, (_, i) =>
-              `<div class="vn-round-dot ${i < dating.dateRoundsCompleted ? 'done' : i === dating.dateRoundsCompleted ? 'current' : ''}"></div>`
-            ).join('')}
-            <span class="vn-round-label">${Math.min(dating.activeDateRound + 1, totalRounds)}/${totalRounds}</span>
-          </div>`
-        : '';
+      // Ghost timer hearts
+      const ghostHearts = Array.from({ length: 3 }, (_, i) =>
+        `<span class="vn-ghost-heart ${i < chat.ghostTimer ? 'active' : 'lost'}">${i < chat.ghostTimer ? '💖' : '🖤'}</span>`
+      ).join('');
 
-      const choicesHtml = dateChoices
-        ? `<div class="vn-choices">${dateChoices.choices.map((opt, idx) =>
-            `<button class="vn-choice-btn" data-idx="${idx}"><span class="vn-choice-text">${opt.text}</span></button>`
-          ).join('')}</div>`
-        : chat.resolved
-          ? `<button class="vn-choice-btn close-chat-btn" style="width:auto;margin:0 auto;"><span class="vn-choice-text">Continue</span></button>`
-          : '';
+      // Interest bar
+      const interestPct = Math.min(100, Math.max(0, chat.interest || 30));
 
-      // Build chat log preview (last partner message shown in VN text box)
-      const partnerLastMsg = chat.chatLog.filter(m => m.sender === 'partner');
-      const displayMsg = partnerLastMsg.length > 0 ? partnerLastMsg[partnerLastMsg.length - 1].text : '...';
-      const systemLastMsg = chat.chatLog.filter(m => m.sender === 'system-chat');
-      const displaySystemMsg = systemLastMsg.length > 0 ? systemLastMsg[systemLastMsg.length - 1].text : '';
-      const showSystem = displaySystemMsg && chat.chatLog.length > 1;
+      // Chat message history (last 4 messages shown as bubbles)
+      const recentMessages = chat.chatLog.slice(-5);
 
-      isVNMode = true;
       screenContent = `
-        <div class="vn-container" style="background: ${scene.gradient};">
+        <div class="vn-container vn-chat-mode" style="background: ${scene.gradient};">
           <div class="vn-particles ${scene.particles}"></div>
-          ${roundDots}
-          <div class="vn-character-area">
-            <div class="vn-character-frame" style="--mood-color: ${moodColor};">
-              ${avatarHtml}
-              <div class="vn-mood-badge">${moodEmoji}</div>
+          <div class="vn-chat-top-bar">
+            ${ghostHearts}
+            <div class="vn-chat-interest-bar">
+              <div class="vn-chat-interest-fill" style="width:${interestPct}%;"></div>
             </div>
+            <span class="vn-chat-interest-label">${interestPct}%</span>
           </div>
-          <div class="vn-text-area">
-            <div class="vn-speaker-name">${chat.profile.name} <span class="vn-speaker-age">(${chat.profile.age})</span></div>
-            ${displaySystemMsg && !showChoices ? `<div class="vn-system-line">${displaySystemMsg}</div>` : ''}
-            <div class="vn-dialogue">${isPartnerTyping ? '<span class="vn-typing-dots"><span>.</span><span>.</span><span>.</span></span>' : displayMsg}</div>
-            ${showChoices ? choicesHtml : `<div class="vn-choices">${choicesHtml || ''}</div>`}
+          <div class="vn-chat-messages" id="chat-scroller">
+            ${recentMessages.map(m =>
+              `<div class="vn-chat-msg vn-chat-${m.sender}">${m.text}</div>`
+            ).join('')}
+            ${isPartnerTyping ? '<div class="vn-chat-msg vn-chat-partner"><span class="vn-typing-dots"><span>.</span><span>.</span><span>.</span></span></div>' : ''}
+          </div>
+          <div class="vn-chat-input">
+            ${!chat.resolved && choices.length > 0
+              ? choices.map((opt, idx) => {
+                  const statReq = opt.stat && opt.statVal ? `<span class="vn-chat-stat-req">[${opt.stat} ${opt.statVal}+]</span>` : '';
+                  return `<button class="vn-chat-choice" data-idx="${idx}">
+                    <span class="vn-chat-choice-text">${opt.text}</span>
+                    ${statReq}
+                  </button>`;
+                }).join('')
+              : chat.resolved
+                ? `<button class="vn-chat-choice close-chat-btn" style="width:100%;text-align:center;"><span class="vn-chat-choice-text">Continue</span></button>`
+                : ''
+            }
           </div>
         </div>
       `;
@@ -2480,17 +2611,47 @@ function renderDatingTab() {
         </div>
       `;
     }
-  } else {
-    // RENDER SWIPER SCREEN
-    const prof = dating.currentProfile;
-    const matchPct = dating.calculateMatchPercent(prof);
-    
+  } else if (dating.showAppHome) {
+    // RENDER APP HOME SCREEN
+    const unlocked = dating.getUnlockedApps();
     screenContent = `
       <div class="phone-screen">
         <div class="phone-header">
-          <span class="phone-logo text-pink">🔥 swipeMax</span>
+          <span class="phone-logo text-pink">📱 App Store</span>
           <span class="phone-battery">99%</span>
         </div>
+        <div class="phone-body app-home-body">
+          ${DatingSimulator.APPS.map(app => {
+            const isLocked = !unlocked.includes(app.id);
+            return `
+              <div class="app-icon-wrap ${isLocked ? 'app-locked' : ''}" data-app="${app.id}">
+                <div class="app-icon" style="background:${app.color}20;border-color:${app.color}40;">
+                  <span class="app-icon-emoji">${app.icon}</span>
+                  ${isLocked ? '<span class="app-lock-overlay">🔒</span>' : ''}
+                </div>
+                <div class="app-name">${app.name}</div>
+                ${isLocked ? `<div class="app-lock-req">${app.id === 'hinged' ? 'Career Lv3+' : app.id === 'luxymog' ? 'PSL 7.0+' : 'Wealth $50K+'}</div>` : `<div class="app-desc">${app.desc}</div>`}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    // RENDER ACTIVE APP SWIPER SCREEN
+    const prof = dating.currentProfile;
+    const matchPct = dating.calculateMatchPercent(prof);
+    const appDef = dating.getActiveAppDef();
+    const unlocked = dating.getUnlockedApps();
+
+    screenContent = `
+      <div class="phone-screen">
+        <div class="phone-header">
+          <button class="app-back-btn" id="btn-app-home">←</button>
+          <span class="phone-logo" style="color:${appDef.color};">${appDef.icon} ${appDef.name}</span>
+          <span class="phone-battery">99%</span>
+        </div>
+        ${dating.banWarning ? '<div class="app-ban-warning">⚠️ PSL dropped — one more violation = banned</div>' : ''}
         <div class="phone-body">
           <div class="dating-profile-card" id="dating-swipe-card">
             <div class="dating-avatar-box">
@@ -2518,9 +2679,133 @@ function renderDatingTab() {
   phoneFrame.innerHTML = screenContent;
   container.appendChild(phoneFrame);
 
-  // Attach Swiping Events
-  if (!dating.activeChat) {
+  // Attach Events
+  if (dating.activeEvent?.type === 'ex_boss' && !dating.activeEvent.resolved) {
+    const fightBtn = document.getElementById('btn-ex-fight');
+    if (fightBtn) {
+      fightBtn.addEventListener('click', () => {
+        playSound('click');
+        battle = new BattleSystem(game, logToConsole);
+        const started = battle.startBattle('mogger_ex');
+        if (started) {
+          battle.opponentDialog = `${dating.currentProfile.name}'s ex glares at you. "You think you can take my spot? Let's see what you've got."`;
+          // Switch to Social tab for the battle
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          const socialBtn = [...document.querySelectorAll('.tab-btn')].find(b => b.textContent.includes('SOCIAL'));
+          if (socialBtn) socialBtn.classList.add('active');
+          switchBGM();
+          renderSocialTab();
+        }
+      });
+    }
+    const fleeBtn = document.getElementById('btn-ex-flee');
+    if (fleeBtn) {
+      fleeBtn.addEventListener('click', () => {
+        playSound('click');
+        dating.resolveExBoss(false);
+        renderDatingTab();
+      });
+    }
+  } else if (dating.dateBattle) {
+    // Date Night event listeners
+    const db = dating.dateBattle;
+
+    if (db.phase === 'select_venue') {
+      container.querySelectorAll('.dn-venue-card').forEach(el => {
+        el.addEventListener('click', () => {
+          if (el.classList.contains('dn-venue-locked')) {
+            playSound('error');
+            return;
+          }
+          playSound('click');
+          const venueId = el.getAttribute('data-venue');
+          const res = dating.selectVenue(venueId);
+          if (res && res.status === 'error') {
+            logToConsole(res.msg, 'error');
+          }
+          renderDatingTab();
+        });
+      });
+    } else if (db.phase === 'battle') {
+      container.querySelectorAll('.dn-card').forEach(el => {
+        el.addEventListener('click', () => {
+          if (el.classList.contains('dn-card-disabled')) {
+            playSound('error');
+            return;
+          }
+          playSound('click');
+          const instanceId = el.getAttribute('data-instance');
+          const res = dating.playDateCard(instanceId);
+          if (res && res.status === 'error') {
+            logToConsole(res.msg, 'error');
+          }
+          renderDatingTab();
+          updateDashboard();
+        });
+      });
+      const endTurnBtn = container.querySelector('.dn-end-turn-btn');
+      if (endTurnBtn) {
+        endTurnBtn.addEventListener('click', () => {
+          playSound('click');
+          dating.endDateTurn();
+          renderDatingTab();
+        });
+      }
+    } else if (db.phase === 'bill') {
+      container.querySelectorAll('.dn-bill-btn').forEach(el => {
+        el.addEventListener('click', () => {
+          playSound('click');
+          const choice = el.getAttribute('data-choice');
+          const res = dating.handleBill(choice);
+          if (res && res.status === 'error') {
+            logToConsole(res.msg, 'error');
+          }
+          renderDatingTab();
+          updateDashboard();
+        });
+      });
+    } else if (db.phase === 'done') {
+      const doneBtn = container.querySelector('.close-dn-btn');
+      if (doneBtn) {
+        doneBtn.addEventListener('click', () => {
+          playSound('click');
+          dating.dateBattle = null;
+          dating.showAppHome = true;
+          renderDatingTab();
+          updateDashboard();
+        });
+      }
+    }
+  } else if (dating.showAppHome && !dating.activeChat) {
+    // App icon clicks
+    container.querySelectorAll('.app-icon-wrap').forEach(el => {
+      el.addEventListener('click', () => {
+        const appId = el.getAttribute('data-app');
+        if (el.classList.contains('app-locked')) {
+          playSound('error');
+          logToConsole(`${appId} is locked — improve your stats!`, 'error');
+          return;
+        }
+        playSound('click');
+        dating.switchApp(appId);
+        dating.showAppHome = false;
+        dating.banWarning = false;
+        renderDatingTab();
+      });
+    });
+  } else if (!dating.activeChat) {
+    // Active app — swipe buttons
     const card = document.getElementById('dating-swipe-card');
+
+    // App back button
+    const backBtn = document.getElementById('btn-app-home');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        playSound('click');
+        dating.showAppHome = true;
+        renderDatingTab();
+      });
+    }
     
     document.getElementById('btn-swipe-dislike').addEventListener('click', () => {
       playSound('swipe');
@@ -2548,24 +2833,30 @@ function renderDatingTab() {
       }, 250);
     });
   } else {
-    // VN buttons
-    const vnButtons = container.querySelectorAll('.vn-choice-btn');
-    vnButtons.forEach(btn => {
+    // Chat choice buttons
+    const chatBtns = container.querySelectorAll('.vn-chat-choice');
+    chatBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         playSound('click');
         if (btn.classList.contains('close-chat-btn')) {
-          dating.rollProfile();
+          // rollProfile already called in _ghostOut/_secureDate
+          dating.showAppHome = true;
+          dating.activeChat = null;
           renderDatingTab();
           return;
         }
         const idx = parseInt(btn.getAttribute('data-idx'));
         if (!isNaN(idx)) {
-          const res = dating.makeDateChoice(idx);
+          const res = dating.makeChatChoice(idx);
           renderDatingTab();
           updateDashboard();
         }
       });
     });
+
+    // Scroll chat to bottom
+    const chatScroller = document.getElementById('chat-scroller');
+    if (chatScroller) chatScroller.scrollTop = chatScroller.scrollHeight;
 
     // Legacy chat buttons (catfish / fallback)
     const legacyButtons = container.querySelectorAll('.chat-choice-btn');
@@ -2573,7 +2864,7 @@ function renderDatingTab() {
       btn.addEventListener('click', () => {
         playSound('click');
         if (btn.classList.contains('close-chat-btn')) {
-          dating.rollProfile();
+          dating.activeChat = null;
           renderDatingTab();
           return;
         }
@@ -2615,6 +2906,21 @@ function renderDatingTab() {
       `<button class="surgery-buy-btn" id="btn-buy-gold" style="border-color: var(--accent-yellow); color: var(--accent-yellow);">BUY GOLD ($200)</button>`}
   `;
   container.insertBefore(goldHeader, phoneFrame);
+
+  // Viral screenshot / Rizz lock notification banner
+  if (dating.isRizzLocked()) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;';
+    banner.innerHTML = `
+      <span style="font-size:14px;">📱</span>
+      <div style="flex:1;">
+        <div style="font-size:10px;font-weight:700;color:#ff5555;">VIRAL EXPOSURE — RIZZ LOCKED</div>
+        <div style="font-size:8px;color:var(--text-muted);">Your conversation went viral. Match rate reduced to 0% for ${dating.player.rizzLockTurns} more turns.</div>
+      </div>
+      <span style="font-size:14px;">😱</span>
+    `;
+    container.insertBefore(banner, phoneFrame);
+  }
 
   if (!dating.goldSubscription) {
     document.getElementById('btn-buy-gold').addEventListener('click', () => {
@@ -3724,11 +4030,22 @@ function renderBattleResolution(container) {
 
   document.getElementById('btn-close-outcome').addEventListener('click', () => {
     playSound('click');
-    battle.active = false;
-    battle.isOver = false;
-    switchBGM();
-    renderSocialTab();
-    checkGameOver();
+    const wasExBoss = dating.activeEvent?.type === 'ex_boss';
+    if (wasExBoss) {
+      const won = battle.outcome === 'win';
+      battle.active = false;
+      battle.isOver = false;
+      dating.resolveExBoss(won);
+      switchBGM();
+      renderDatingTab();
+      updateDashboard();
+    } else {
+      battle.active = false;
+      battle.isOver = false;
+      switchBGM();
+      renderSocialTab();
+      checkGameOver();
+    }
   });
 }
 
